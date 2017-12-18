@@ -1,0 +1,140 @@
+<?xml version="1.0" standalone="yes"?>
+<ArrayOfItem>
+  <Item>
+    <itemId>0</itemId>
+    <name>无</name>
+    <price>0</price>
+    <quality>0</quality>
+  </Item>
+  <Item>
+    <itemId>1</itemId>
+    <name>钻石</name>
+    <price>0</price>
+    <quality>0</quality>
+    <tag>currency</tag>
+    <spriteName>demon</spriteName>
+    <description>我是钻石</description>
+    <commond />
+  </Item>
+  <Item>
+    <itemId>2</itemId>
+    <name>金币</name>
+    <price>0</price>
+    <quality>0</quality>
+    <tag>currency</tag>
+    <spriteName>coin</spriteName>
+    <description>我是金币</description>
+    <commond />
+  </Item>
+  <Item>
+    <itemId>4</itemId>
+    <name>体力</name>
+    <price>0</price>
+    <quality>0</quality>
+    <tag>currency</tag>
+    <spriteName>power</spriteName>
+    <description />
+  </Item>
+  <Item>
+    <itemId>100</itemId>
+    <name>人物1</name>
+    <price>0</price>
+    <quality>0</quality>
+    <tag>role</tag>
+    <spriteName />
+    <description>我是1</description>
+    <commond />
+  </Item>
+  <Item>
+    <itemId>101</itemId>
+    <name>人物2</name>
+    <price>0</price>
+    <quality>0</quality>
+    <tag>role</tag>
+    <spriteName />
+    <description>我是2</description>
+    <commond />
+  </Item>
+  <Item>
+    <itemId>102</itemId>
+    <name>人物3</name>
+    <price>0</price>
+    <quality>0</quality>
+    <tag>role</tag>
+    <spriteName />
+    <description>我是3</description>
+    <commond />
+  </Item>
+  <Item>
+    <itemId>200</itemId>
+    <name>碎片1</name>
+    <price>0</price>
+    <quality>0</quality>
+    <tag>fragment</tag>
+    <spriteName>drop_icon1</spriteName>
+    <description>碎片1</description>
+    <commond />
+  </Item>
+  <Item>
+    <itemId>300</itemId>
+    <name>技能无</name>
+  </Item>
+  <Item>
+    <itemId>301</itemId>
+    <name>板变长</name>
+    <price>100</price>
+    <quality>0</quality>
+    <tag>skill</tag>
+    <spriteName>skillIcon1</spriteName>
+    <description>技能1</description>
+  </Item>
+  <Item>
+    <itemId>302</itemId>
+    <name>板变短</name>
+    <price>200</price>
+    <tag>skill</tag>
+    <spriteName>skillIcon2</spriteName>
+  </Item>
+  <Item>
+    <itemId>303</itemId>
+    <name>板吸球</name>
+    <price>300</price>
+    <tag>skill</tag>
+    <spriteName>skillIcon3</spriteName>
+  </Item>
+  <Item>
+    <itemId>304</itemId>
+    <name>板射击</name>
+    <price>400</price>
+    <tag>skill</tag>
+    <spriteName>skillIcon4</spriteName>
+  </Item>
+  <Item>
+    <itemId>305</itemId>
+    <name>球分裂</name>
+    <price>500</price>
+    <tag>skill</tag>
+    <spriteName>skillIcon5</spriteName>
+  </Item>
+  <Item>
+    <itemId>306</itemId>
+    <name>球减速</name>
+    <price>600</price>
+    <tag>skill</tag>
+    <spriteName>skillIcon6</spriteName>
+  </Item>
+  <Item>
+    <itemId>307</itemId>
+    <name>球加速</name>
+    <price>700</price>
+    <tag>skill</tag>
+    <spriteName>skillIcon7</spriteName>
+  </Item>
+  <Item>
+    <itemId>308</itemId>
+    <name>全屏消</name>
+    <price>1000</price>
+    <tag>skill</tag>
+    <spriteName>skillIcon8</spriteName>
+  </Item>
+</ArrayOfItem>

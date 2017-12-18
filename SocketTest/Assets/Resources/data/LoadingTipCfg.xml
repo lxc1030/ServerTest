@@ -1,0 +1,21 @@
+<?xml version="1.0" standalone="yes"?>
+<ArrayOfLoadingTipCfg>
+  <LoadingTipCfg>
+    <id>0</id>
+    <info>加载中不消耗数据流量</info>
+    <desc>11</desc>
+    <notice>n</notice>
+  </LoadingTipCfg>
+  <LoadingTipCfg>
+    <id>1</id>
+    <info>金币可用来升级技能</info>
+    <desc>11</desc>
+    <notice>n</notice>
+  </LoadingTipCfg>
+  <LoadingTipCfg>
+    <id>2</id>
+    <info>接到技能的增益有好有坏</info>
+    <desc>1</desc>
+    <notice>j</notice>
+  </LoadingTipCfg>
+</ArrayOfLoadingTipCfg>

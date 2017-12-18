@@ -1,0 +1,57 @@
+<?xml version="1.0" standalone="yes"?>
+<ArrayOfChargeItem>
+  <ChargeItem>
+    <chargeId>4</chargeId>
+    <price>2</price>
+    <addInfo>4_60</addInfo>
+    <isShop>1</isShop>
+    <type>Single</type>
+  </ChargeItem>
+  <ChargeItem>
+    <chargeId>5</chargeId>
+    <price>8</price>
+    <addInfo>4_300</addInfo>
+    <isShop>1</isShop>
+    <type>Single</type>
+    <notice>isShop代表是否在商店中显示的单列</notice>
+  </ChargeItem>
+  <ChargeItem>
+    <chargeId>1</chargeId>
+    <price>2</price>
+    <addInfo>2_1000</addInfo>
+    <isShop>1</isShop>
+    <type>Single</type>
+    <notice>addInfo是ItemchargeId  1=钻石，2=金币， 4=体力</notice>
+  </ChargeItem>
+  <ChargeItem>
+    <chargeId>2</chargeId>
+    <price>4</price>
+    <addInfo>2_4000</addInfo>
+    <isShop>1</isShop>
+    <type>Single</type>
+    <notice>addInfo是ItemchargeId  1=钻石，2=金币， 4=体力</notice>
+  </ChargeItem>
+  <ChargeItem>
+    <chargeId>3</chargeId>
+    <price>8</price>
+    <addInfo>2_12000</addInfo>
+    <isShop>1</isShop>
+    <type>Single</type>
+  </ChargeItem>
+  <ChargeItem>
+    <chargeId>6</chargeId>
+    <price>1</price>
+    <addInfo>4_15,2_1000</addInfo>
+    <isShop>0</isShop>
+    <type>OnceGift</type>
+    <desc>新手礼包</desc>
+  </ChargeItem>
+  <ChargeItem>
+    <chargeId>7</chargeId>
+    <price>12</price>
+    <addInfo>4_200,2_12000</addInfo>
+    <isShop>0</isShop>
+    <type>CouponGift</type>
+    <desc>特惠礼包</desc>
+  </ChargeItem>
+</ArrayOfChargeItem>

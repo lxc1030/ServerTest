@@ -1,0 +1,43 @@
+<?xml version="1.0" standalone="yes"?>
+<ArrayOfChargeItem>
+  <ChargeItem>
+    <chargeId>1</chargeId>
+    <price>1</price>
+    <addInfo>4_1</addInfo>
+    <isShop>1</isShop>
+    <type>1</type>
+    <desc />
+    <notice />
+  </ChargeItem>
+  <ChargeItem>
+    <chargeId>2</chargeId>
+    <price>3</price>
+    <addInfo>4_100</addInfo>
+    <isShop>1</isShop>
+    <type>100</type>
+  </ChargeItem>
+  <ChargeItem>
+    <chargeId>3</chargeId>
+    <price>1</price>
+    <addInfo>2_1000</addInfo>
+    <isShop>1</isShop>
+    <type>1000</type>
+    <notice>addInfo是ItemchargeId  1=钻石，2=金币， 4=体力</notice>
+  </ChargeItem>
+  <ChargeItem>
+    <chargeId>4</chargeId>
+    <price>3</price>
+    <addInfo>2_4000</addInfo>
+    <isShop>1</isShop>
+    <type>4000</type>
+    <desc />
+    <notice>addInfo是ItemchargeId  1=钻石，2=金币， 4=体力</notice>
+  </ChargeItem>
+  <ChargeItem>
+    <chargeId>5</chargeId>
+    <price>10</price>
+    <addInfo>2_12000</addInfo>
+    <isShop>1</isShop>
+    <type>12000</type>
+  </ChargeItem>
+</ArrayOfChargeItem>

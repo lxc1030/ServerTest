@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 14
+VisualStudioVersion = 14.0.25420.1
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CsharpIOCP", "CsharpIOCP\CsharpIOCP.csproj", "{FAA9F759-9CC6-430A-98EA-7E0FB8FB76BE}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Serialize", "SerializeClass\Serialize.csproj", "{83106E20-5FA2-40F8-BA01-2859D1F05CBD}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{FAA9F759-9CC6-430A-98EA-7E0FB8FB76BE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FAA9F759-9CC6-430A-98EA-7E0FB8FB76BE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FAA9F759-9CC6-430A-98EA-7E0FB8FB76BE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FAA9F759-9CC6-430A-98EA-7E0FB8FB76BE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{83106E20-5FA2-40F8-BA01-2859D1F05CBD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{83106E20-5FA2-40F8-BA01-2859D1F05CBD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{83106E20-5FA2-40F8-BA01-2859D1F05CBD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{83106E20-5FA2-40F8-BA01-2859D1F05CBD}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

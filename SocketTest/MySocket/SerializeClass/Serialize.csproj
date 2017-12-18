@@ -1,0 +1,309 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="14.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{83106E20-5FA2-40F8-BA01-2859D1F05CBD}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>Serialize</RootNamespace>
+    <AssemblyName>Serialize</AssemblyName>
+    <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <TargetFrameworkProfile />
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup>
+    <StartupObject />
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
+    <Reference Include="protobuf-net, Version=2.3.3.0, Culture=neutral, PublicKeyToken=257b51d87d2e4d67, processorArchitecture=MSIL">
+      <HintPath>..\packages\protobuf-net.2.3.3\lib\net35\protobuf-net.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+    <Reference Include="UnityEngine, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>D:\Unity5.6.1\Unity\Editor\Data\Managed\UnityEngine.dll</HintPath>
+    </Reference>
+    <Reference Include="WindowsBase" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="ProtoBuf\ProtoBuffData.cs" />
+    <Compile Include="Scripts\BoxInfo.cs" />
+    <Compile Include="Scripts\GameTypeManager.cs" />
+    <Compile Include="Scripts\RoomActor.cs" />
+    <Compile Include="Scripts\RoomInfo.cs" />
+    <Compile Include="Scripts\SerializeClass.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Scripts\SerializeHelper.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\BZip2\BZip2.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\BZip2\BZip2Constants.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\BZip2\BZip2Exception.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\BZip2\BZip2InputStream.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\BZip2\BZip2OutputStream.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\Checksum\Adler32.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\Checksum\BZip2Crc.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\Checksum\Crc32.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\Checksum\IChecksum.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\Core\FileSystemScanner.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\Core\INameTransform.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\Core\IScanFilter.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\Core\NameFilter.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\Core\PathFilter.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\Core\StreamUtils.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\Core\WindowsPathUtils.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\Encryption\PkzipClassic.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\Encryption\ZipAESStream.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\Encryption\ZipAESTransform.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\GZip\GZip.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\GZip\GZipConstants.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\GZip\GZipException.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\GZip\GzipInputStream.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\GZip\GzipOutputStream.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\Lzw\LzwConstants.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\Lzw\LzwException.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\Lzw\LzwInputStream.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\SharpZipBaseException.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\Tar\InvalidHeaderException.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\Tar\TarArchive.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\Tar\TarBuffer.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\Tar\TarEntry.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\Tar\TarException.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\Tar\TarHeader.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\Tar\TarInputStream.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\Tar\TarOutputStream.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\Zip\Compression\Deflater.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\Zip\Compression\DeflaterConstants.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\Zip\Compression\DeflaterEngine.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\Zip\Compression\DeflaterHuffman.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\Zip\Compression\DeflaterPending.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\Zip\Compression\Inflater.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\Zip\Compression\InflaterDynHeader.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\Zip\Compression\InflaterHuffmanTree.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\Zip\Compression\PendingBuffer.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\Zip\Compression\Streams\DeflaterOutputStream.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\Zip\Compression\Streams\InflaterInputStream.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\Zip\Compression\Streams\OutputWindow.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\Zip\Compression\Streams\StreamManipulator.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\Zip\FastZip.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\Zip\IEntryFactory.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\Zip\WindowsNameTransform.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\Zip\ZipConstants.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\Zip\ZipEntry.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\Zip\ZipEntryFactory.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\Zip\ZipException.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\Zip\ZipExtraData.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\Zip\ZipFile.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\Zip\ZipHelperStream.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\Zip\ZipInputStream.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\Zip\ZipNameTransform.cs" />
+    <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\Zip\ZipOutputStream.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="App.config" />
+    <None Include="packages.config" />
+    <None Include="SharpZipLib-master\docs\future\FILEFMTS.DOC" />
+    <None Include="SharpZipLib-master\docs\future\FILEFMTS_ARC.md" />
+    <None Include="SharpZipLib-master\docs\future\FILEFMTS_ARJ.md" />
+    <None Include="SharpZipLib-master\docs\future\FILEFMTS_DWC.md" />
+    <None Include="SharpZipLib-master\docs\future\FILEFMTS_GZIP.md" />
+    <None Include="SharpZipLib-master\docs\future\FILEFMTS_HA.md" />
+    <None Include="SharpZipLib-master\docs\future\FILEFMTS_HYP.md" />
+    <None Include="SharpZipLib-master\docs\future\FILEFMTS_Introduction.md" />
+    <None Include="SharpZipLib-master\docs\future\FILEFMTS_LBR.md" />
+    <None Include="SharpZipLib-master\docs\future\FILEFMTS_LZH.md" />
+    <None Include="SharpZipLib-master\docs\future\FILEFMTS_ZOO.md" />
+    <None Include="SharpZipLib-master\docs\future\FILE_ID.DIZ" />
+    <None Include="SharpZipLib-master\docs\future\README.md" />
+    <None Include="SharpZipLib-master\docs\help\api\index.md" />
+    <None Include="SharpZipLib-master\docs\help\api\toc.yml" />
+    <None Include="SharpZipLib-master\docs\help\articles\intro.md" />
+    <None Include="SharpZipLib-master\docs\help\articles\toc.yml" />
+    <None Include="SharpZipLib-master\docs\help\docfx.json" />
+    <None Include="SharpZipLib-master\docs\help\index.md" />
+    <None Include="SharpZipLib-master\docs\help\serve.bat" />
+    <None Include="SharpZipLib-master\docs\help\toc.yml" />
+    <None Include="SharpZipLib-master\docs\SharpZipLibCodeMap.dgml" />
+    <None Include="SharpZipLib-master\docs\specification\README.md" />
+    <None Include="SharpZipLib-master\src\Directory.build.props" />
+    <None Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\ICSharpCode.SharpZipLib.snk" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="DLL\UnityEngine.dll" />
+    <Content Include="SharpZipLib-master\docs\Changes.txt" />
+    <Content Include="SharpZipLib-master\docs\future\ARCHIVES.TXT" />
+    <Content Include="SharpZipLib-master\docs\future\FILEFMTS.LST" />
+    <Content Include="SharpZipLib-master\docs\future\tar_15.html" />
+    <Content Include="SharpZipLib-master\docs\help\.gitignore" />
+    <Content Include="SharpZipLib-master\docs\help\api\.gitignore" />
+    <Content Include="SharpZipLib-master\docs\help\BuildingHelpInfo.txt" />
+    <Content Include="SharpZipLib-master\docs\nunit3-test-results-debug.xml" />
+    <Content Include="SharpZipLib-master\docs\nunit3-test-results-release.xml" />
+    <Content Include="SharpZipLib-master\docs\opencover-results-release.xml" />
+    <Content Include="SharpZipLib-master\docs\opencover\combined.js" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_Adler32.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_BaseArchiveStorage.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_BZip2.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_BZip2Constants.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_BZip2Crc.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_BZip2Exception.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_BZip2InputStream.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_BZip2OutputStream.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_CompletedFileHandler.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_Crc32.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_Deflater.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_DeflaterConstants.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_DeflaterEngine.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_DeflaterHuffman.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_DeflaterOutputStream.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_DeflaterPending.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_DescriptorData.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_DirectoryEventArgs.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_DirectoryFailureHandler.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_DiskArchiveStorage.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_DynamicDiskDataSource.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_EntryPatchData.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_ExtendedPathFilter.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_ExtendedUnixData.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_FastZip.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_FastZipEvents.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_FileFailureHandler.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_FileSystemScanner.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_GZip.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_GZipConstants.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_GZipException.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_GZipInputStream.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_GZipOutputStream.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_Inflater.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_InflaterDynHeader.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_InflaterHuffmanTree.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_InflaterInputBuffer.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_InflaterInputStream.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_InvalidHeaderException.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_KeysRequiredEventArgs.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_LzwConstants.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_LzwException.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_LzwInputStream.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_MemoryArchiveStorage.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_NameAndSizeFilter.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_NameFilter.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_NTTaggedData.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_OutputWindow.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_PathFilter.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_PendingBuffer.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_PkzipClassic.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_PkzipClassicCryptoBase.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_PkzipClassicDecryptCryptoTransform.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_PkzipClassicEncryptCryptoTransform.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_PkzipClassicManaged.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_ProcessFileHandler.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_ProgressEventArgs.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_ProgressHandler.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_ProgressMessageHandler.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_RawTaggedData.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_ScanEventArgs.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_ScanFailureEventArgs.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_SharpZipBaseException.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_StaticDiskDataSource.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_StreamManipulator.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_StreamUtils.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_TarArchive.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_TarBuffer.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_TarEntry.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_TarException.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_TarHeader.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_TarInputStream.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_TarOutputStream.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_TestStatus.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_WindowsNameTransform.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_WindowsPathUtils.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_ZipAESStream.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_ZipAESTransform.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_ZipConstants.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_ZipEntry.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_ZipEntryFactory.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_ZipException.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_ZipExtraData.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_ZipFile.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_ZipHelperStream.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_ZipInputStream.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_ZipNameTransform.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_ZipOutputStream.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\ICSharpCode.SharpZipLib_ZipTestResultHandler.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\index.htm" />
+    <Content Include="SharpZipLib-master\docs\opencover\pic_branch0.png" />
+    <Content Include="SharpZipLib-master\docs\opencover\pic_branch10.png" />
+    <Content Include="SharpZipLib-master\docs\opencover\pic_branch100.png" />
+    <Content Include="SharpZipLib-master\docs\opencover\pic_branch20.png" />
+    <Content Include="SharpZipLib-master\docs\opencover\pic_branch30.png" />
+    <Content Include="SharpZipLib-master\docs\opencover\pic_branch40.png" />
+    <Content Include="SharpZipLib-master\docs\opencover\pic_branch50.png" />
+    <Content Include="SharpZipLib-master\docs\opencover\pic_branch60.png" />
+    <Content Include="SharpZipLib-master\docs\opencover\pic_branch70.png" />
+    <Content Include="SharpZipLib-master\docs\opencover\pic_branch80.png" />
+    <Content Include="SharpZipLib-master\docs\opencover\pic_branch90.png" />
+    <Content Include="SharpZipLib-master\docs\opencover\pic_collapsed.png" />
+    <Content Include="SharpZipLib-master\docs\opencover\pic_expanded.png" />
+    <Content Include="SharpZipLib-master\docs\opencover\pic_pin_pinned.png" />
+    <Content Include="SharpZipLib-master\docs\opencover\pic_pin_unpinned.png" />
+    <Content Include="SharpZipLib-master\docs\opencover\pic_sortactive_asc.png" />
+    <Content Include="SharpZipLib-master\docs\opencover\pic_sortactive_desc.png" />
+    <Content Include="SharpZipLib-master\docs\opencover\pic_sortinactive.png" />
+    <Content Include="SharpZipLib-master\docs\opencover\report.css" />
+    <Content Include="SharpZipLib-master\docs\specification\algorithm.txt" />
+    <Content Include="SharpZipLib-master\docs\specification\appnote.txt" />
+    <Content Include="SharpZipLib-master\docs\specification\bzip2-manual-1.0.5.html" />
+    <Content Include="SharpZipLib-master\docs\specification\format.txt" />
+    <Content Include="SharpZipLib-master\docs\specification\rfc-deflate.txt" />
+    <Content Include="SharpZipLib-master\docs\specification\rfc-gzip.txt" />
+    <Content Include="SharpZipLib-master\docs\specification\rfc-zlib.txt" />
+    <Content Include="SharpZipLib-master\docs\specification\rfc1950.txt" />
+    <Content Include="SharpZipLib-master\docs\specification\rfc1951.txt" />
+    <Content Include="SharpZipLib-master\docs\specification\rfc1952.txt" />
+    <Content Include="SharpZipLib-master\docs\specification\tar_14.html" />
+    <Content Include="SharpZipLib-master\docs\specification\tar_8.html" />
+    <Content Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\bin\Debug\ICSharpCode.SharpZipLib.vshost.exe" />
+    <Content Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\ICSharpCode.SharpZipLib.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\bin\Debug\netstandard1.3\" />
+    <Folder Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\obj\Debug\TempPE\" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

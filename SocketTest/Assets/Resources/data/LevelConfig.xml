@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ArrayOfLevelConfig xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <LevelConfig>
+    <level>0</level>
+    <AllInfo>0_0_2,1_0_2,2_0_0,3_0_3,4_0_3,5_0_3,6_0_4,7_0_4,0_1_4,1_1_2,2_1_2,3_1_3,4_1_2</AllInfo>
+    <desc>11</desc>
+    <notice>x_z_type,横_纵_类型,空=0, 普通=2, 一般=3, 困难=4</notice>
+  </LevelConfig>
+</ArrayOfLevelConfig>
