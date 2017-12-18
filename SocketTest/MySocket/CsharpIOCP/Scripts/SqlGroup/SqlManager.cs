@@ -1,5 +1,7 @@
 ﻿using DateBaseConnectionPool;
 using System;
+using System.Collections.Generic;
+using System.Data;
 using System.Data.SqlClient;
 using System.Text;
 
@@ -25,6 +27,12 @@ using System.Text;
 class SqlManager
 {
     public static SqlManager instance;//链接数据库--
+
+    public static Dictionary<string, DataTable> AllTable = new Dictionary<string, DataTable>()
+    {
+        {TableName.register ,new DataTable()}
+    };
+    
     /// <summary>
     /// 可供连接的对象池
     /// </summary>
@@ -55,32 +63,42 @@ class SqlManager
 
     public void Connect()
     {
-        c = new ConnectionPool(strConnection, ConnTypeEnum.SqlClient);
-        c.MinConnection = 5;
-        c.MaxConnection = 1000;
-        c.MaxRepeatDegree = 1;
-        c.KeepRealConnection = 5;
-        c.SeepConnection = 5;
-        //开启数据服务
-        c.StartServices();
-        print(c);
+        foreach (var item in AllTable)
+        {
 
-        //c的方法
-        //aaa = Console.ReadLine();
-        //if (aaa == "start")
-        //    c.StartServices();
-        //else if (aaa == "stop")
-        //    c.StopServices(true);
-        //else if (aaa == "getr")
-        //    conn = (SqlConnection)c.GetConnectionFormPool(new object(), ConnLevel.ReadOnly);
-        //else if (aaa == "geth")
-        //    conn = (SqlConnection)c.GetConnectionFormPool(new object(), ConnLevel.High);
-        //else if (aaa == "getb")
-        //    conn = (SqlConnection)c.GetConnectionFormPool(new object(), ConnLevel.Bottom);
-        //else if (aaa == "getn")
-        //    conn = (SqlConnection)c.GetConnectionFormPool(new object(), ConnLevel.None);
-
+        }
     }
+
+
+
+    //public void Connect()
+    //{
+    //    c = new ConnectionPool(strConnection, ConnTypeEnum.SqlClient);
+    //    c.MinConnection = 5;
+    //    c.MaxConnection = 1000;
+    //    c.MaxRepeatDegree = 1;
+    //    c.KeepRealConnection = 5;
+    //    c.SeepConnection = 5;
+    //    //开启数据服务
+    //    c.StartServices();
+    //    print(c);
+
+    //    //c的方法
+    //    //aaa = Console.ReadLine();
+    //    //if (aaa == "start")
+    //    //    c.StartServices();
+    //    //else if (aaa == "stop")
+    //    //    c.StopServices(true);
+    //    //else if (aaa == "getr")
+    //    //    conn = (SqlConnection)c.GetConnectionFormPool(new object(), ConnLevel.ReadOnly);
+    //    //else if (aaa == "geth")
+    //    //    conn = (SqlConnection)c.GetConnectionFormPool(new object(), ConnLevel.High);
+    //    //else if (aaa == "getb")
+    //    //    conn = (SqlConnection)c.GetConnectionFormPool(new object(), ConnLevel.Bottom);
+    //    //else if (aaa == "getn")
+    //    //    conn = (SqlConnection)c.GetConnectionFormPool(new object(), ConnLevel.None);
+
+    //}
 
     static void print(ConnectionPool c)
     {

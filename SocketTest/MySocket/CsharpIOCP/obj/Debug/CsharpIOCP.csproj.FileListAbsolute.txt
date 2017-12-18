@@ -55,3 +55,4 @@ E:\SVNCheckOut\UnityProject\Unity5.6.1\SocketTest\MySocket\CsharpIOCP\bin\Debug\
 E:\SVNCheckOut\UnityProject\Unity5.6.1\SocketTest\MySocket\CsharpIOCP\bin\Debug\UnityEngine.xml
 E:\MyGit\ServerTest\SocketTest\MySocket\CsharpIOCP\obj\Debug\CsharpIOCP.exe
 E:\MyGit\ServerTest\SocketTest\MySocket\CsharpIOCP\obj\Debug\CsharpIOCP.pdb
+E:\MyGit\ServerTest\SocketTest\MySocket\CsharpIOCP\obj\Debug\CsharpIOCP.csprojResolveAssemblyReference.cache
