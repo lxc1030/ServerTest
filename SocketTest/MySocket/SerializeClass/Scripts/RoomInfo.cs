@@ -39,8 +39,8 @@ public class RoomInfo
         switch (RoomType)
         {
             case GameModel.组队模式:
-                //GameTime = 2 * 60 * 1000;//1分钟
-                GameTime = 1 * 30 * 1000;
+                GameTime = 2 * 60 * 1000;//分钟
+                //GameTime = 1 * 30 * 1000;
                 break;
         }
         //
@@ -69,7 +69,7 @@ public class RoomInfo
         {
             ActorList.Add(unique, null);
         }
-        ActorList[unique] = new RoomActor(RoomID, unique, "", "", 1, TeamType.Both);
+        ActorList[unique] = new RoomActor(RoomID, unique, null, TeamType.Both);
     }
 
 

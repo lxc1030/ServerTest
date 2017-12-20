@@ -1,6 +1,7 @@
 ﻿using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Data.SqlClient;
 
 namespace NetFrame.Net
@@ -43,7 +44,7 @@ namespace NetFrame.Net
             byte[] newBuffer = null;
             byte[] tempMessageContent = null;
             SingleRoom room = null;
-            Login login = null;
+            Register login = null;
             RoomActorUpdate roomActorUpdate = null;
             ActorMoveDirection moveDirection = null;
             if (userToken == null)
@@ -56,29 +57,39 @@ namespace NetFrame.Net
                 room = allRoom.RoomList[userToken.userInfo.RoomID];
             }
             //Log4Debug("/" + xieyi.MessageContentLength);
-            try
+            //try
             {
                 switch ((MessageConvention)xieyi.XieYiFirstFlag)
                 {
                     case MessageConvention.login:
                         tempMessageContent = xieyi.MessageContent;
-                        login = SerializeHelper.Deserialize<Login>(tempMessageContent);
+                        login = SerializeHelper.Deserialize<Register>(tempMessageContent);
                         newBuffer = Login(login, userToken);
+                        break;
+                    case MessageConvention.getHeartBeatTime:
+                        newBuffer = SerializeHelper.Serialize<HeartbeatTime>(new HeartbeatTime() { time = AsyncIOCPServer.HeartbeatSecondTime });
                         break;
                     case MessageConvention.reConnect:
                         //检查是否是掉线用户
-                        if (OffLineRooms.ContainsKey(userToken.userInfo.MemberID))
+                        if (OffLineRooms.ContainsKey(userToken.userInfo.Register.userID))
                         {
-                            int roomID = OffLineRooms[userToken.userInfo.MemberID];
+                            int roomID = OffLineRooms[userToken.userInfo.Register.userID];
                             userToken.userInfo.RoomID = roomID;
                             allRoom.RoomList[roomID].ReConnect(userToken);
-                            OffLineRooms.Remove(userToken.userInfo.MemberID);
+                            OffLineRooms.Remove(userToken.userInfo.Register.userID);
                         }
                         break;
                     case MessageConvention.heartBeat:
                         //心跳检测客户端传递服务器时间
-                        Log4Debug("接收到 " + userToken.userInfo.MemberID + " 的心跳检测");
-                        newBuffer = SerializeHelper.DateTimeToBytes(DateTime.Now);
+                        Log4Debug("接收到 " + userToken.userInfo.Register.userID + " 的心跳检测");
+                        //newBuffer = SerializeHelper.DateTimeToBytes(DateTime.Now);
+                        newBuffer = SerializeHelper.Serialize<HeartbeatTime>(new HeartbeatTime() { time = AsyncIOCPServer.HeartbeatSecondTime });
+                        break;
+                    case MessageConvention.updateName:
+                        tempMessageContent = xieyi.MessageContent;
+                        string updateName = SerializeHelper.ConvertToString(tempMessageContent);
+                        Log4Debug("修改人物信息：" + updateName);
+                        newBuffer = UpdateName(userToken, updateName);
                         break;
                     case MessageConvention.createRoom:
                         json = JObject.Parse(SerializeHelper.ConvertToString(xieyi.MessageContent));
@@ -115,11 +126,6 @@ namespace NetFrame.Net
                         roomActorUpdate.SetSendInfo(SerializeHelper.ConvertToString(tempMessageContent));
                         //
                         newBuffer = SerializeHelper.Serialize<List<RoomActor>>(new List<RoomActor>(room.RoomInfo.ActorList.Values));
-                        //List<RoomActor> rr = SerializeHelper.Deserialize<List<RoomActor>>(newBuffer);
-                        //List<string> allActor = room.GetRoommateInfo();
-                        //string info = SerializeHelper.ListCompose(allActor);
-                        //byte[] message = SerializeHelper.ConvertToByte(info);
-                        //newBuffer = message;
                         break;
                     case MessageConvention.updateActorAnimation:
                         tempMessageContent = xieyi.MessageContent;
@@ -132,7 +138,7 @@ namespace NetFrame.Net
                         tempMessageContent = xieyi.MessageContent;
                         roomActorUpdate = new RoomActorUpdate();
                         roomActorUpdate.SetSendInfo(SerializeHelper.ConvertToString(tempMessageContent));
-                        Log4Debug("站位：" + userToken.userInfo.UniqueID + "/" + userToken.userInfo.Nickname
+                        Log4Debug("站位：" + userToken.userInfo.UniqueID + "/" + userToken.userInfo.Register.name
                             + "用户站位：" + roomActorUpdate.userIndex +
                             "请求修改状态为->" + (RoomActorState)int.Parse(roomActorUpdate.update));
                         //
@@ -198,18 +204,17 @@ namespace NetFrame.Net
                         tempMessageContent = xieyi.MessageContent;
                         FrameInfo frame = SerializeHelper.Deserialize<FrameInfo>(tempMessageContent);
                         newBuffer = room.GetBoardFrame(frame.frameIndex);
-                        Log4Debug("用户" + userToken.userInfo.MemberID + "/请求帧数据：" + frame.frameIndex);
+                        Log4Debug("用户" + userToken.userInfo.Register.userID + "/请求帧数据：" + frame.frameIndex);
                         break;
-
                     default:
                         Log4Debug("该协议是否需要判断：" + xieyi.XieYiFirstFlag);
                         break;
                 }
             }
-            catch (Exception error)
-            {
-                Log4Debug("处理逻辑错误：" + error.Message);
-            }
+            //catch (Exception error)
+            //{
+            //    Log4Debug("处理逻辑错误：" + error.Message);
+            //}
             //  创建一个发送缓冲区。   
             byte[] sendBuffer = newBuffer;
             if (newBuffer != null)//用户需要服务器返回值给自己的话
@@ -221,28 +226,37 @@ namespace NetFrame.Net
         }
 
 
-        public byte[] Login(Login login, AsyncUserToken userToken)
+
+        #endregion
+
+        #region 逻辑部分
+
+
+        public byte[] Login(Register login, AsyncUserToken userToken)
         {
             byte[] backData = null;
-            string sendData = "";
             string sql = "";
+            SqlDataGroup sqlGroup = null;
 
-            //
             sql = SqlManager.instance.SelectWhere(TableName.register,
                 new string[] { nameof(Register.userID) },
                 new string[] { "=" },
                 new string[] { login.userID });
-            SqlDataReader sqReader = SqlManager.instance.UserAccept(login.userID, sql);
-            sql = ClassGroup.ReaderToJson(sqReader);
-            if (string.IsNullOrEmpty(sql))//验证账号存不存在 --不存在
+
+            sqlGroup = SqlManager.instance.ReaderFindBySql(sql);
+            if (sqlGroup.GetReader() == null)//验证账号存不存在 --不存在
             {
                 backData = ClassGroup.ErrorBackByType(ErrorType.userIDNotExist);
             }
-            else//验证密码
+            else
             {
-                JObject get = JObject.Parse(sql);
-                string name = (string)get[nameof(Register.name)];
-                if (login.password != (string)get[nameof(Register.password)])//密码错误
+                Register register = new Register();
+                register.Init(sqlGroup.GetReader());
+                //关闭连接
+                SqlManager.instance.Close(sqlGroup);
+                //主逻辑
+                string name = register.name;
+                if (login.password != register.password)//密码错误
                 {
                     backData = ClassGroup.ErrorBackByType(ErrorType.passwordWrong);
                 }
@@ -255,14 +269,12 @@ namespace NetFrame.Net
                     }
                     else
                     {
-                        //sendData = AsyncIOCPServer.HeartbeatSecondTime.ToString();//将心跳检测时间返回给客户端
-                        backData = SerializeHelper.Serialize<HeartbeatTime>(new HeartbeatTime() { time = AsyncIOCPServer.HeartbeatSecondTime });
-                        userToken.userInfo.MemberID = login.userID;///保存本IP的客户信息
+                        userToken.userInfo.LoginSet(register);
+                        //返回用户信息
+                        backData = SerializeHelper.Serialize<RoomActor>(userToken.userInfo);
                     }
                 }
             }
-            //byte[] byteArray = SerializeHelper.ConvertToByte(sendData);
-            //return byteArray;
             return backData;
         }
 
@@ -273,12 +285,12 @@ namespace NetFrame.Net
                 SingleRoom room = allRoom.RoomList[userToken.userInfo.RoomID];
                 if (room.RoomInfo.CurState != RoomActorState.NoReady)
                 {
-                    Log4Debug("用户账号：" + userToken.userInfo.MemberID + " 掉线前保存房间号：" + userToken.userInfo.RoomID);
-                    if (!OffLineRooms.ContainsKey(userToken.userInfo.MemberID))
+                    Log4Debug("用户账号：" + userToken.userInfo.Register.userID + " 掉线前保存房间号：" + userToken.userInfo.RoomID);
+                    if (!OffLineRooms.ContainsKey(userToken.userInfo.Register.userID))
                     {
-                        OffLineRooms.Add(userToken.userInfo.MemberID, -1);
+                        OffLineRooms.Add(userToken.userInfo.Register.userID, -1);
                     }
-                    OffLineRooms[userToken.userInfo.MemberID] = userToken.userInfo.RoomID;
+                    OffLineRooms[userToken.userInfo.Register.userID] = userToken.userInfo.RoomID;
                     //更新掉线用户的状态
                     RoomActorUpdate roomActorUpdate = new RoomActorUpdate()
                     {
@@ -290,27 +302,39 @@ namespace NetFrame.Net
                 else
                 {
                     room.Quit(userToken.userInfo.UniqueID);
-                    Log4Debug("用户:" + userToken.userInfo.MemberID + " 掉线，房间不保存。房间状态：" + room.RoomInfo.CurState);
+                    Log4Debug("用户:" + userToken.userInfo.Register.userID + " 掉线，房间不保存。房间状态：" + room.RoomInfo.CurState);
                 }
             }
         }
         public void ClearOffLine(RoomActor actor)
         {
-            if (OffLineRooms.ContainsKey(actor.MemberID))
+            if (OffLineRooms.ContainsKey(actor.Register.userID))
             {
-                OffLineRooms.Remove(actor.MemberID);
+                OffLineRooms.Remove(actor.Register.userID);
             }
         }
 
-
+        public byte[] UpdateName(AsyncUserToken userToken, string name)
+        {
+            
+            string sql = SqlManager.instance.UpdateInto(
+                TableName.register,
+                nameof(Register.name), name,
+                nameof(Register.userID), userToken.userInfo.Register.userID
+                );
+            int count = SqlManager.instance.ReaderUpdateBySql(sql);
+            if (count > 0)
+            {
+                userToken.userInfo.Register.name = name;
+            }
+            return SerializeHelper.Serialize<RoomActor>(userToken.userInfo);
+        }
         #endregion
-
-
 
 
         public void Log4Debug(string msg)
         {
-            LogManager.WriteLog(msg);
+            LogManager.WriteLog(this + ":" + msg);
         }
     }
 }

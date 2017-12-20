@@ -27,20 +27,32 @@ public class DataController : MonoBehaviour
         //FPS
         Application.targetFrameRate = 60;
     }
-
-    private Register tempInfo;
-    public Register myInfo
+    
+    public string UserID
     {
         get
         {
-            return tempInfo;
+            return PlayerPref.GetString("My_Current_UserID");
         }
         set
         {
-            tempInfo = value;
-            ItemManager.instance.GetItem(ItemID.Coin).Count = tempInfo.coin;
+            PlayerPref.SetString("My_Current_UserID", value);
         }
     }
+    public string Password
+    {
+        get
+        {
+            return PlayerPref.GetString("My_Current_Password");
+        }
+        set
+        {
+            PlayerPref.SetString("My_Current_Password", value);
+        }
+    }
+
+    public RoomActor myInfo = new RoomActor();
+    
     private RoomInfo myRoomInfo = null;
 
     public RoomInfo MyRoomInfo
@@ -124,18 +136,6 @@ public class DataController : MonoBehaviour
         set { PlayerPref.SetInt("IsFristEnterGame", value ? 1 : 0); }
     }
 
-
-    public string UserID
-    {
-        get { return PlayerPref.GetString("UserID", ""); }
-        set { PlayerPref.SetString("UserID", value); }
-    }
-
-    public string Password
-    {
-        get { return PlayerPref.GetString("Password", ""); }
-        set { PlayerPref.SetString("Password", value); }
-    }
 
     private float CurPassedTime;
     private float serverMarkTime;

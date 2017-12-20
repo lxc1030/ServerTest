@@ -28,7 +28,6 @@ public class UILogin : MonoBehaviour
     /// </summary>
     private List<MessageConvention> messageHandle = new List<MessageConvention>()
     {
-        MessageConvention.login,
     };
     private void Awake()
     {
@@ -64,8 +63,13 @@ public class UILogin : MonoBehaviour
 
     public void OnClickLogin()
     {
-        LoginHttp(txUserID.text, txPassword.text, GetServerBack);
+        //LoginHttp(txUserID.text, txPassword.text, GetServerBack);
+        //
+        DataController.instance.UserID = txUserID.text;
+        DataController.instance.Password = txPassword.text;
+        SocketManager.instance.Login();
     }
+
 
     public void OnClickWantRegister()
     {
@@ -85,7 +89,7 @@ public class UILogin : MonoBehaviour
         }
         else//登录成功
         {
-            DataController.instance.myInfo = new Register()
+            DataController.instance.myInfo.Register = new Register()
             {
                 userID = (string)jons[nameof(Register.userID)],
                 password = (string)jons[nameof(Register.password)],
@@ -113,7 +117,7 @@ public class UILogin : MonoBehaviour
     }
 
 
-    public void Close()
+    public static void Close()
     {
         UIManager.instance.HidePanel(Name);
     }
@@ -143,27 +147,6 @@ public class UILogin : MonoBehaviour
         if (serverEvent.Count > 0)
         {
             MessageXieYi xieyi = serverEvent.Dequeue();
-            if (xieyi.XieYiFirstFlag == (byte)MessageConvention.login)
-            {
-                ErrorType error = ClassGroup.CheckIsError(xieyi);
-                if (error != ErrorType.none)
-                {
-                    Debug.LogError(error);
-                }
-                else
-                {
-                    HeartbeatTime beatTime = SerializeHelper.Deserialize<HeartbeatTime>(xieyi.MessageContent);
-                    Debug.LogError("登录账号成功,心跳检测时间:" + beatTime.time + "/此处需要加上场景和UI初始化逻辑");
-                    //打开心跳检测
-                    SocketManager.instance.heartbeatSecondTime = beatTime.time - 1;//-1防止和服务器心跳时间一致的时候会导致偏差
-                    SocketManager.instance.OpenHeartbeat();
-                    Close();
-                    HomeUI.Show();
-                    //
-                    Debug.Log("自身检查是否需要重连。");
-                    SocketManager.instance.SendSave((byte)MessageConvention.reConnect, new byte[] { }, false);
-                }
-            }
         }
     }
 

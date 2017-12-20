@@ -26,6 +26,8 @@ public class MyJoystickManager : MonoBehaviour
     public void Open()
     {
         uiControl.all.SetActive(true);
+        uiControl.etcMove.gameObject.SetActive(true);
+        uiControl.etcRotate.gameObject.SetActive(true);
     }
 
 
@@ -47,7 +49,6 @@ public class MyJoystickManager : MonoBehaviour
         Vector3 moveDirection = new Vector3(move.x, 0, move.y);
         float speed = moveDirection.magnitude;
         UIMove(moveDirection.x, 0, moveDirection.z, speed);
-        Debug.LogError(move);
     }
 
     public void OnMoveEnd()
@@ -114,7 +115,10 @@ public class MyJoystickManager : MonoBehaviour
     }
 
 
-
+    public void OffLine()
+    {
+        Close();
+    }
 
 
 

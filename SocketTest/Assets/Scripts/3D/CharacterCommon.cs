@@ -182,7 +182,7 @@ public class CharacterCommon : MonoBehaviour
     /// <summary>
     /// 这个是每隔0.015s运行一次
     /// </summary>
-    public void DoFrameLogin()
+    public void DoFrameLogic()
     {
         if (DataController.instance.MyRoomInfo.ActorList[myIndex].CurState == RoomActorState.Dead)
         {

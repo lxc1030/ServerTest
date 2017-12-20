@@ -55,7 +55,7 @@ public class SingleRoom
     }
 
     // 會員加入房間
-    public bool Join(AsyncUserToken userToken, string MemberID, string NickName, short Sex, out int UniqueID)
+    public bool Join(AsyncUserToken userToken, out int UniqueID)
     {
         //if (ActorList.Values.Count < Limit)
         //{
@@ -69,7 +69,7 @@ public class SingleRoom
             UniqueID = -1;
             foreach (KeyValuePair<int, RoomActor> item in RoomInfo.ActorList)
             {
-                if (item.Value.MemberID == "")
+                if (item.Value.Register == null)
                 {
                     UniqueID = item.Key;
                     break;
@@ -77,8 +77,8 @@ public class SingleRoom
             }
             if (UniqueID != -1)
             {
-                Log4Debug("账号->" + MemberID + " 用户名->" + NickName + " 加入房间->" + RoomInfo.RoomID + " 站位为->" + UniqueID);
-                UserTokens[MemberID] = userToken;
+                Log4Debug("账号->" + userToken.userInfo.Register.userID + " 用户名->" + userToken.userInfo.Register.name + " 加入房间->" + RoomInfo.RoomID + " 站位为->" + UniqueID);
+                UserTokens[userToken.userInfo.Register.userID] = userToken;
 
                 TeamType myTeam = TeamType.Blue;
                 if (UniqueID % 2 == 0)//红蓝两队
@@ -89,7 +89,7 @@ public class SingleRoom
                 {
                     myTeam = TeamType.Red;
                 }
-                RoomActor actor = new RoomActor(RoomInfo.RoomID, UniqueID, MemberID, NickName, Sex, myTeam);
+                RoomActor actor = new RoomActor(RoomInfo.RoomID, UniqueID, userToken.userInfo.Register, myTeam);
                 userToken.userInfo = actor;
                 RoomInfo.ActorList[UniqueID] = actor;
                 RoomInfo.ActorList[UniqueID].MyModelInfo.pos = (NetVector3)GameTypeManager.BackStandPos(RoomInfo.RoomType, UniqueID);
@@ -139,24 +139,9 @@ public class SingleRoom
         return true;
     }
 
-    public bool IsInRoom(string memberID)
-    {
-        lock (this)
-        {
-            foreach (KeyValuePair<int, RoomActor> item in RoomInfo.ActorList)
-            {
-                if (item.Value.MemberID == memberID)
-                {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
     public bool IsMaster(string memberID)
     {
-        return RoomInfo.ActorList[0].MemberID == memberID;
+        return RoomInfo.ActorList[0].Register.userID == memberID;
     }
 
     #endregion
@@ -176,7 +161,7 @@ public class SingleRoom
         }
         ChangeRoomState(RoomActorState.NoReady);
     }
-    
+
     #region 更新信息
 
     public void UpdateRoom(GameModel roomType, string roomName)
@@ -218,7 +203,7 @@ public class SingleRoom
                 {
                     case RoomActorState.WaitForStart:
                         Log4Debug("模型未准备好的玩家准备好进入游戏了。");
-                        AsyncIOCPServer.instance.SendMessageToUser(RoomInfo.ActorList[index].MemberID, new byte[] { 1 }, (byte)MessageConvention.startGaming, 0);
+                        AsyncIOCPServer.instance.SendMessageToUser(RoomInfo.ActorList[index].Register.userID, new byte[] { 1 }, (byte)MessageConvention.startGaming, 0);
                         if (RoomInfo.CurState == RoomActorState.Gaming)
                         {
                             roomActorUpdate = new RoomActorUpdate()
@@ -364,7 +349,8 @@ public class SingleRoom
                     RoomInfo.ActorList[killer].KillCount++;
                     if (RoomInfo.CurState == RoomActorState.Gaming)
                     {
-                        BoardcastActorInfos();
+                        byte[] message = SerializeHelper.Serialize<List<RoomActor>>(new List<RoomActor>(RoomInfo.ActorList.Values));
+                        BoardcastMessage(MessageConvention.getRoommateInfo, message);
                     }
                     //改变被射击者状态
                     RoomActorUpdate dead = new RoomActorUpdate()
@@ -438,7 +424,7 @@ public class SingleRoom
         }
     }
     #endregion
-    
+
     #region 帧同步保存和读取
 
     /// <summary>
@@ -456,7 +442,7 @@ public class SingleRoom
         Log4Debug("存储帧：" + curIndex);
         if (RoomInfo.CurState == RoomActorState.Gaming)
         {
-            lock (FrameGroup[curIndex].frameData)
+            lock (FrameGroup[curIndex])
             {
                 FrameGroup[curIndex].frameData.Add(message);
             }
@@ -626,7 +612,7 @@ public class SingleRoom
     }
 
     #endregion
-    
+
     #region 广播逻辑
 
     /// <summary>
@@ -674,19 +660,6 @@ public class SingleRoom
     }
 
     /// <summary>
-    /// 广播房间用户信息给所有人
-    /// </summary>
-    public void BoardcastActorInfos()
-    {
-        //List<string> allActor = GetRoommateInfo();
-        //string info = SerializeHelper.ListCompose(allActor);
-        //byte[] message = SerializeHelper.ConvertToByte(info);
-        //BoardcastMessage(MessageConvention.getRoommateInfo, message);
-        byte[] message = SerializeHelper.Serialize<List<RoomActor>>(new List<RoomActor>(RoomInfo.ActorList.Values));
-        BoardcastMessage(MessageConvention.getRoommateInfo, message);
-    }
-
-    /// <summary>
     /// 广播消息逻辑
     /// </summary>
     /// <param name="convention">广播类型</param>
@@ -696,7 +669,7 @@ public class SingleRoom
     {
         for (int i = 0; i < RoomInfo.ActorList.Count; i++)//逐个玩家遍历发送消息
         {
-            if (RoomInfo.ActorList[i] == null)
+            if (RoomInfo.ActorList[i].Register == null)
             {
                 continue;
             }
@@ -706,7 +679,7 @@ public class SingleRoom
             }
             if (RoomInfo.ActorList[i].UniqueID != uniqueID)
             {
-                AsyncIOCPServer.instance.SendMessageToUser(RoomInfo.ActorList[i].MemberID, message, (byte)convention, xieyiSecond);
+                AsyncIOCPServer.instance.SendMessageToUser(RoomInfo.ActorList[i].Register.userID, message, (byte)convention, xieyiSecond);
             }
         }
     }
@@ -793,7 +766,7 @@ public class SingleRoom
                     }
                     else
                     {
-                        Log4Debug("账号：" + item.Value.MemberID + "在倒计时期间内未准备好模型。");
+                        Log4Debug("用户：" + item.Value.Register.name + "在倒计时期间内未准备好模型。");
                     }
                 }
                 //保存帧同步
@@ -846,7 +819,7 @@ public class SingleRoom
         RoomActor actor = null;
         for (int i = 0; i < allRA.Count; i++)
         {
-            if (allRA[i].MemberID == userToken.userInfo.MemberID)
+            if (allRA[i].Register.userID == userToken.userInfo.Register.userID)
             {
                 actor = allRA[i];
                 userToken.userInfo = actor;

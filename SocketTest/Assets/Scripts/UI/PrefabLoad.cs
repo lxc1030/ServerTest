@@ -14,7 +14,7 @@ public class PrefabLoad : MonoBehaviour
     public void Init(RoomActor actor)
     {
         myActor = actor;
-        txName.text = myActor.Nickname;
+        txName.text = myActor.Register.name;
         slider.value = 0;
     }
 

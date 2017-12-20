@@ -83,7 +83,7 @@ public class BulletGrity : MonoBehaviour
             }
             if (isSendTrigger)
             {
-                Debug.LogError("射中：" + bulletInfo.shootTag);
+                Debug.Log("射中：" + bulletInfo.shootTag);
                 bulletInfo.userIndex = DataController.instance.MyRoomInfo.MyLocateIndex;
                 //发送
                 byte[] message = SerializeHelper.Serialize<BulletInfo>(bulletInfo);

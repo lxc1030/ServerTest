@@ -90,6 +90,10 @@ public class MyController : CharacterCommon
 
     public void UIMove(Vector3 moveDirection, float moveSpeed)
     {
+        if (DataController.instance.MyRoomInfo.ActorList[myIndex].CurState != RoomActorState.Gaming)
+        {
+            return;
+        }
         int moveIndex = GameManager.uiMoveIndex;
 
         float x = (float)Math.Round(moveDirection.x, moveIndex);
@@ -119,6 +123,10 @@ public class MyController : CharacterCommon
     private ActorRotateDirection lastRotate;
     public void UIRotation()
     {
+        if (DataController.instance.MyRoomInfo.ActorList[myIndex].CurState != RoomActorState.Gaming)
+        {
+            return;
+        }
         int lookAt = (int)myModel.eulerAngles.y;
         int rotateIndex = GameManager.uiRotateIndex;
 

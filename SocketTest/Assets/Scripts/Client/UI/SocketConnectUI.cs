@@ -67,6 +67,9 @@ public class SocketConnectUI : MonoBehaviour
         OnDisable();
         CancelInvoke();
         ChangeUIByState(NetState.断线重连);
+        //
+        GameManager.instance.OffLine();
+        MyJoystickManager.instance.OffLine();
     }
 
     #region Invoke调用函数
@@ -130,8 +133,9 @@ public class SocketConnectUI : MonoBehaviour
                 ChangeUIByState(NetState.不显示UI);
                 break;
             case NetState.断线重连:
+                UIManager.instance.HideAll();
                 myReLogin.uiBtn.SetActive(false);
-                if (!string.IsNullOrEmpty(DataController.instance.myInfo.userID))
+                if (!string.IsNullOrEmpty(DataController.instance.myInfo.Register.userID))
                 {
                     SocketManager.instance.Login();
                 }

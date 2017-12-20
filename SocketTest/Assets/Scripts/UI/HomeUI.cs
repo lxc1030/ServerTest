@@ -18,7 +18,7 @@ public class HomeUI : MonoBehaviour
     public ShowNumImage imgCoin;
 
     public Text txName;
-
+    public InputField inputName;
 
 
     #region 注册Socket处理
@@ -32,7 +32,7 @@ public class HomeUI : MonoBehaviour
     /// </summary>
     private List<MessageConvention> messageHandle = new List<MessageConvention>()
     {
-
+        MessageConvention.updateName
     };
     private void Awake()
     {
@@ -70,7 +70,7 @@ public class HomeUI : MonoBehaviour
         Item item = ItemManager.instance.GetItem(me.itemId);
         if (item.tag == ItemTag.currency.ToString())
         {
-            ReflashCurrecry();
+            ReflashShow();
         }
     }
 
@@ -89,16 +89,16 @@ public class HomeUI : MonoBehaviour
 
     public void Init()
     {
-        imgFightCount.Show("" + DataController.instance.myInfo.fightCount);
-        imgWinCount.Show("" + DataController.instance.myInfo.winCount);
-        imgWinLast.Show("" + DataController.instance.myInfo.winLast);
-        txName.text = DataController.instance.myInfo.name;
-        ReflashCurrecry();
+        ReflashShow();
         //
     }
-    private void ReflashCurrecry()
+    public void ReflashShow()
     {
-        imgCoin.Show("" + ItemManager.instance.GetItem(ItemID.Coin).Count);
+        imgFightCount.Show("" + DataController.instance.myInfo.Register.fightCount);
+        imgWinCount.Show("" + DataController.instance.myInfo.Register.winCount);
+        imgWinLast.Show("" + DataController.instance.myInfo.Register.winLast);
+        imgCoin.Show("" + DataController.instance.myInfo.Register.coin);
+        txName.text = DataController.instance.myInfo.Register.name;
     }
 
 
@@ -114,7 +114,28 @@ public class HomeUI : MonoBehaviour
         AudioManager.instance.Play();
         Setting.Show();
     }
+    public void OnClickRename()
+    {
+        string name = inputName.text;
+        inputName.text = "";
 
+        if (!string.IsNullOrEmpty(name))
+        {
+            if (name.Length <= 6 * 2)
+            {
+                byte[] message = SerializeHelper.ConvertToByte(name);
+                SocketManager.instance.SendSave((byte)MessageConvention.updateName, message);
+            }
+            else
+            {
+                UIManager.instance.ShowAlertTip("名称太长。");
+            }
+        }
+        else
+        {
+            UIManager.instance.ShowAlertTip("名称为空。");
+        }
+    }
 
     public void OnClickCharacter()
     {
@@ -190,7 +211,24 @@ public class HomeUI : MonoBehaviour
 
     private void Update()
     {
-     
+        if (serverEvent.Count > 0)
+        {
+            MessageXieYi xieyi = serverEvent.Dequeue();
+
+            if ((MessageConvention)xieyi.XieYiFirstFlag == MessageConvention.updateName)
+            {
+                ErrorType error = ClassGroup.CheckIsError(xieyi);
+                if (error != ErrorType.none)
+                {
+                    UIManager.instance.ShowAlertTip("更新昵称失败：" + error);
+                }
+                else
+                {
+                    UIManager.instance.ShowAlertTip("更新昵称成功");
+                    ReflashShow();
+                }
+            }
+        }
     }
 
 }

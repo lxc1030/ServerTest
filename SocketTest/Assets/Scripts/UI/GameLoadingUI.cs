@@ -74,7 +74,7 @@ public class GameLoadingUI : MonoBehaviour
         Common.Clear(transTeamRed);
         foreach (var item in DataController.instance.MyRoomInfo.ActorList.Values)
         {
-            if (!string.IsNullOrEmpty(item.Nickname))
+            if (!string.IsNullOrEmpty(item.Register.name))
             {
                 Generate(item);
             }

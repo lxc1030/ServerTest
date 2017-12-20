@@ -1,6 +1,9 @@
 ﻿using ICSharpCode.SharpZipLib.GZip;
 using System;
+using System.Collections.Generic;
+using System.Data;
 using System.IO;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
@@ -190,41 +193,6 @@ public static class SerializeHelper
     }
 
 
-    public static string ListCompose(System.Collections.Generic.List<string> list, bool isClearEmpty = true)
-    {
-        string compose = "";
-        for (int i = 0; i < list.Count; i++)
-        {
-            if (isClearEmpty && string.IsNullOrEmpty(list[i]))
-            {
-                continue;
-            }
-            compose += list[i] + ";";
-        }
-        return compose;
-    }
-
-
-    /// <summary>
-    /// 分割字符串
-    /// </summary>
-    /// <param name="info"></param>
-    /// <param name="isClearEmpty"></param>
-    /// <returns></returns>
-    public static string[] ListSplit(string info, bool isClearEmpty = true)
-    {
-        string[] split = new string[] { };
-        if (isClearEmpty)
-        {
-            split = info.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
-        }
-        else
-        {
-            split = info.Split(';');
-        }
-        return split;
-    }
-
     //public static string VectorToString(Vector3 Pos)
     //{
     //    string info =
@@ -234,8 +202,7 @@ public static class SerializeHelper
     //       "";
     //    return info;
     //}
-
-
+    #region ProtoBuf序列化和反序列化
 
     // 将消息序列化为二进制的方法  
     // < param name="model">要序列化的对象< /param>  
@@ -288,34 +255,13 @@ public static class SerializeHelper
             return (T)new object();
         }
     }
-
+    #endregion
+    
 
     public static Vector3 BackVector(NetVector3 vec)
     {
         return new Vector3(vec.x, vec.y, vec.z);
     }
-
-    public static bool EqualsByte(byte[] a, byte[] b)
-    {
-        if (a == null && b == null)
-        {
-            return true;
-        }
-        else if (a != null && b != null)
-        {
-            if (a.Length == b.Length)
-            {
-                for (int i = 0; i < a.Length; i++)
-                {
-                    if (a[i] != b[i])
-                    {
-                        return false;
-                    }
-                }
-                return true;
-            }
-        }
-        return false;
-    }
+    
 }
 

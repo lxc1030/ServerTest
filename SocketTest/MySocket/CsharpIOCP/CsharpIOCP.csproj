@@ -55,35 +55,6 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Scripts\Configuration\ConfigManager.cs" />
-    <Compile Include="Scripts\Configuration\ConfigNode.cs" />
-    <Compile Include="Scripts\Configuration\ConfigSection.cs" />
-    <Compile Include="Scripts\Configuration\ConfigUtils.cs" />
-    <Compile Include="Scripts\Configuration\ConnectionSection.cs" />
-    <Compile Include="Scripts\Configuration\DataConfigger.cs" />
-    <Compile Include="Scripts\Configuration\DefaultDataConfigger.cs" />
-    <Compile Include="Scripts\Configuration\IConfigger.cs" />
-    <Compile Include="Scripts\Data\CommandFilter.cs" />
-    <Compile Include="Scripts\Data\CommandMode.cs" />
-    <Compile Include="Scripts\Data\CommandStruct.cs" />
-    <Compile Include="Scripts\Data\ConnectionSetting.cs" />
-    <Compile Include="Scripts\Data\DbBaseProvider.cs" />
-    <Compile Include="Scripts\Data\DbColumn.cs" />
-    <Compile Include="Scripts\Data\DbConnectionProvider.cs" />
-    <Compile Include="Scripts\Data\MySql\MySqlCommandFilter.cs" />
-    <Compile Include="Scripts\Data\MySql\MySqlCommandStruct.cs" />
-    <Compile Include="Scripts\Data\MySql\MySqlDataProvider.cs" />
-    <Compile Include="Scripts\Data\MySql\MySqlParamHelper.cs" />
-    <Compile Include="Scripts\Data\SqlParam.cs" />
-    <Compile Include="Scripts\Data\SqlStatement.cs" />
-    <Compile Include="Scripts\Data\SqlStatementManager.cs" />
-    <Compile Include="Scripts\Data\Sql\SqlDataProvider.cs" />
-    <Compile Include="Scripts\Data\Sql\SqlHelper.cs" />
-    <Compile Include="Scripts\Data\Sql\SqlHelperParameterCache.cs" />
-    <Compile Include="Scripts\Data\Sql\SqlParamHelper.cs" />
-    <Compile Include="Scripts\Log\BaseLog.cs" />
-    <Compile Include="Scripts\Log\LogHelper.cs" />
-    <Compile Include="Scripts\Log\TraceLog.cs" />
     <Compile Include="Scripts\Room\SingleRoom.cs" />
     <Compile Include="Scripts\Test\IoContextPool.cs" />
     <Compile Include="Scripts\IOCPSoket\AsyncIOCPServer.cs" />
@@ -95,9 +66,6 @@
     <Compile Include="Scripts\Test\IoServer.cs" />
     <Compile Include="Scripts\Room\RoomCollection.cs" />
     <Compile Include="Scripts\IOCPSoket\ServerDataManager.cs" />
-    <Compile Include="Scripts\SqlGroup\AAA.cs" />
-    <Compile Include="Scripts\SqlGroup\Exception.cs" />
-    <Compile Include="Scripts\SqlGroup\Pool.cs" />
     <Compile Include="Scripts\Tools\ClassGroup.cs" />
     <Compile Include="Scripts\Tools\LogManager.cs" />
     <Compile Include="Scripts\Tools\MessageXieYi.cs" />

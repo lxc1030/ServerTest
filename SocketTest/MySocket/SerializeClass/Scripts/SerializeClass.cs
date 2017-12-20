@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data.SqlClient;
 using System.IO.Packaging;
 using System.Runtime.InteropServices;
 using System.Runtime.Remoting.Messaging;
@@ -21,18 +22,43 @@ using UnityEngine;
 
 
 
+[ProtoBuf.ProtoContract]
 [Serializable]
 public class Register
 {
+    [ProtoBuf.ProtoMember(1)]
     public string userID;
+    [ProtoBuf.ProtoMember(2)]
     public string password;
+    [ProtoBuf.ProtoMember(3)]
     public int iconID;
+    [ProtoBuf.ProtoMember(4)]
     public int coin;
+    [ProtoBuf.ProtoMember(5)]
     public string name;
+    [ProtoBuf.ProtoMember(6)]
     public int winLast;
+    [ProtoBuf.ProtoMember(7)]
     public int fightCount;
+    [ProtoBuf.ProtoMember(8)]
     public int winCount;
-    public int isLogin;
+
+
+    public void Init(SqlDataReader reader)
+    {
+        while (reader.Read())
+        {
+            userID = (string)reader[nameof(userID)];
+            password = (string)reader[nameof(password)];
+            iconID = (int)reader[nameof(iconID)];
+            coin = (int)reader[nameof(coin)];
+            name = (string)reader[nameof(name)];
+            winLast = (int)reader[nameof(winLast)];
+            fightCount = (int)reader[nameof(fightCount)];
+            winCount = (int)reader[nameof(winCount)];
+        }
+    }
+
 }
 
 [ProtoBuf.ProtoContract]
@@ -42,16 +68,6 @@ public class HeartbeatTime
     public int time;
 }
 
-[ProtoBuf.ProtoContract]
-public class Login
-{
-    [ProtoBuf.ProtoMember(1)]
-    public string userID;
-    [ProtoBuf.ProtoMember(2)]
-    public string password;
-    [ProtoBuf.ProtoMember(3)]
-    public int roomID;
-}
 [ProtoBuf.ProtoContract]
 public class QuitInfo
 {

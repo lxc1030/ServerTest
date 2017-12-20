@@ -50,7 +50,7 @@ namespace NetFrame.Net
         /// <summary>
         /// 心跳检测间隔秒数
         /// </summary>
-        public const int HeartbeatSecondTime = 60;
+        public const int HeartbeatSecondTime = 5;
 
         private bool disposed = false;
 
@@ -261,7 +261,7 @@ namespace NetFrame.Net
                         //handle.Start(userToken);
 
                         //心跳时间
-                        userToken.userInfo = new RoomActor(sock.Handle, DateTime.Now);
+                        userToken.userInfo = new RoomActor(DateTime.Now);
 
                         Log4Debug(String.Format("客户 {0} 连入, 共有 {1} 个连接。", sock.RemoteEndPoint.ToString(), _clientCount));
 
@@ -310,7 +310,7 @@ namespace NetFrame.Net
 
             if (!e.ConnectSocket.Connected)
             {
-                Log4Debug("玩家掉线ID：" + e.userInfo.MemberID);
+                Log4Debug("玩家掉线ID：" + e.userInfo.Register.userID);
                 e.userInfo.CurState = RoomActorState.Offline;
             }
          
@@ -610,7 +610,7 @@ namespace NetFrame.Net
         //    {
         //        ServerDataManager.instance.SetOffLine(userToken.userInfo);
 
-        //        Log4Debug("设置玩家ID：" + userToken.userInfo.MemberID + "/断线等待。");
+        //        Log4Debug("设置玩家ID：" + userToken.userInfo.Register.userID + "/断线等待。");
         //        userToken.userInfo.CurState = RoomActorState.Offline;
         //        if (userToken.userInfo.CurState == RoomActorState.Gaming)//游戏中的话，等房间游戏结束自动清理
         //        {

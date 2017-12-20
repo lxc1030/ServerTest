@@ -119,7 +119,7 @@ public class RoomUI : MonoBehaviour
             {
                 info = DataController.instance.MyRoomInfo.ActorList[i];
             }
-            if (info == null || string.IsNullOrEmpty(info.Nickname))
+            if (info == null || info.Register == null)
             {
                 allMemberShow[i].all.SetActive(false);
             }
@@ -128,7 +128,7 @@ public class RoomUI : MonoBehaviour
                 //Debug.LogError(info.GetSendInfo());
                 memberNum++;
                 allMemberShow[i].all.SetActive(true);
-                allMemberShow[i].txName.text = "" + info.Nickname;
+                allMemberShow[i].txName.text = "" + info.Register.name;
                 //allMemberShow[i].txKill.Show(info.KillCount + "");
             }
         }
@@ -181,7 +181,6 @@ public class RoomUI : MonoBehaviour
     }
     public void OnClickReady()
     {
-        GameManager.instance.isPreparedAllFinish = false;
         uiNoReady.btnReady.SetActive(false);
         //
         GameManager.SendState(RoomActorState.Ready);

@@ -9,35 +9,31 @@ public class RoomActor// 因為要多記錄加入房間時間的屬性，因此�
     [ProtoBuf.ProtoMember(2)]
     public int RoomID { get; set; }        //在哪個房間，只有status是2時才有效
     [ProtoBuf.ProtoMember(3)]
-    public string Nickname { get; set; }    // 會員暱稱
+    public Register Register { get; set; }          // 會員性別
     [ProtoBuf.ProtoMember(4)]
-    public short Sex { get; set; }          // 會員性別
-    [ProtoBuf.ProtoMember(5)]
     public RoomActorState CurState { get; set; } // 人物在房间中的当前游戏状态
-    [ProtoBuf.ProtoMember(6)]
+    [ProtoBuf.ProtoMember(5)]
     public TeamType MyTeam { get; set; } //我的队伍标识
-    [ProtoBuf.ProtoMember(7)]
+    [ProtoBuf.ProtoMember(6)]
     public int KillCount { get; set; }   //杀敌数
 
     public RoomActor()
     {
-        
+
     }
 
-    public RoomActor(IntPtr _handle, DateTime heartbeat)
+    public RoomActor(DateTime heartbeat)
     {
-        this.handle = _handle;
         this.heartbeatTime = heartbeat;
+        Register = null;
         RoomID = -1; // 預設值設為-1，代表不在任何房間中
         CurState = RoomActorState.Online;
     }
-    public RoomActor(int roomID, int uniqueID, string memberID, string nickName, short sex, TeamType myTeam)
+    public RoomActor(int roomID, int uniqueID, Register register, TeamType myTeam)
     {
+        Register = register;
         RoomID = roomID;
         UniqueID = uniqueID;                    //记录加入此房间的站位
-        MemberID = memberID;
-        Nickname = nickName;
-        Sex = sex;
         MyTeam = myTeam;
 
         JoinTime = System.DateTime.Now;    //记录加入此房间的时间
@@ -57,6 +53,16 @@ public class RoomActor// 因為要多記錄加入房間時間的屬性，因此�
         KillCount = 0;
         CurState = RoomActorState.NoReady;
     }
+    /// <summary>
+    /// 登录的时候保存用户信息
+    /// </summary>
+    /// <param name="login"></param>
+    public void LoginSet(Register login)
+    {
+        Register = login;
+        Register.password = "";//清除密码，防止将密码发送给客户端
+    }
+
 
     #region 静态值
 
@@ -73,10 +79,8 @@ public class RoomActor// 因為要多記錄加入房間時間的屬性，因此�
     /// </summary>
     public static int DeadToReviveTime = 3000;
     #endregion
-    public IntPtr handle { get; set; }
     public DateTime heartbeatTime { get; set; }// 最新一次心跳时间
     public DateTime JoinTime { get; set; }
-    public string MemberID { get; set; }    // 會員帳號
     public Timer deadTimer { get; set; }
     public GameModelData MyModelInfo { get; set; }//模型的相关属性
 

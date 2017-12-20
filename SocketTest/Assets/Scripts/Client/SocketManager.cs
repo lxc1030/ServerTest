@@ -172,7 +172,7 @@ public class SocketManager : MonoBehaviour
         if (!isOpenHeartbeat)
         {
             isOpenHeartbeat = true;
-            InvokeRepeating("CheckClientHeartbeat", 0, heartbeatSecondTime);
+            InvokeRepeating("CheckClientHeartbeat", heartbeatSecondTime, heartbeatSecondTime);
         }
     }
     public void CloseHeartbeat()
@@ -183,12 +183,12 @@ public class SocketManager : MonoBehaviour
     /// <summary>
     /// 客户端心跳检测
     /// </summary>
-    private void CheckClientHeartbeat()
+    public void CheckClientHeartbeat()
     {
         Debug.Log("开始心跳检测" + DateTime.Now);
         if (isConnected)
         {
-            SendSave((byte)MessageConvention.heartBeat, new byte[] { 1 }, false);
+            SendSave((byte)MessageConvention.heartBeat, new byte[] {}, false);
         }
         else
         {
@@ -196,7 +196,10 @@ public class SocketManager : MonoBehaviour
             CloseHeartbeat();
         }
     }
-
+    public void GetBeatTime()
+    {
+        SendSave((byte)MessageConvention.getHeartBeatTime, new byte[] { }, false);
+    }
 
     #endregion
 
@@ -215,7 +218,7 @@ public class SocketManager : MonoBehaviour
         }
         else
         {
-            Debug.Log("协议：" + (MessageConvention)xieYiFirstFlage + " 不需要显示Loading");
+            //Debug.Log("协议：" + (MessageConvention)xieYiFirstFlage + " 不需要显示Loading");
         }
         MessageXieYi msgxy = new MessageXieYi(xieYiFirstFlage, 0, message);
         byte[] sendBuffer = msgxy.ToBytes();
@@ -247,7 +250,7 @@ public class SocketManager : MonoBehaviour
     /// <param name="timeout">同步发送的延迟毫秒</param>
     //http://www.cnblogs.com/luofuxian/archive/2012/03/06/2382147.html
     //http://www.cnblogs.com/tianzhiliang/archive/2011/03/02/1969187.html
-    public void Send(AsyncUserToken e, byte[] data)
+    private void Send(AsyncUserToken e, byte[] data)
     {
         AsyncUserToken userToken = e;
         try
@@ -289,7 +292,7 @@ public class SocketManager : MonoBehaviour
         }
     }
 
-    public static void Send(AsyncUserToken userToken, byte[] buffer, int offset, int size, int timeout)
+    private static void Send(AsyncUserToken userToken, byte[] buffer, int offset, int size, int timeout)
     {
         Socket socket = userToken.ConnectSocket;
         if (socket != null)
@@ -555,21 +558,21 @@ public class SocketManager : MonoBehaviour
     #region 登录逻辑
 
 
-    private Login LoginInfo()
+    private Register LoginInfo()
     {
-        Login login = new Login()
+        Register login = new Register()
         {
-            userID = DataController.instance.myInfo.userID,
-            password = DataController.instance.myInfo.password,
+            userID = DataController.instance.UserID,
+            password = DataController.instance.Password,
         };
-        if (DataController.instance.MyRoomInfo != null)
-        {
-            login.roomID = DataController.instance.MyRoomInfo.RoomID;
-        }
-        else
-        {
-            login.roomID = -1;
-        }
+        //if (DataController.instance.MyRoomInfo != null)
+        //{
+        //    login.roomID = DataController.instance.MyRoomInfo.RoomID;
+        //}
+        //else
+        //{
+        //    login.roomID = -1;
+        //}
         return login;
     }
 
@@ -580,8 +583,8 @@ public class SocketManager : MonoBehaviour
         {
             Init(GetSocketBack);
         }
-        Login login = LoginInfo();
-        byte[] message = SerializeHelper.Serialize<Login>(login);
+        Register login = LoginInfo();
+        byte[] message = SerializeHelper.Serialize<Register>(login);
         SendSave((byte)MessageConvention.login, message);
     }
 
@@ -602,6 +605,7 @@ public class SocketManager : MonoBehaviour
         byte[] tempMessageContent = xieyi.MessageContent;
         string messageInfo = "";
         ErrorType error = ErrorType.none;
+        RoomActor actor = null;
         RoomActorUpdate roomActorUpdate = new RoomActorUpdate();
         if (tempMessageContent.Length > 200)
         {
@@ -613,27 +617,31 @@ public class SocketManager : MonoBehaviour
             case MessageConvention.error:
                 break;
             case MessageConvention.login:
+                error = ClassGroup.CheckIsError(xieyi);
+                if (error == ErrorType.none)
+                {
+                    actor = SerializeHelper.Deserialize<RoomActor>(xieyi.MessageContent);
+                    DataController.instance.myInfo = actor;
+                }
+                break;
+            case MessageConvention.getHeartBeatTime:
+                HeartbeatTime beatTime = SerializeHelper.Deserialize<HeartbeatTime>(xieyi.MessageContent);
+                heartbeatSecondTime = beatTime.time - 1;//-1防止和服务器心跳时间一致的时候会导致偏差
                 break;
             case MessageConvention.reConnect:
                 break;
             case MessageConvention.heartBeat:
-                if (xieyi.XieYiFirstFlag == (byte)MessageConvention.heartBeat)
-                {
-                    Debug.Log("本地时间:" + DataController.instance.ServerTime.ToString("yyyy-MM-dd HH:mm:ss.fff"));
-                    DataController.instance.ServerTime = SerializeHelper.BytesToDateTime(tempMessageContent);
-                    Debug.Log("服务器已接受心跳包,服务器时间为:" + DataController.instance.ServerTime.ToString("yyyy-MM-dd HH:mm:ss.fff"));
-                }
+                break;
+            case MessageConvention.updateName:
+                actor = SerializeHelper.Deserialize<RoomActor>(xieyi.MessageContent);
+                DataController.instance.myInfo = actor;
                 break;
             case MessageConvention.createRoom:
             case MessageConvention.joinRoom:
             case MessageConvention.updateRoom:
                 Debug.Log((MessageConvention)xieyi.XieYiFirstFlag + "数据长度：" + xieyi.MessageContent.Length);
                 error = ClassGroup.CheckIsError(xieyi);
-                if (error != ErrorType.none)
-                {
-                    Debug.LogError(error);
-                }
-                else
+                if (error == ErrorType.none)
                 {
                     DataController.instance.MyRoomInfo = SerializeHelper.Deserialize<RoomInfo>(tempMessageContent);
                 }

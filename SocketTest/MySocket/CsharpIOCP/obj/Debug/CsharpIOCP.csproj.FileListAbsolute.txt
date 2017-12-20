@@ -56,3 +56,13 @@ E:\SVNCheckOut\UnityProject\Unity5.6.1\SocketTest\MySocket\CsharpIOCP\bin\Debug\
 E:\MyGit\ServerTest\SocketTest\MySocket\CsharpIOCP\obj\Debug\CsharpIOCP.exe
 E:\MyGit\ServerTest\SocketTest\MySocket\CsharpIOCP\obj\Debug\CsharpIOCP.pdb
 E:\MyGit\ServerTest\SocketTest\MySocket\CsharpIOCP\obj\Debug\CsharpIOCP.csprojResolveAssemblyReference.cache
+E:\MyGit\ServerTest\SocketTest\MySocket\CsharpIOCP\bin\Debug\CsharpIOCP.exe
+E:\MyGit\ServerTest\SocketTest\MySocket\CsharpIOCP\bin\Debug\CsharpIOCP.pdb
+E:\MyGit\ServerTest\SocketTest\MySocket\CsharpIOCP\bin\Debug\Newtonsoft.Json.dll
+E:\MyGit\ServerTest\SocketTest\MySocket\CsharpIOCP\bin\Debug\protobuf-net.dll
+E:\MyGit\ServerTest\SocketTest\MySocket\CsharpIOCP\bin\Debug\Serialize.dll
+E:\MyGit\ServerTest\SocketTest\MySocket\CsharpIOCP\bin\Debug\UnityEngine.dll
+E:\MyGit\ServerTest\SocketTest\MySocket\CsharpIOCP\bin\Debug\Serialize.pdb
+E:\MyGit\ServerTest\SocketTest\MySocket\CsharpIOCP\bin\Debug\Newtonsoft.Json.xml
+E:\MyGit\ServerTest\SocketTest\MySocket\CsharpIOCP\bin\Debug\protobuf-net.xml
+E:\MyGit\ServerTest\SocketTest\MySocket\CsharpIOCP\bin\Debug\UnityEngine.xml

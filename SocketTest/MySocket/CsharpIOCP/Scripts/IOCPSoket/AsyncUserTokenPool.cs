@@ -97,7 +97,11 @@ namespace NetFrame.Net
                 AsyncUserToken userToken = null;
                 for (int i = 0; i < h_pool.Count; i++)
                 {
-                    if (h_pool[i].userInfo.MemberID == memberID)
+                    if (h_pool[i].userInfo.Register == null)
+                    {
+                        continue;
+                    }
+                    if (h_pool[i].userInfo.Register.userID == memberID)
                     {
                         userToken = h_pool[i];
                         break;

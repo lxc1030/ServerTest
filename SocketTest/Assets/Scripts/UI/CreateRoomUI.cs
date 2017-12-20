@@ -122,7 +122,7 @@ public class CreateRoomUI : MonoBehaviour
                 objRoomID.SetActive(false);
                 objRoomType.SetActive(true);
                 //OnClickRoomName(downName);
-                inputName.text = DataController.instance.myInfo.name + "的房间";
+                inputName.text = DataController.instance.myInfo.Register.name + "的房间";
                 break;
             case RoomControl.加入房间:
                 objRoomName.SetActive(false);
@@ -208,7 +208,7 @@ public class CreateRoomUI : MonoBehaviour
         {
             inputName.text,
             (int)selectModel + "",
-            DataController.instance.myInfo.userID
+            DataController.instance.myInfo.Register.userID
         };
         string tcp = ClassGroup.StringToJosn(colum, value);
         byte[] message = SerializeHelper.ConvertToByte(tcp);
@@ -241,7 +241,7 @@ public class CreateRoomUI : MonoBehaviour
         string[] value = new string[]
         {
             (int)selectModel + "",
-            DataController.instance.myInfo.userID,
+            DataController.instance.myInfo.Register.userID,
             inputID.text
         };
         string tcp = ClassGroup.StringToJosn(colum, value);
@@ -267,7 +267,7 @@ public class CreateRoomUI : MonoBehaviour
         };
         string[] value = new string[]
         {
-            DataController.instance.myInfo.userID,
+            DataController.instance.myInfo.Register.userID,
             DataController.instance.MyRoomInfo.RoomID + "",
             (int)selectModel + "",
             inputName.text

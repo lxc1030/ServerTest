@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Net;
 using System.Text;
-using ZyGames.Framework.Data;
 
 namespace NetFrame.Net
 {
@@ -20,10 +20,6 @@ namespace NetFrame.Net
             ServerDataManager.Init();
 
             new AsyncIOCPServer(IPAddress.Parse(IP), portNo, 10);
-
-            
-
-
 
         }
 

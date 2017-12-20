@@ -33,7 +33,7 @@ public class MainUI : MonoBehaviour
     {
         UIManager.instance.HidePanel(Name);
     }
-    
+
 
     public void OnClickSetting()
     {
@@ -46,18 +46,8 @@ public class MainUI : MonoBehaviour
 
     public void OnClickLogin()
     {
-        string userID = DataController.instance.UserID;
-        string password = DataController.instance.Password;
-
-        if (userID != "" && password != "")
-        {
-            UILogin.LoginHttp(userID, password, null);
-        }
-        else
-        {
-            UILogin.Show();
-            Close();
-        }
+        UILogin.Show();
+        Close();
     }
 
 

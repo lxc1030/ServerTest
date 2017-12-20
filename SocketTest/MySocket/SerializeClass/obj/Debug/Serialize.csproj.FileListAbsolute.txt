@@ -19,3 +19,12 @@ E:\SVNCheckOut\UnityProject\Unity5.6.1\SocketTest\MySocket\SerializeClass\bin\De
 E:\SVNCheckOut\UnityProject\Unity5.6.1\SocketTest\MySocket\SerializeClass\bin\Debug\protobuf-net.dll
 E:\SVNCheckOut\UnityProject\Unity5.6.1\SocketTest\MySocket\SerializeClass\bin\Debug\protobuf-net.xml
 E:\SVNCheckOut\UnityProject\Unity5.6.1\SocketTest\MySocket\SerializeClass\obj\Debug\Serialize.csprojResolveAssemblyReference.cache
+E:\MyGit\ServerTest\SocketTest\MySocket\SerializeClass\bin\Debug\Serialize.dll.config
+E:\MyGit\ServerTest\SocketTest\MySocket\SerializeClass\bin\Debug\Serialize.dll
+E:\MyGit\ServerTest\SocketTest\MySocket\SerializeClass\bin\Debug\Serialize.pdb
+E:\MyGit\ServerTest\SocketTest\MySocket\SerializeClass\bin\Debug\protobuf-net.dll
+E:\MyGit\ServerTest\SocketTest\MySocket\SerializeClass\bin\Debug\UnityEngine.dll
+E:\MyGit\ServerTest\SocketTest\MySocket\SerializeClass\bin\Debug\protobuf-net.xml
+E:\MyGit\ServerTest\SocketTest\MySocket\SerializeClass\obj\Debug\Serialize.dll
+E:\MyGit\ServerTest\SocketTest\MySocket\SerializeClass\obj\Debug\Serialize.pdb
+E:\MyGit\ServerTest\SocketTest\MySocket\SerializeClass\obj\Debug\Serialize.csprojResolveAssemblyReference.cache

@@ -108,8 +108,10 @@ public enum MessageConvention
 {
     error = -1,
     login,
+    getHeartBeatTime,
     reConnect,//重连
     heartBeat,
+    updateName,//更新用户昵称
     createRoom,
     joinRoom,
     updateRoom,
