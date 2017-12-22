@@ -308,13 +308,6 @@ namespace NetFrame.Net
             //int offset = e.SendBuffer.Count;
             //e.SendBuffer.Enqueue(data);
 
-            if (!e.ConnectSocket.Connected)
-            {
-                Log4Debug("玩家掉线ID：" + e.userInfo.Register.userID);
-                e.userInfo.CurState = RoomActorState.Offline;
-            }
-         
-
             //if (offset == 0)//当前只有data一条需要传输
             {
                 Send(e, data, 0, data.Length, 1000);
@@ -376,6 +369,21 @@ namespace NetFrame.Net
         public static void Send(AsyncUserToken userToken, byte[] buffer, int offset, int size, int timeout)
         {
             Socket socket = userToken.ConnectSocket;
+            //判断Socket是否存在以及是否掉线
+            if (socket == null)
+            {
+                if (userToken.userInfo != null)
+                {
+                    instance.Log4Debug("玩家掉线：" + userToken.userInfo.Register.name);
+                    userToken.userInfo.CurState = RoomActorState.Offline;
+                }
+                return;
+            }
+            else if (!socket.Connected)//发送数据时检测到Socket掉线
+            {
+                return;
+            }
+            //开始发送
             socket.SendTimeout = 0;
             int startTickCount = Environment.TickCount;
             int sent = 0; // how many bytes is already sent
@@ -399,6 +407,10 @@ namespace NetFrame.Net
                     }
                     else
                     {
+                        if (ex.SocketErrorCode == SocketError.ConnectionAborted)//您的主机中的软件中止了一个已建立的连接。
+                        {
+                            return;
+                        }
                         //throw ex; // any serious error occurr
                         instance.Log4Debug("send错误：" + ex.Message);
                     }
@@ -439,7 +451,7 @@ namespace NetFrame.Net
         {
             AsyncUserToken userToken = (AsyncUserToken)ar.AsyncState;
             Socket socket = userToken.ConnectSocket;
-            //try
+            try
             {
                 int read = 0;
                 if (socket == null || !socket.Connected)
@@ -448,8 +460,16 @@ namespace NetFrame.Net
                 }
                 else
                 {
-                    //从远程设备读取数据
-                    read = socket.EndReceive(ar);
+                    if (ar.IsCompleted)
+                    {
+                        //从远程设备读取数据
+                        read = socket.EndReceive(ar);
+                    }
+                    else
+                    {
+                        Log4Debug("异步操作未完成，却进了回调函数。");
+                        return;
+                    }
                 }
                 if (read > 0)
                 {
@@ -474,7 +494,6 @@ namespace NetFrame.Net
                         userToken.isOnLoop = true;
                         Handle(userToken);
                     }
-
                 }
                 else//接收数据小于等于0
                 {
@@ -482,10 +501,11 @@ namespace NetFrame.Net
                     return;
                 }
             }
-            //catch (Exception error)
-            //{
-            //    Log4Debug("ReceiveError:" + error.Message);
-            //}
+            catch (Exception error)
+            {
+                Log4Debug("ReceiveError:" + error.Message);
+                CloseClientSocket(userToken);
+            }
         }
 
 
@@ -646,7 +666,6 @@ namespace NetFrame.Net
             try
             {
                 ServerDataManager.instance.SetOffLineByState(userToken);
-                
                 Log4Debug(String.Format("客户 {0} 清理链接!", userToken.ConnectSocket.RemoteEndPoint.ToString()));
                 //
                 userToken.ConnectSocket.Shutdown(SocketShutdown.Both);
@@ -747,7 +766,7 @@ namespace NetFrame.Net
 
         public void Log4Debug(string msg)
         {
-            LogManager.WriteLog(msg);
+            LogManager.WriteLog(this.GetType().Name + ":" + msg);
         }
     }
 }

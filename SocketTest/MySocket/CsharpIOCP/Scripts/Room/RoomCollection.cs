@@ -173,6 +173,6 @@ public class RoomCollection
 
     public void Log4Debug(string msg)
     {
-        LogManager.WriteLog(this + ":" + msg);
+        LogManager.WriteLog(this.GetType().Name + ":" + msg);
     }
 }

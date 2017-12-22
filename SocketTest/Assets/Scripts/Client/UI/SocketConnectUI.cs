@@ -17,7 +17,7 @@ public class SocketConnectUI : MonoBehaviour
     public float showRoundTime;
     public float showTimeOutTime;
 
-
+    public MessageConvention curConvention;
 
     #region 注册Socket处理
 
@@ -54,6 +54,7 @@ public class SocketConnectUI : MonoBehaviour
 
     public void Open(MessageConvention con)
     {
+        curConvention = con;
         OnDisable();
         messageHandle.Clear();
         messageHandle.Add(con);

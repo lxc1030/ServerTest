@@ -50,8 +50,7 @@ public class CharacterCommon : MonoBehaviour
 
     public void Init(int index)
     {
-        lastMoveDirection = new ActorMoveDirection();
-        lastRotateDirection = new ActorRotateDirection();
+        BeStop();
         myIndex = index;
         SetDirectionEnable(false);
         ShowKill(0);
@@ -140,7 +139,11 @@ public class CharacterCommon : MonoBehaviour
         SetRotate(SerializeHelper.BackVector(info.rotate));
         SetAnimation(info.animation);
     }
-
+    public void BeStop()
+    {
+        lastMoveDirection = new ActorMoveDirection();
+        lastRotateDirection = new ActorRotateDirection();
+    }
 
     public bool IsShowHierarchy()
     {
@@ -160,7 +163,7 @@ public class CharacterCommon : MonoBehaviour
     {
         string name = GameManager.instance.animationGroup[animation].name;
         Debug.LogError(name);
-        myAnimation.CrossFade("soldierIdleRelaxed");
+        //myAnimation.CrossFade("soldierIdleRelaxed");
     }
 
     /// <summary>
@@ -186,8 +189,7 @@ public class CharacterCommon : MonoBehaviour
     {
         if (DataController.instance.MyRoomInfo.ActorList[myIndex].CurState == RoomActorState.Dead)
         {
-            lastMoveDirection = new ActorMoveDirection();
-            lastRotateDirection = new ActorRotateDirection();
+            BeStop();
             return;
         }
         Vector3 fixG = SerializeHelper.BackVector(lastMoveDirection.direction) * lastMoveDirection.speed * Time.fixedDeltaTime;

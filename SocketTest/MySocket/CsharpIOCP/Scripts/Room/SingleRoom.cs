@@ -8,7 +8,6 @@ public class SingleRoom
     public int PassedCountDownTime = 0;//倒计时已经过了多久
     public int CountDownTime = 5 * 1000;//倒计时X秒以后开始游戏
 
-    public static int frameTime = 15;//是毫秒，检测间隔0.015s
 
     public int PassedGameTime = 0;// 游戏已经过了多久
 
@@ -131,7 +130,7 @@ public class SingleRoom
     {
         foreach (KeyValuePair<int, RoomActor> item in RoomInfo.ActorList)
         {
-            if (item.Value.UniqueID != -1)
+            if (item.Value.Register != null)
             {
                 return false;
             }
@@ -456,23 +455,52 @@ public class SingleRoom
     /// </summary>
     /// <param name="index"></param>
     /// <returns></returns>
-    public byte[] GetBoardFrame(int index)
+    //public byte[] GetBoardFrame(int index)
+    //{
+    //    List<FrameInfo> infos = new List<FrameInfo>() { };
+    //    int init = index - RoomInfo.frameInterval;
+    //    if (init > FrameGroup.Keys.Count)
+    //    {
+    //        Log4Debug("请求帧：" + init + "超过帧总数：" + FrameGroup.Keys.Count);
+    //    }
+    //    else
+    //    {
+    //        for (int i = index - RoomInfo.frameInterval; i < index; i++)
+    //        {
+    //            infos.Add(FrameGroup[i]);
+    //        }
+    //    }
+    //    return SerializeHelper.Serialize<List<FrameInfo>>(infos);
+    //}
+    public byte[] GetBoardFrame(int start)
+    {
+        return GetBoardFrame(start, RoomInfo.FrameIndex);
+    }
+    
+    public byte[] GetBoardFrame(int start, int end)
     {
         List<FrameInfo> infos = new List<FrameInfo>() { };
-        int init = index - RoomInfo.frameInterval;
-        if (init > FrameGroup.Keys.Count)
+        if (start > FrameGroup.Keys.Count || end > FrameGroup.Keys.Count)
         {
-            Log4Debug("请求帧：" + init + "超过帧总数：" + FrameGroup.Keys.Count);
+            Log4Debug("请求帧start：" + start + " end:" + end + " 超过帧总数：" + FrameGroup.Keys.Count + "，请检查代码逻辑");
+        }
+        else if (end > RoomInfo.FrameIndex)
+        {
+            Log4Debug("请求帧start：" + start + " end:" + end + " 超过当前运行帧数：" + RoomInfo.FrameIndex);
         }
         else
         {
-            for (int i = index - RoomInfo.frameInterval; i < index; i++)
+            for (int i = start; i < end; i++)
             {
                 infos.Add(FrameGroup[i]);
             }
+            return SerializeHelper.Serialize<List<FrameInfo>>(infos);
         }
-        return SerializeHelper.Serialize<List<FrameInfo>>(infos);
+        return null;
     }
+
+
+
 
     /// <summary>
     /// 服务器帧根据时间递增
@@ -486,7 +514,7 @@ public class SingleRoom
             RoomInfo.FrameIndex = tempIndex;
             if (tempIndex % RoomInfo.frameInterval == 0)//广播前面frameInterval间隔的数据
             {
-                byte[] message = GetBoardFrame(tempIndex);
+                byte[] message = GetBoardFrame(tempIndex - RoomInfo.frameInterval, tempIndex);
                 BoardcastMessage(MessageConvention.frameData, message);
             }
         }
@@ -771,7 +799,7 @@ public class SingleRoom
                 }
                 //保存帧同步
                 RoomInfo.FrameIndex = 0;
-                int keyNum = (int)(RoomInfo.GameTime / frameTime) + 1;
+                int keyNum = (int)(RoomInfo.GameTime / RoomInfo.frameTime) + 1;
                 FrameGroup = new Dictionary<int, FrameInfo>();
                 for (int i = 0; i < keyNum; i++)
                 {
@@ -783,7 +811,7 @@ public class SingleRoom
                 //FrameGroup[1].frameData.Add(tm.ToBytes());
                 //FrameGroup[1].frameData.Add(tm.ToBytes());
 
-                FrameTimer = new Timer(new TimerCallback(GameFrameReconding), null, 0, frameTime);
+                FrameTimer = new Timer(new TimerCallback(GameFrameReconding), null, 0, RoomInfo.frameTime);
                 //
                 BoardcastMessage(MessageConvention.startGaming, new byte[1] { 1 });
                 //发送游戏时间
@@ -849,25 +877,22 @@ public class SingleRoom
                     Log4Debug("数据长度：" + xieyi.ToBytes().Length);
                     AsyncIOCPServer.instance.SaveSendMessage(userToken, xieyi.ToBytes());
 
-                    message = SerializeHelper.Serialize<List<RoomActor>>(new List<RoomActor>(RoomInfo.ActorList.Values));
-                    xieyi = new MessageXieYi((byte)MessageConvention.getRoommateInfo, 0, message);
-                    AsyncIOCPServer.instance.SaveSendMessage(userToken, xieyi.ToBytes());
-
-                    RoomActorUpdate roomActorUpdate = null;
+                    //message = SerializeHelper.Serialize<List<RoomActor>>(new List<RoomActor>(RoomInfo.ActorList.Values));
+                    //xieyi = new MessageXieYi((byte)MessageConvention.getRoommateInfo, 0, message);
+                    //AsyncIOCPServer.instance.SaveSendMessage(userToken, xieyi.ToBytes());
+                    
+                    ////准备模型
                     //roomActorUpdate = new RoomActorUpdate()
                     //{
                     //    userIndex = actor.UniqueID,
-                    //    update = (int)RoomActorState.ReConnect + ""
+                    //    update = (int)RoomActorState.PrepareModel + ""
                     //};
                     //UpdateState(roomActorUpdate);
+                    //帧数据
+                    //message = GetBoardFrame(0);
+                    //xieyi = new MessageXieYi((byte)MessageConvention.frameData, 0, message);
+                    //AsyncIOCPServer.instance.SaveSendMessage(userToken, xieyi.ToBytes());
 
-                    //准备模型
-                    roomActorUpdate = new RoomActorUpdate()
-                    {
-                        userIndex = actor.UniqueID,
-                        update = (int)RoomActorState.PrepareModel + ""
-                    };
-                    UpdateState(roomActorUpdate);
                     break;
                 default:
                     Log4Debug("检查房间在状态:" + RoomInfo.CurState + "时该执行什么逻辑。");
@@ -883,7 +908,7 @@ public class SingleRoom
 
     public void Log4Debug(string msg)
     {
-        LogManager.WriteLog(msg);
+        LogManager.WriteLog(this.GetType().Name + msg);
     }
 }
 

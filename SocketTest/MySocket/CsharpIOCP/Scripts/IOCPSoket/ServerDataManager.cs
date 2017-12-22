@@ -204,7 +204,7 @@ namespace NetFrame.Net
                         tempMessageContent = xieyi.MessageContent;
                         FrameInfo frame = SerializeHelper.Deserialize<FrameInfo>(tempMessageContent);
                         newBuffer = room.GetBoardFrame(frame.frameIndex);
-                        Log4Debug("用户" + userToken.userInfo.Register.userID + "/请求帧数据：" + frame.frameIndex);
+                        Log4Debug("用户" + userToken.userInfo.Register.userID + "/请求帧数据：" + frame.frameIndex + "-" + room.RoomInfo.FrameIndex);
                         break;
                     default:
                         Log4Debug("该协议是否需要判断：" + xieyi.XieYiFirstFlag);
@@ -316,7 +316,7 @@ namespace NetFrame.Net
 
         public byte[] UpdateName(AsyncUserToken userToken, string name)
         {
-            
+
             string sql = SqlManager.instance.UpdateInto(
                 TableName.register,
                 nameof(Register.name), name,
@@ -334,7 +334,7 @@ namespace NetFrame.Net
 
         public void Log4Debug(string msg)
         {
-            LogManager.WriteLog(this + ":" + msg);
+            LogManager.WriteLog(this.GetType().Name + ":" + msg);
         }
     }
 }

@@ -66,7 +66,7 @@ class SqlManager
                 }
                 );
         }
-        LogMessage("数据接口连接数：" + freeConnectCount);
+        Log4Debug("数据接口连接数：" + freeConnectCount);
     }
 
 
@@ -83,7 +83,7 @@ class SqlManager
         }
         else
         {
-            LogMessage("接口数量不够，动态生成新的接口");
+            Log4Debug("接口数量不够，动态生成新的接口");
             SqlConnection con = new SqlConnection(strConnection);
             group = new SqlDataGroup()
             {
@@ -108,7 +108,7 @@ class SqlManager
         group.connect.Open();
         group.command.CommandText = sql;
         int count = group.UpdateReader();
-        LogMessage("更新数据的行数量：" + count);
+        Log4Debug("更新数据的行数量：" + count);
         Close(group);
         return count;
     }
@@ -195,9 +195,9 @@ class SqlManager
     /// 数据库的打印Debug方法
     /// </summary>
     /// <param name="msg"></param>
-    void LogMessage(string msg)
+    void Log4Debug(string msg)
     {
-        LogManager.WriteLog(this + ":" + msg);
+        LogManager.WriteLog(this.GetType().Name + ":" + msg);
     }
 
     //public SqlDataReader UserAccept(string clientID, string sql, ConnLevel level = ConnLevel.None)
@@ -243,7 +243,7 @@ class SqlManager
 
         if (col.Length != colType.Length)
         {
-            LogMessage("columns.Length != colType.Length");
+            Log4Debug("columns.Length != colType.Length");
         }
         if (col != null && colType != null)
         {
@@ -254,7 +254,7 @@ class SqlManager
             }
             sql += ")";
         }
-        LogMessage(sql);
+        Log4Debug(sql);
         return sql;
     }
 
@@ -273,7 +273,7 @@ class SqlManager
         {
             sql += " NOT NULL";
         }
-        LogMessage(sql);
+        Log4Debug(sql);
         return sql;
     }
     /// <summary>
@@ -289,7 +289,7 @@ class SqlManager
             sql += ", " + colsvalues[i];
         }
         sql += ")";
-        LogMessage(sql);
+        Log4Debug(sql);
         return sql;
     }
 
@@ -303,7 +303,7 @@ class SqlManager
         string sql = "";
         if (columnNames.Length != colsvalues.Length)
         {
-            LogMessage("columns.Length != values.Length");
+            Log4Debug("columns.Length != values.Length");
         }
         sql = "INSERT INTO " + tableName + "(" + columnNames[0];
         for (int i = 1; i < columnNames.Length; ++i)
@@ -316,7 +316,7 @@ class SqlManager
             sql += ", " + colsvalues[i];
         }
         sql += ")";
-        LogMessage(sql);
+        Log4Debug(sql);
         return sql;
     }
 
@@ -350,7 +350,7 @@ class SqlManager
         }
         sql = sql.Remove(sql.Length - 1);
         sql += " WHERE " + selectkey + operation + "'" + selectvalue + "'";
-        LogMessage(sql);
+        Log4Debug(sql);
         return sql;
     }
 
@@ -388,7 +388,7 @@ class SqlManager
     {
         if (selectName.Length != operation.Length || operation.Length != selectValues.Length)
         {
-            LogMessage("col.Length != operation.Length != values.Length");
+            Log4Debug("col.Length != operation.Length != values.Length");
         }
         string sql = "SELECT " + items[0];
         for (int i = 1; i < items.Length; ++i)
@@ -400,7 +400,7 @@ class SqlManager
         {
             sql += " AND " + selectName[i] + operation[i] + "'" + selectValues[0] + "' ";
         }
-        LogMessage(sql);
+        Log4Debug(sql);
         return sql;
     }
 

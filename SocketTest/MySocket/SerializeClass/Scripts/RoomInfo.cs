@@ -60,7 +60,11 @@ public class RoomInfo
     /// <summary>
     /// 客户端运行和接收数据相差该帧就快进
     /// </summary>
-    public static int frameDiffer = 15;
+    public static int frameDiffer = 60;
+    /// <summary>
+    /// 一帧对应的时间
+    /// </summary>
+    public static int frameTime = 15;//是毫秒，检测间隔0.015s
 
 
     public void InitRoomActorByIndex(int unique)

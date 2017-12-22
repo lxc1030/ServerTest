@@ -128,6 +128,10 @@ public class GameManager : MonoBehaviour
 
     public void OffLine()
     {
+        for (int i = 0; i < memberGroup.Count; i++)
+        {
+            memberGroup[i].BeStop();
+        }
         CurFrameType = FrameType.无;
     }
 
@@ -161,6 +165,7 @@ public class GameManager : MonoBehaviour
     /// <param name="state"></param>
     private void ReConnectLogin()
     {
+        isReconnect = true;
         Debug.LogError("重连。");
         //RoomUI.Show();
     }
@@ -340,21 +345,18 @@ public class GameManager : MonoBehaviour
         }
     }
 
-
-
-
     private void StartGaming()
     {
         if (isReconnect)
         {
-            isReconnect = false;
-            ReConnectFrameRequest();
+            frameIndex = 0;
+            CurFrameType = FrameType.重连复现;
+            DoFrameRequest(frameIndex);
         }
-        Debug.LogError("开始游戏");
-        CurFrameType = FrameType.处理数据;
-        //不是断线重连，可以直接关闭Loading
-        if (frameEmpty == 0)
+        else  //不是断线重连，可以直接关闭Loading
         {
+            Debug.LogError("开始游戏");
+            CurFrameType = FrameType.处理数据;
             GameLoadingUI.Close();
         }
     }
@@ -396,58 +398,35 @@ public class GameManager : MonoBehaviour
     /// <summary>
     /// 主动请求帧数据
     /// </summary>
-    public void DoFrameRequest(int index)
+    //public void DoFrameRequest(int index)
+    //{
+    //    RoomActorState myState = DataController.instance.MyRoomInfo.ActorList[DataController.instance.MyRoomInfo.MyLocateIndex].CurState;
+    //    if (myState == RoomActorState.Gaming)
+    //    {
+    //        FrameInfo info = new FrameInfo() { frameIndex = index + RoomInfo.frameInterval, frameData = new List<byte[]>() };
+    //        byte[] message = SerializeHelper.Serialize<FrameInfo>(info);
+    //        SocketManager.instance.SendSave((byte)MessageConvention.frameData, message, false);
+    //    }
+    //    else
+    //    {
+    //        Debug.LogError("请求数据的时候，自身状态为：" + myState);
+    //    }
+    //}
+    private void DoFrameRequest(int startCheckIndex)
     {
-        RoomActorState myState = DataController.instance.MyRoomInfo.ActorList[DataController.instance.MyRoomInfo.MyLocateIndex].CurState;
-        if (myState == RoomActorState.Gaming)
-        {
-            FrameInfo info = new FrameInfo() { frameIndex = index + RoomInfo.frameInterval, frameData = new List<byte[]>() };
-            byte[] message = SerializeHelper.Serialize<FrameInfo>(info);
-            SocketManager.instance.SendSave((byte)MessageConvention.frameData, message, false);
-        }
-        else
-        {
-            Debug.LogError("请求数据的时候，自身状态为：" + myState);
-        }
-    }
-    private void ReConnectFrameRequest()
-    {
-        frameIndex = 0;
-        frameEmpty = DataController.instance.MyRoomInfo.FrameIndex;
-        for (int i = 0; i < frameEmpty;)
+        for (int i = startCheckIndex; i >= 0; i++)
         {
             if (!FrameInfos.ContainsKey(i))
             {
-                FrameInfo info = new FrameInfo() { frameIndex = i + RoomInfo.frameInterval, frameData = new List<byte[]>() };
-                byte[] message = SerializeHelper.Serialize<FrameInfo>(info);
-                SocketManager.instance.SendSave((byte)MessageConvention.frameData, message, false);
+                frameEmpty = i;
+                break;
             }
-            i += RoomInfo.frameInterval;
         }
-
-
-
-
-        //int start = frameIndex;
-        //frameEmpty = frameIndex;//缺失的帧编号
-        //for (int i = frameIndex; i < maxIndex; i++)
-        //{
-        //    if (FrameInfos.ContainsKey(i))
-        //    {
-        //        frameEmpty = i;
-        //        break;
-        //    }
-        //}
-        //Debug.LogError("重连请求帧：" + frameEmpty + "->" + maxIndex);
-        //for (int i = 0; i < (frameEmpty - start) / RoomInfo.frameInterval; i++)
-        //{
-        //    FrameInfo info = new FrameInfo() { frameIndex = start + i * RoomInfo.frameInterval, frameData = new List<byte[]>() };
-        //    Debug.Log("请求帧：" + info.frameIndex);
-        //    byte[] message = SerializeHelper.Serialize<FrameInfo>(info);
-        //    SocketManager.instance.SendSave((byte)MessageConvention.frameData, message, false);
-        //}
+        FrameInfo info = new FrameInfo() { frameIndex = frameEmpty, frameData = new List<byte[]>() };
+        Debug.LogError("请求帧：" + info.frameIndex);
+        byte[] message = SerializeHelper.Serialize<FrameInfo>(info);
+        SocketManager.instance.SendSave((byte)MessageConvention.frameData, message, false);
     }
-
 
     /// <summary>
     /// 最低延迟帧数
@@ -482,6 +461,10 @@ public class GameManager : MonoBehaviour
                             FrameMainLogic();
                         }
                     }
+                    else//当前运行帧和得到的数据差距小于帧延迟长度，打开操作面板
+                    {
+                        GameLoadingUI.Close();
+                    }
                 }
                 else
                 {
@@ -500,21 +483,29 @@ public class GameManager : MonoBehaviour
                 }
                 if (requestCount % RoomInfo.frameDiffer == 0)//超过延迟帧就主动请求
                 {
-                    if (requestCount / RoomInfo.frameDiffer == OffLineCount)
+                    //if (requestCount / RoomInfo.frameDiffer == OffLineCount)
+                    //{
+                    //    //设置自身掉线
+                    //    CurFrameType = FrameType.通讯中断;
+                    //    SocketManager.instance.DisConnect();
+                    //}
+                    //else
                     {
-                        //设置自身掉线
-                        CurFrameType = FrameType.通讯中断;
-                        SocketManager.instance.DisConnect();
-                    }
-                    else
-                    {
+                        requestCount = 0;
+                        CurFrameType = FrameType.处理数据;
                         //请求数据
-                        Debug.LogError("请求帧：" + (frameIndex + RoomInfo.frameInterval) + "/" + DataController.instance.MyRoomInfo.FrameIndex);
+                        Debug.LogError("数据帧不足，请求帧：" + frameIndex + "/" + DataController.instance.MyRoomInfo.FrameIndex);
                         DoFrameRequest(frameIndex);
                     }
                 }
                 break;
-            case FrameType.通讯中断:
+            case FrameType.重连复现:
+                if (FrameInfos.ContainsKey(frameEmpty))
+                {
+                    frameEmpty = 0;
+                    isReconnect = false;
+                    CurFrameType = FrameType.处理数据;
+                }
                 break;
         }
     }
@@ -548,12 +539,6 @@ public class GameManager : MonoBehaviour
             }
             //
             frameIndex++;
-
-            if (frameIndex >= frameEmpty && frameEmpty > 0)
-            {
-                frameEmpty = 0;
-                GameLoadingUI.Close();
-            }
         }
     }
 
@@ -625,7 +610,7 @@ public class GameManager : MonoBehaviour
                         UpdateMemberShoot(xieyi);
                         break;
                     case ShootTag.Wall:
-                        Debug.LogError("射中Wall：" + bulletInfo.shootInfo);
+                        Debug.Log("射中Wall：" + bulletInfo.shootInfo);
                         break;
                 }
 
@@ -724,7 +709,6 @@ public class GameManager : MonoBehaviour
                 else
                 {
                     string reConnect = SerializeHelper.ConvertToString(xieyi.MessageContent);
-                    isReconnect = true;
                     ReConnectLogin();
                 }
             }
@@ -757,6 +741,13 @@ public class GameManager : MonoBehaviour
                     if (DataController.instance.MyRoomInfo.CurState != RoomActorState.Gaming)
                     {
                         RoomUI.Show();
+                    }
+                    else
+                    {
+                        if (isReconnect)
+                        {
+                            PrepareLocalModel();
+                        }
                     }
                 }
             }
@@ -850,5 +841,5 @@ public enum FrameType
     处理数据,
     请求数据,
     等待数据,
-    通讯中断,
+    重连复现,
 }

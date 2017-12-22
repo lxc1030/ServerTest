@@ -169,7 +169,7 @@ public class SocketManager : MonoBehaviour
     public void OpenHeartbeat()
     {
         //心跳检测
-        if (!isOpenHeartbeat)
+        //if (!isOpenHeartbeat)
         {
             isOpenHeartbeat = true;
             InvokeRepeating("CheckClientHeartbeat", heartbeatSecondTime, heartbeatSecondTime);
@@ -188,7 +188,7 @@ public class SocketManager : MonoBehaviour
         Debug.Log("开始心跳检测" + DateTime.Now);
         if (isConnected)
         {
-            SendSave((byte)MessageConvention.heartBeat, new byte[] {}, false);
+            SendSave((byte)MessageConvention.heartBeat, new byte[] { }, false);
         }
         else
         {
@@ -299,7 +299,7 @@ public class SocketManager : MonoBehaviour
         {
             if (!socket.Connected)
             {
-                instance.isConnected = false;
+                instance.DisConnect();
                 SocketConnectUI.instance.OffLine();
                 return;
             }
@@ -401,7 +401,6 @@ public class SocketManager : MonoBehaviour
             MyUserToken.ConnectSocket.Shutdown(SocketShutdown.Both);
             Debug.LogError("接收数据小于等于0" + socket.SocketType);
         }
-
     }
     /*
     public void Handle(object obj)
@@ -768,7 +767,6 @@ public class SocketManager : MonoBehaviour
                         Debug.Log("该帧数据已保存：" + fInfo.frameIndex);
                     }
                 }
-
                 break;
             default:
                 Debug.LogError("没有协议：" + xieyi.XieYiFirstFlag + "/MesageLength:" + xieyi.MessageContentLength);
