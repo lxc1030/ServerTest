@@ -184,6 +184,7 @@ public class RoomUI : MonoBehaviour
         uiNoReady.btnReady.SetActive(false);
         //
         GameManager.SendState(RoomActorState.Ready);
+        DataController.instance.MyRoomInfo.FrameIndex = 0;
     }
 
 

@@ -32,10 +32,22 @@ public class GameManager : MonoBehaviour
 
     public FrameType CurFrameType;
     public int frameIndex = 0;//当前复现到哪一帧了
+    public float frameIndexTime;//运行到这帧时的时间
+
     public int frameEmpty = 0;//判断重连时，服务器广播了哪一帧的数据，用来请求前面的数据
-    public int requestCount = 0;
+
     public Dictionary<int, FrameInfo> FrameInfos = new Dictionary<int, FrameInfo>();
 
+    /// <summary>
+    /// 客户端运行和接收数据相差该帧就快进
+    /// </summary>
+    private int frameDiffer = 10;
+
+
+    public bool isOnFrame;//是否正在处理帧逻辑
+    private float requestMaxTime = 1;//等待数据时长
+    private float FrameFixedTime = 0;//一帧转换成时间
+    public float timeDeal;//游戏时间存储数值
     #endregion
 
     /// <summary>
@@ -44,6 +56,13 @@ public class GameManager : MonoBehaviour
     public List<AnimationClip> animationGroup = new List<AnimationClip>();
 
 
+    private void Awake()
+    {
+        DontDestroyOnLoad(this);
+        instance = this;
+        //
+        instance.Init();
+    }
 
 
     #region 注册Socket处理
@@ -71,11 +90,9 @@ public class GameManager : MonoBehaviour
         MessageConvention.startGaming,
         MessageConvention.endGaming,
     };
-    private void Awake()
+
+    private void Start()
     {
-        DontDestroyOnLoad(this);
-        instance = this;
-        //
         SocketManager.ListenDelegate(true, messageHandle, OperationListenInfo);
     }
     private void OnDisable()
@@ -108,6 +125,11 @@ public class GameManager : MonoBehaviour
 
 
     #region 客户端逻辑
+
+    public void Init()
+    {
+        FrameFixedTime = (float)RoomInfo.frameTime / 1000;//初始化-帧转秒
+    }
 
     public void InitRoom()
     {
@@ -347,6 +369,7 @@ public class GameManager : MonoBehaviour
 
     private void StartGaming()
     {
+        isOnFrame = true;
         if (isReconnect)
         {
             frameIndex = 0;
@@ -360,8 +383,13 @@ public class GameManager : MonoBehaviour
             GameLoadingUI.Close();
         }
     }
+
+
+
+
     private void EndGaming(MessageXieYi xieyi)
     {
+        isOnFrame = false;
         MyJoystickManager.instance.Close();
         Debug.LogError("结束游戏");
         foreach (var item in memberGroup)
@@ -385,33 +413,7 @@ public class GameManager : MonoBehaviour
 
     #region 帧同步处理逻辑
 
-    public string show;
-    private void FixedUpdate()
-    {
-        if (DataController.instance.MyRoomInfo != null)
-        {
-            show = frameIndex + "/" + DataController.instance.MyRoomInfo.FrameIndex;
-        }
-        DoFrameLogin();
-    }
 
-    /// <summary>
-    /// 主动请求帧数据
-    /// </summary>
-    //public void DoFrameRequest(int index)
-    //{
-    //    RoomActorState myState = DataController.instance.MyRoomInfo.ActorList[DataController.instance.MyRoomInfo.MyLocateIndex].CurState;
-    //    if (myState == RoomActorState.Gaming)
-    //    {
-    //        FrameInfo info = new FrameInfo() { frameIndex = index + RoomInfo.frameInterval, frameData = new List<byte[]>() };
-    //        byte[] message = SerializeHelper.Serialize<FrameInfo>(info);
-    //        SocketManager.instance.SendSave((byte)MessageConvention.frameData, message, false);
-    //    }
-    //    else
-    //    {
-    //        Debug.LogError("请求数据的时候，自身状态为：" + myState);
-    //    }
-    //}
     private void DoFrameRequest(int startCheckIndex)
     {
         for (int i = startCheckIndex; i >= 0; i++)
@@ -423,20 +425,26 @@ public class GameManager : MonoBehaviour
             }
         }
         FrameInfo info = new FrameInfo() { frameIndex = frameEmpty, frameData = new List<byte[]>() };
-        Debug.LogError("请求帧：" + info.frameIndex);
+        UIManager.instance.ShowAlertTip("请求帧：" + info.frameIndex);
         byte[] message = SerializeHelper.Serialize<FrameInfo>(info);
         SocketManager.instance.SendSave((byte)MessageConvention.frameData, message, false);
     }
 
-    /// <summary>
-    /// 最低延迟帧数
-    /// </summary>
-    private int FastCount = 2;
-    /// <summary>
-    /// 最低延迟帧数*该值为设置掉线需要的总帧数
-    /// </summary>
-    private int OffLineCount = 3;
-
+    string guiInfo = "0000/0000";
+    public void OnGUI()
+    {
+        if (DataController.instance.MyRoomInfo != null && DataController.instance.MyRoomInfo.ActorList != null)
+        {
+            guiInfo = frameIndex + "/" + DataController.instance.MyRoomInfo.FrameIndex;
+            int length = (DataController.instance.MyRoomInfo.FrameIndex - frameIndex);
+            guiInfo = guiInfo + " = " + length;
+            GUIStyle bb = new GUIStyle();
+            bb.normal.background = null;    //这是设置背景填充的
+            bb.normal.textColor = Color.blue;   //设置字体颜色的
+            bb.fontSize = 40;       //当然，这是字体大小
+            GUI.Label(new Rect(0, 0, 200, 200), guiInfo, bb);
+        }
+    }
 
 
     /// <summary>
@@ -453,10 +461,11 @@ public class GameManager : MonoBehaviour
                 {
                     FrameMainLogic();
                     //本地运行帧和接收帧差距超过RoomInfo.frameDiffer*，快进
-                    if (DataController.instance.MyRoomInfo.FrameIndex - frameIndex > RoomInfo.frameDiffer * FastCount)
+                    int length = DataController.instance.MyRoomInfo.FrameIndex - frameIndex;
+                    if (length > frameDiffer)
                     {
-                        //Debug.Log("快进：" + frameIndex + "/" + DataController.instance.MyRoomInfo.FrameIndex);
-                        for (int i = 0; i < RoomInfo.frameDiffer; i++)//快进延迟帧的一般数值
+                        Debug.LogError("快进：" + frameIndex + "/" + DataController.instance.MyRoomInfo.FrameIndex);
+                        for (int i = 0; i < length - frameDiffer + (frameDiffer / 2); i++)//快进延迟帧的一般数值
                         {
                             FrameMainLogic();
                         }
@@ -468,36 +477,41 @@ public class GameManager : MonoBehaviour
                 }
                 else
                 {
-                    CurFrameType = FrameType.请求数据;
-                }
-                break;
-            case FrameType.请求数据:
-                CurFrameType = FrameType.等待数据;
-                requestCount = 0;
-                break;
-            case FrameType.等待数据:
-                requestCount++;
-                if (FrameInfos.ContainsKey(frameIndex))//已收到数据，下一帧处理
-                {
-                    CurFrameType = FrameType.处理数据;
-                }
-                if (requestCount % RoomInfo.frameDiffer == 0)//超过延迟帧就主动请求
-                {
-                    //if (requestCount / RoomInfo.frameDiffer == OffLineCount)
-                    //{
-                    //    //设置自身掉线
-                    //    CurFrameType = FrameType.通讯中断;
-                    //    SocketManager.instance.DisConnect();
-                    //}
-                    //else
+                    float overTime = Time.realtimeSinceStartup - frameIndexTime;
+                    if (overTime > requestMaxTime)
                     {
-                        requestCount = 0;
-                        CurFrameType = FrameType.处理数据;
-                        //请求数据
-                        Debug.LogError("数据帧不足，请求帧：" + frameIndex + "/" + DataController.instance.MyRoomInfo.FrameIndex);
+                        frameIndexTime = Time.realtimeSinceStartup;//将该时间作为处理最后一帧的时间，这样可以重新等待延迟最大时间
+                        Debug.LogError("超时：" + overTime + "请求帧：" + frameIndex + "/" + DataController.instance.MyRoomInfo.FrameIndex);
                         DoFrameRequest(frameIndex);
+                        CurFrameType = FrameType.处理数据;
                     }
                 }
+                break;
+            case FrameType.等待数据:
+                //requestTime++;
+                //if (FrameInfos.ContainsKey(frameIndex))//已收到数据，下一帧处理
+                //{
+                //    CurFrameType = FrameType.处理数据;
+                //    DoFrameLogin();
+                //    return;
+                //}
+                //if (requestTime % frameDiffer == 0)//超过延迟帧就主动请求
+                //{
+                //    //if (requestCount / RoomInfo.frameDiffer == OffLineCount)
+                //    //{
+                //    //    //设置自身掉线
+                //    //    CurFrameType = FrameType.通讯中断;
+                //    //    SocketManager.instance.DisConnect();
+                //    //}
+                //    //else
+                //    {
+                //        requestTime = 0;
+                //        CurFrameType = FrameType.处理数据;
+                //        //请求数据
+                //        Debug.LogError("数据帧不足，请求帧：" + frameIndex + "/" + DataController.instance.MyRoomInfo.FrameIndex);
+                //        DoFrameRequest(frameIndex);
+                //    }
+                //}
                 break;
             case FrameType.重连复现:
                 if (FrameInfos.ContainsKey(frameEmpty))
@@ -515,10 +529,14 @@ public class GameManager : MonoBehaviour
     /// </summary>
     private void FrameMainLogic()
     {
-        if (FrameInfos.ContainsKey(frameIndex))
+        //Debug.Log("当前执行帧：" + frameIndex);
+        FrameInfo info = FrameInfos[frameIndex];
+        if (info == null)
         {
-            //Debug.Log("当前执行帧：" + frameIndex);
-            FrameInfo info = FrameInfos[frameIndex];
+            Debug.LogError("该帧数据为空：" + frameIndex);
+        }
+        else
+        {
             //
             if (info.frameData != null)//有更新操作，更新数据
             {
@@ -537,9 +555,11 @@ public class GameManager : MonoBehaviour
                 //
                 AllFrameObj();
             }
-            //
-            frameIndex++;
         }
+        //
+        FrameInfos.Remove(frameIndex);
+        frameIndexTime = Time.realtimeSinceStartup;
+        frameIndex++;
     }
 
     /// <summary>
@@ -641,10 +661,15 @@ public class GameManager : MonoBehaviour
 
     public void UpdateMemberShoot(MessageXieYi xieyi)
     {
-
         BulletInfo bulletInfo = SerializeHelper.Deserialize<BulletInfo>(xieyi.MessageContent);
         int bulletMaster = bulletInfo.userIndex;
         int shootedIndex = int.Parse(bulletInfo.shootInfo);
+        RoomInfo roomInfo = DataController.instance.MyRoomInfo;
+        //同队不杀
+        if (roomInfo.ActorList[shootedIndex].MyTeam == roomInfo.ActorList[bulletMaster].MyTeam)
+        {
+            return;
+        }
         //
         if (shootedIndex != DataController.instance.MyRoomInfo.MyLocateIndex)
         {
@@ -662,6 +687,28 @@ public class GameManager : MonoBehaviour
     }
 
     #endregion
+
+
+    public void FixedUpdate()
+    {
+        if (isOnFrame)
+        {
+            if (timeDeal == 0)
+            {
+                timeDeal = Time.realtimeSinceStartup;
+            }
+            float length = Time.realtimeSinceStartup - timeDeal;
+            //Debug.LogError("本帧:" + Time.realtimeSinceStartup + "与上帧的差距：" + length);
+            int count = (int)(length / FrameFixedTime);
+            //Debug.LogError("需要在本帧运算次数：" + count);
+            for (int i = 0; i < count; i++)
+            {
+                DoFrameLogin();
+            }
+            timeDeal += count * FrameFixedTime;
+            //Debug.LogError("最终标记时间：" + timeDeal);
+        }
+    }
 
 
     public void Update()

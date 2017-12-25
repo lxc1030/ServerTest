@@ -1,7 +1,8 @@
 ﻿using UnityEngine;
 using System;
 using Newtonsoft.Json.Linq;
-using System.Collections.Generic;
+using System.Threading;
+using System.Collections;
 
 public class Testing : MonoBehaviour
 {
@@ -53,7 +54,8 @@ public class Testing : MonoBehaviour
         Debug.LogError(timeformat);
 
     }
-    public RectTransform myRectTransform;
+
+
     private void Update()
     {
         if (Input.GetKeyDown(KeyCode.Z))
@@ -64,6 +66,7 @@ public class Testing : MonoBehaviour
         }
         //RaycastHit2D hit = Physics2D.Linecast(transform.position, transform.position + new Vector3(1, 1, 1));
         //Debug.LogError(hit.collider.gameObject.name);
+        
     }
 
     [ContextMenu("真实时间")]
@@ -71,6 +74,7 @@ public class Testing : MonoBehaviour
     {
 
     }
+
 
     public string id;
     public GameObject obj;

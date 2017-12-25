@@ -722,7 +722,6 @@ public class SocketManager : MonoBehaviour
             case MessageConvention.bulletInfo:
                 break;
             case MessageConvention.endGaming:
-                DataController.instance.MyRoomInfo.FrameIndex = 0;
                 messageInfo = SerializeHelper.ConvertToString(tempMessageContent);
                 Debug.Log("胜利队伍是：" + (TeamType)int.Parse(messageInfo));
                 break;
@@ -748,7 +747,6 @@ public class SocketManager : MonoBehaviour
                 //{
                 //    //Debug.LogError("已重复请求同一帧域。");
                 //}
-
                 List<FrameInfo> fInfos = SerializeHelper.Deserialize<List<FrameInfo>>(tempMessageContent);
                 FrameInfo fInfo = null;
                 for (int i = 0; i < fInfos.Count; i++)

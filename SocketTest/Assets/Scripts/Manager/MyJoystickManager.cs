@@ -55,11 +55,12 @@ public class MyJoystickManager : MonoBehaviour
     {
         UIMove(0, 0, 0, 0);
     }
-
+    public float moveSpeedTemp;
     private void UIMove(float x, float y, float z, float speed)
     {
         Vector3 direction = new Vector3(x, y, z);
         speed = GameManager.myActorMoveSpeed * speed;
+        moveSpeedTemp = speed;
         MyController.instance.UIMove(direction, speed);
     }
 
