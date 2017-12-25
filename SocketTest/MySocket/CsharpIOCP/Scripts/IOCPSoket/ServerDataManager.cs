@@ -180,7 +180,7 @@ namespace NetFrame.Net
                         if (room.RoomInfo.ActorList[moveDirection.userIndex].CurState != RoomActorState.Dead)
                         {
                             room.SetRecondFrame(xieyi.ToBytes());
-                            Log4Debug("站位：" + moveDirection.userIndex + " 更新了方向：" + SerializeHelper.BackVector(moveDirection.direction) + "/速度:" + moveDirection.speed);
+                            //Log4Debug("站位：" + moveDirection.userIndex + " 更新了方向：" + SerializeHelper.BackVector(moveDirection.direction) + "/速度:" + moveDirection.speed);
                         }
                         else
                         {

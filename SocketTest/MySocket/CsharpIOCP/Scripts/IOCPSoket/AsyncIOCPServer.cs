@@ -50,7 +50,7 @@ namespace NetFrame.Net
         /// <summary>
         /// 心跳检测间隔秒数
         /// </summary>
-        public const int HeartbeatSecondTime = 5;
+        public const int HeartbeatSecondTime = 60;
 
         private bool disposed = false;
 

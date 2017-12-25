@@ -52,7 +52,7 @@ public class RoomCollection
         }
 
         int roomID = roomList.Count;
-        int limetCount = GameTypeManager.BackRoomLimet(roomType);
+        int limetCount = BackRoomLimetByModel(roomType);
         Log4Debug("当前房间数:" + roomList.Values.Count);
         foreach (KeyValuePair<int, SingleRoom> item in roomList)
         {
@@ -168,6 +168,23 @@ public class RoomCollection
         }
         return backData;
     }
+
+
+
+
+    public int BackRoomLimetByModel(GameModel type)
+    {
+        int limet = 1;
+        switch (type)
+        {
+            case GameModel.组队模式:
+                limet = 2;
+                break;
+        }
+        return limet;
+    }
+
+
 
 
 

@@ -112,40 +112,7 @@ class SqlManager
         Close(group);
         return count;
     }
-
-
-
-
-    public static DataTable ConvertDataReaderToDataTable(SqlDataReader reader)
-    {
-        try
-        {
-            DataTable objDataTable = new DataTable();
-            int intFieldCount = reader.FieldCount;
-            for (int intCounter = 0; intCounter < intFieldCount; ++intCounter)
-            {
-                objDataTable.Columns.Add(reader.GetName(intCounter), reader.GetFieldType(intCounter));
-            }
-
-            objDataTable.BeginLoadData();
-
-            object[] objValues = new object[intFieldCount];
-            while (reader.Read())
-            {
-                reader.GetValues(objValues);
-                objDataTable.LoadDataRow(objValues, true);
-            }
-            reader.Close();
-            objDataTable.EndLoadData();
-
-            return objDataTable;
-
-        }
-        catch (Exception ex)
-        {
-            throw new Exception("转换出错!", ex);
-        }
-    }
+    
     #endregion
 
 

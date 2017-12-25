@@ -3,19 +3,6 @@ using UnityEngine;
 
 public class GameTypeManager
 {
-
-    public static int BackRoomLimet(GameModel type)
-    {
-        int limet = 1;
-        switch (type)
-        {
-            case GameModel.组队模式:
-                limet = 2;
-                break;
-
-        }
-        return limet;
-    }
     public static Dictionary<int, BoxInfo> BackBoxInfosByType(GameModel type)
     {
         Dictionary<int, BoxInfo> boxes = new Dictionary<int, BoxInfo>();

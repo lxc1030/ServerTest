@@ -10,6 +10,7 @@ public class SingleRoom
 
 
     public int PassedGameTime = 0;// 游戏已经过了多久
+    private int FrameCount;
 
 
     public RoomInfo RoomInfo { get; set; }//客户端和服务器通用保存房间属性的变量类
@@ -52,6 +53,8 @@ public class SingleRoom
         }
 
     }
+
+
 
     // 會員加入房間
     public bool Join(AsyncUserToken userToken, out int UniqueID)
@@ -340,12 +343,17 @@ public class SingleRoom
                 break;
             case ShootTag.Character:
                 //
+                int bulletMaster = bulletInfo.userIndex;
                 int shootedIndex = int.Parse(bulletInfo.shootInfo);
+
+                if (RoomInfo.ActorList[shootedIndex].MyTeam == RoomInfo.ActorList[bulletMaster].MyTeam)
+                {
+                    return;
+                }
                 if (RoomInfo.ActorList[shootedIndex].CurState == RoomActorState.Gaming)
                 {
                     //增加击杀数
-                    int killer = bulletInfo.userIndex;
-                    RoomInfo.ActorList[killer].KillCount++;
+                    RoomInfo.ActorList[bulletMaster].KillCount++;
                     if (RoomInfo.CurState == RoomActorState.Gaming)
                     {
                         byte[] message = SerializeHelper.Serialize<List<RoomActor>>(new List<RoomActor>(RoomInfo.ActorList.Values));
@@ -438,7 +446,7 @@ public class SingleRoom
         {
             curIndex = index;
         }
-        Log4Debug("存储帧：" + curIndex);
+        //Log4Debug("存储帧：" + curIndex);
         if (RoomInfo.CurState == RoomActorState.Gaming)
         {
             lock (FrameGroup[curIndex])
@@ -476,13 +484,13 @@ public class SingleRoom
     {
         return GetBoardFrame(start, RoomInfo.FrameIndex);
     }
-    
+
     public byte[] GetBoardFrame(int start, int end)
     {
         List<FrameInfo> infos = new List<FrameInfo>() { };
-        if (start > FrameGroup.Keys.Count || end > FrameGroup.Keys.Count)
+        if (start > FrameCount || end > FrameCount)
         {
-            Log4Debug("请求帧start：" + start + " end:" + end + " 超过帧总数：" + FrameGroup.Keys.Count + "，请检查代码逻辑");
+            Log4Debug("请求帧start：" + start + " end:" + end + " 超过帧总数：" + FrameCount + "，请检查代码逻辑");
         }
         else if (end > RoomInfo.FrameIndex)
         {
@@ -499,9 +507,7 @@ public class SingleRoom
         return null;
     }
 
-
-
-
+    
     /// <summary>
     /// 服务器帧根据时间递增
     /// </summary>
@@ -775,7 +781,7 @@ public class SingleRoom
 
                 break;
             case RoomActorState.Gaming:
-                Log4Debug("开始游戏");
+                Log4Debug("开始游戏:" + RoomInfo.FrameIndex);
 
                 foreach (var item in RoomInfo.ActorList)
                 {
@@ -797,20 +803,20 @@ public class SingleRoom
                         Log4Debug("用户：" + item.Value.Register.name + "在倒计时期间内未准备好模型。");
                     }
                 }
-                //保存帧同步
-                RoomInfo.FrameIndex = 0;
-                int keyNum = (int)(RoomInfo.GameTime / RoomInfo.frameTime) + 1;
-                FrameGroup = new Dictionary<int, FrameInfo>();
-                for (int i = 0; i < keyNum; i++)
-                {
-                    FrameGroup.Add(i, new FrameInfo() { frameIndex = i, frameData = new List<byte[]>() });
-                }
 
                 //ActorMoveDirection md = new ActorMoveDirection() { userIndex = 0, direction = new UnityEngine.Vector3(100, 0, 100), speed = 300 };
                 //MessageXieYi tm = new MessageXieYi((byte)MessageConvention.moveDirection, 0, SerializeHelper.ConvertToByte(md.GetSendInfo()));
                 //FrameGroup[1].frameData.Add(tm.ToBytes());
                 //FrameGroup[1].frameData.Add(tm.ToBytes());
 
+                //保存帧同步
+                RoomInfo.FrameIndex = 0;
+                FrameCount = (int)(RoomInfo.GameTime / RoomInfo.frameTime) + 1;
+                FrameGroup = new Dictionary<int, FrameInfo>();
+                for (int i = 0; i < FrameCount; i++)
+                {
+                    FrameGroup.Add(i, new FrameInfo() { frameIndex = i, frameData = new List<byte[]>() });
+                }
                 FrameTimer = new Timer(new TimerCallback(GameFrameReconding), null, 0, RoomInfo.frameTime);
                 //
                 BoardcastMessage(MessageConvention.startGaming, new byte[1] { 1 });
@@ -880,7 +886,7 @@ public class SingleRoom
                     //message = SerializeHelper.Serialize<List<RoomActor>>(new List<RoomActor>(RoomInfo.ActorList.Values));
                     //xieyi = new MessageXieYi((byte)MessageConvention.getRoommateInfo, 0, message);
                     //AsyncIOCPServer.instance.SaveSendMessage(userToken, xieyi.ToBytes());
-                    
+
                     ////准备模型
                     //roomActorUpdate = new RoomActorUpdate()
                     //{
@@ -908,7 +914,7 @@ public class SingleRoom
 
     public void Log4Debug(string msg)
     {
-        LogManager.WriteLog(this.GetType().Name + msg);
+        LogManager.WriteLog(this.GetType().Name + ":" + msg);
     }
 }
 
