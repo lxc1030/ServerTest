@@ -204,7 +204,7 @@ namespace NetFrame.Net
                         tempMessageContent = xieyi.MessageContent;
                         FrameInfo frame = SerializeHelper.Deserialize<FrameInfo>(tempMessageContent);
                         newBuffer = room.GetBoardFrame(frame.frameIndex);
-                        Log4Debug("用户" + userToken.userInfo.Register.userID + "/请求帧数据：" + frame.frameIndex + "-" + room.RoomInfo.FrameIndex);
+                        Log4Debug("用户" + userToken.userInfo.Register.userID + "/请求帧数据：" + frame.frameIndex + "/" + room.RoomInfo.FrameIndex + "数据总长：" + newBuffer.Length);
                         break;
                     default:
                         Log4Debug("该协议是否需要判断：" + xieyi.XieYiFirstFlag);

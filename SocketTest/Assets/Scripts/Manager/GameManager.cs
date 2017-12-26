@@ -55,6 +55,8 @@ public class GameManager : MonoBehaviour
     /// </summary>
     public List<AnimationClip> animationGroup = new List<AnimationClip>();
 
+    public float startTime;
+    public float saveTime;
 
     private void Awake()
     {
@@ -369,19 +371,19 @@ public class GameManager : MonoBehaviour
 
     private void StartGaming()
     {
-        isOnFrame = true;
         if (isReconnect)
         {
-            frameIndex = 0;
             CurFrameType = FrameType.重连复现;
             DoFrameRequest(frameIndex);
         }
         else  //不是断线重连，可以直接关闭Loading
         {
+            frameIndex = 0;
             Debug.LogError("开始游戏");
             CurFrameType = FrameType.处理数据;
             GameLoadingUI.Close();
         }
+        isOnFrame = true;
     }
 
 
@@ -465,7 +467,7 @@ public class GameManager : MonoBehaviour
                     if (length > frameDiffer)
                     {
                         Debug.LogError("快进：" + frameIndex + "/" + DataController.instance.MyRoomInfo.FrameIndex);
-                        for (int i = 0; i < length - frameDiffer + (frameDiffer / 2); i++)//快进延迟帧的一般数值
+                        for (int i = 0; i < frameDiffer; i++)//快进延迟帧的一般数值
                         {
                             FrameMainLogic();
                         }
@@ -481,44 +483,10 @@ public class GameManager : MonoBehaviour
                     if (overTime > requestMaxTime)
                     {
                         frameIndexTime = Time.realtimeSinceStartup;//将该时间作为处理最后一帧的时间，这样可以重新等待延迟最大时间
-                        Debug.LogError("超时：" + overTime + "请求帧：" + frameIndex + "/" + DataController.instance.MyRoomInfo.FrameIndex);
+                        Debug.LogError("超时：" + overTime + "请求帧：" + frameIndex + "/" + DataController.instance.MyRoomInfo.FrameIndex + "/" + (FrameInfos.ContainsKey(frameIndex) ? FrameInfos[frameIndex].frameData + "。" : "frameIndex = null"));
                         DoFrameRequest(frameIndex);
                         CurFrameType = FrameType.处理数据;
                     }
-                }
-                break;
-            case FrameType.等待数据:
-                //requestTime++;
-                //if (FrameInfos.ContainsKey(frameIndex))//已收到数据，下一帧处理
-                //{
-                //    CurFrameType = FrameType.处理数据;
-                //    DoFrameLogin();
-                //    return;
-                //}
-                //if (requestTime % frameDiffer == 0)//超过延迟帧就主动请求
-                //{
-                //    //if (requestCount / RoomInfo.frameDiffer == OffLineCount)
-                //    //{
-                //    //    //设置自身掉线
-                //    //    CurFrameType = FrameType.通讯中断;
-                //    //    SocketManager.instance.DisConnect();
-                //    //}
-                //    //else
-                //    {
-                //        requestTime = 0;
-                //        CurFrameType = FrameType.处理数据;
-                //        //请求数据
-                //        Debug.LogError("数据帧不足，请求帧：" + frameIndex + "/" + DataController.instance.MyRoomInfo.FrameIndex);
-                //        DoFrameRequest(frameIndex);
-                //    }
-                //}
-                break;
-            case FrameType.重连复现:
-                if (FrameInfos.ContainsKey(frameEmpty))
-                {
-                    frameEmpty = 0;
-                    isReconnect = false;
-                    CurFrameType = FrameType.处理数据;
                 }
                 break;
         }
@@ -550,11 +518,8 @@ public class GameManager : MonoBehaviour
                     SelectFrameInfo(frameXY);
                 }
             }
-            else
-            {
-                //
-                AllFrameObj();
-            }
+            //子件需要每帧判断的逻辑
+            AllFrameObj();
         }
         //
         FrameInfos.Remove(frameIndex);
@@ -570,41 +535,23 @@ public class GameManager : MonoBehaviour
     {
         byte[] tempMessageContent = xieyi.MessageContent;
         string messageInfo = "";
+        CharacterCommon member = null;
 
         switch ((MessageConvention)xieyi.XieYiFirstFlag)
         {
             case MessageConvention.moveDirection:
                 ActorMoveDirection moveDir = SerializeHelper.Deserialize<ActorMoveDirection>(tempMessageContent);
 
-                //判断用户
-                if (moveDir.userIndex == DataController.instance.MyRoomInfo.MyLocateIndex)
-                {
-                    //Debug.LogError("自接收方向移动：" + messageInfo);
-                    MyController.instance.SetNetDirection(moveDir);
-                    MyController.instance.DoFrameLogic();
-                }
-                else
-                {
-                    //Debug.LogError("玩家接收方向移动：" + messageInfo);
-                    CharacterCommon member = GameManager.instance.memberGroup[moveDir.userIndex];
-                    member.SetNetDirection(moveDir);
-                    member.DoFrameLogic();
-                }
+                //Debug.LogError("玩家接收方向移动：" + messageInfo);
+                member = GameManager.instance.memberGroup[moveDir.userIndex];
+                member.SetNetDirection(moveDir);
                 break;
             case MessageConvention.rotateDirection:
                 ActorRotateDirection rotateDir = SerializeHelper.Deserialize<ActorRotateDirection>(tempMessageContent);
                 //判断用户
-                if (rotateDir.userIndex == DataController.instance.MyRoomInfo.MyLocateIndex)
-                {
-                    //Debug.LogError("自接收方向移动：" + messageInfo);
-                    //MyController.instance.SetNetDirection(rotateDir);
-                }
-                else
-                {
-                    //Debug.LogError("玩家接收方向移动：" + messageInfo);
-                    CharacterCommon member = GameManager.instance.memberGroup[rotateDir.userIndex];
-                    member.SetNetDirection(rotateDir);
-                }
+                //Debug.LogError("玩家接收方向移动：" + messageInfo);
+                member = GameManager.instance.memberGroup[rotateDir.userIndex];
+                member.SetNetDirection(rotateDir);
                 break;
             case MessageConvention.shootBullet:
                 int shootIndex = int.Parse(SerializeHelper.ConvertToString(tempMessageContent));
@@ -614,7 +561,7 @@ public class GameManager : MonoBehaviour
                 }
                 else
                 {
-                    CharacterCommon member = GameManager.instance.memberGroup[shootIndex];
+                    member = GameManager.instance.memberGroup[shootIndex];
                     member.ShowBullet(false);
                 }
                 break;
@@ -713,6 +660,8 @@ public class GameManager : MonoBehaviour
 
     public void Update()
     {
+        startTime = Time.realtimeSinceStartup;
+
         if (serverEvent.Count > 0)
         {
             MessageXieYi xieyi = serverEvent.Dequeue();

@@ -18,6 +18,7 @@ public class GameRunUI : MonoBehaviour
     public ShowNumImage showRed;
     public ShowNumImage showTime;
 
+
     #region 注册Socket处理
 
     /// <summary>
@@ -105,7 +106,6 @@ public class GameRunUI : MonoBehaviour
     {
         SetShowTime(DataController.instance.MyRoomInfo.GameTime);
         SetScorePercent();
-
     }
 
 }

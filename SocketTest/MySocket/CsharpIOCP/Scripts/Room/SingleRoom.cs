@@ -11,10 +11,8 @@ public class SingleRoom
 
     public int PassedGameTime = 0;// 游戏已经过了多久
     private int FrameCount;
-
-
+    
     public RoomInfo RoomInfo { get; set; }//客户端和服务器通用保存房间属性的变量类
-    public Dictionary<string, AsyncUserToken> UserTokens { get; set; }
 
     /// <summary>
     /// 游戏棋子对应的拥有玩家ID--盒子序号，用户站位
@@ -37,7 +35,6 @@ public class SingleRoom
     public SingleRoom(int roomID, string roomName, GameModel roomType, int limit)
     {
         RoomInfo = new RoomInfo(roomID, roomName, roomType, limit);
-        UserTokens = new Dictionary<string, AsyncUserToken>();
         //
         switch (roomType)
         {
@@ -51,21 +48,11 @@ public class SingleRoom
 
                 break;
         }
-
     }
-
-
 
     // 會員加入房間
     public bool Join(AsyncUserToken userToken, out int UniqueID)
     {
-        //if (ActorList.Values.Count < Limit)
-        //{
-        //    for (int i = 0; i < Limit; i++)
-        //    {
-        //        ActorList.Add(i, null);
-        //    }
-        //}
         lock (this)
         {
             UniqueID = -1;
@@ -80,17 +67,25 @@ public class SingleRoom
             if (UniqueID != -1)
             {
                 Log4Debug("账号->" + userToken.userInfo.Register.userID + " 用户名->" + userToken.userInfo.Register.name + " 加入房间->" + RoomInfo.RoomID + " 站位为->" + UniqueID);
-                UserTokens[userToken.userInfo.Register.userID] = userToken;
+                //
+                TeamType myTeam = TeamType.Both;
+                switch (RoomInfo.RoomType)
+                {
+                    case GameModel.组队模式:
+                        if (UniqueID % 2 == 0)//红蓝两队
+                        {
+                            myTeam = TeamType.Blue;
+                        }
+                        else
+                        {
+                            myTeam = TeamType.Red;
+                        }
+                        break;
+                    case GameModel.Boss模式:
 
-                TeamType myTeam = TeamType.Blue;
-                if (UniqueID % 2 == 0)//红蓝两队
-                {
-                    myTeam = TeamType.Blue;
+                        break;
                 }
-                else
-                {
-                    myTeam = TeamType.Red;
-                }
+                //
                 RoomActor actor = new RoomActor(RoomInfo.RoomID, UniqueID, userToken.userInfo.Register, myTeam);
                 userToken.userInfo = actor;
                 RoomInfo.ActorList[UniqueID] = actor;
@@ -205,7 +200,10 @@ public class SingleRoom
                 {
                     case RoomActorState.WaitForStart:
                         Log4Debug("模型未准备好的玩家准备好进入游戏了。");
-                        AsyncIOCPServer.instance.SendMessageToUser(RoomInfo.ActorList[index].Register.userID, new byte[] { 1 }, (byte)MessageConvention.startGaming, 0);
+                        AsyncIOCPServer.instance.SendMessageToUser(
+                            RoomInfo.ActorList[index].Register.userID,
+                            new byte[] { 1 },
+                            (byte)MessageConvention.startGaming, 0);
                         if (RoomInfo.CurState == RoomActorState.Gaming)
                         {
                             roomActorUpdate = new RoomActorUpdate()
@@ -507,7 +505,7 @@ public class SingleRoom
         return null;
     }
 
-    
+
     /// <summary>
     /// 服务器帧根据时间递增
     /// </summary>
@@ -522,6 +520,7 @@ public class SingleRoom
             {
                 byte[] message = GetBoardFrame(tempIndex - RoomInfo.frameInterval, tempIndex);
                 BoardcastMessage(MessageConvention.frameData, message);
+                Log4Debug(tempIndex + "时间：" + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff") + " 长度：" + message.Length);
             }
         }
     }
@@ -819,7 +818,12 @@ public class SingleRoom
                 }
                 FrameTimer = new Timer(new TimerCallback(GameFrameReconding), null, 0, RoomInfo.frameTime);
                 //
-                BoardcastMessage(MessageConvention.startGaming, new byte[1] { 1 });
+                string starttime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
+                Log4Debug(starttime);
+                byte[] start = SerializeHelper.ConvertToByte(starttime);
+                Log4Debug("长度：" + starttime.Length);
+
+                BoardcastMessage(MessageConvention.startGaming, start);
                 //发送游戏时间
                 PassedGameTime = 0;
                 GameTimer = new Timer(new TimerCallback(GameTimeIsFinish), null, 0, 1 * 1000);

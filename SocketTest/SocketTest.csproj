@@ -213,6 +213,7 @@
     <Compile Include="Assets\Scripts\3D\BulletGrity.cs" />
     <Compile Include="Assets\Scripts\3D\CharacterCommon.cs" />
     <Compile Include="Assets\Scripts\3D\MyController.cs" />
+    <Compile Include="Assets\Scripts\3D\MyJoystick.cs" />
     <Compile Include="Assets\Scripts\Client\ClassGroup.cs" />
     <Compile Include="Assets\Scripts\Client\HttpClient.cs" />
     <Compile Include="Assets\Scripts\Client\MessageXieYi.cs" />

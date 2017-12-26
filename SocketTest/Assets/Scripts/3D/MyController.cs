@@ -144,5 +144,17 @@ public class MyController : CharacterCommon
         }
 
     }
+    
+    public void UIShot()
+    {
+        if (DataController.instance.MyRoomInfo.ActorList[myIndex].CurState != RoomActorState.Gaming)
+        {
+            return;
+        }
+        int userIndex = DataController.instance.MyRoomInfo.MyLocateIndex;
+        byte[] message = SerializeHelper.ConvertToByte(userIndex + "");
+        SocketManager.instance.SendSave((byte)MessageConvention.shootBullet, message, false);
+    }
+
 }
 

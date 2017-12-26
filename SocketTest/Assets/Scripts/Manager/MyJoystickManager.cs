@@ -1,12 +1,15 @@
-﻿using System;
+﻿using DG.Tweening;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class MyJoystickManager : MonoBehaviour
 {
     public static MyJoystickManager instance;
     public ControlPartUI uiControl;
+
 
     private void Awake()
     {
@@ -30,8 +33,6 @@ public class MyJoystickManager : MonoBehaviour
         uiControl.etcRotate.gameObject.SetActive(true);
     }
 
-
-
     #region 遥杆命令
 
     //public void OnMove()
@@ -47,7 +48,8 @@ public class MyJoystickManager : MonoBehaviour
     public void OnMove(Vector2 move)
     {
         Vector3 moveDirection = new Vector3(move.x, 0, move.y);
-        float speed = moveDirection.magnitude;
+        Vector3 thumbPos = uiControl.etcMove.thumb.localPosition;
+        float speed = thumbPos.magnitude / uiControl.etcMove.GetRadius();//vector2 move计算出的速度不准确，斜角不为1
         UIMove(moveDirection.x, 0, moveDirection.z, speed);
     }
 
@@ -55,12 +57,11 @@ public class MyJoystickManager : MonoBehaviour
     {
         UIMove(0, 0, 0, 0);
     }
-    public float moveSpeedTemp;
+
     private void UIMove(float x, float y, float z, float speed)
     {
         Vector3 direction = new Vector3(x, y, z);
         speed = GameManager.myActorMoveSpeed * speed;
-        moveSpeedTemp = speed;
         MyController.instance.UIMove(direction, speed);
     }
 
@@ -77,29 +78,40 @@ public class MyJoystickManager : MonoBehaviour
     /// 射击CD时间
     /// </summary>
     private const float shootCDLimet = 0.5f;
-    /// <summary>
-    /// 射击时间记录
-    /// </summary>
-    private float shootPassTime = 0.5f;
+
     public void OnClickShoot()
     {
         MyController.instance.SetDirectionEnable(false);
         //
         MyController.instance.UIRotation();
         //
-        if (shootPassTime >= shootCDLimet)
+        if (!IsInvoking("RemoveShootCD"))
         {
-            shootPassTime = 0;
-            MyController.instance.PlayShootAnimation();
-            UIShot();
+            Invoke("RemoveShootCD", shootCDLimet);
+            ShowShootCDAnimation();
+            MyController.instance.UIShot();
+        }
+        else
+        {
+            uiControl.cdTip.gameObject.SetActive(true);
+            Color color = Color.red;
+            uiControl.cdTip.color = color;
+            uiControl.cdTip.DOColor(new Color(color.r, color.g, color.b, 0), 0.2f);
         }
     }
-
-    private void UIShot()
+    
+    private void RemoveShootCD()
     {
-        int userIndex = DataController.instance.MyRoomInfo.MyLocateIndex;
-        byte[] message = SerializeHelper.ConvertToByte(userIndex + "");
-        SocketManager.instance.SendSave((byte)MessageConvention.shootBullet, message, false);
+        //Debug.LogError("");
+    }
+    private void ShowShootCDAnimation()
+    {
+        for (int i = 0; i < uiControl.cdShoot.Length; i++)
+        {
+            uiControl.cdShoot[i].gameObject.SetActive(true);
+            uiControl.cdShoot[i].fillAmount = 1;
+            uiControl.cdShoot[i].DOFillAmount(0, shootCDLimet);
+        }
     }
 
     #endregion
@@ -126,10 +138,7 @@ public class MyJoystickManager : MonoBehaviour
 
     public void Update()
     {
-        if (shootPassTime <= shootCDLimet)
-        {
-            shootPassTime += Time.deltaTime;
-        }
+
     }
 }
 
@@ -138,5 +147,7 @@ public class ControlPartUI
 {
     public GameObject all;
     public ETCJoystick etcMove;
-    public GameObject etcRotate;
+    public ETCJoystick etcRotate;
+    public Image[] cdShoot;
+    public Text cdTip;
 }

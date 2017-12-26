@@ -587,7 +587,7 @@ public class SocketManager : MonoBehaviour
         SendSave((byte)MessageConvention.login, message);
     }
 
-
+    public DateTime startGamTime;
     #endregion
 
     public string log = "";
@@ -710,7 +710,11 @@ public class SocketManager : MonoBehaviour
 
                 break;
             case MessageConvention.startGaming:
+                string time = SerializeHelper.ConvertToString(tempMessageContent);
+                Debug.LogError("开始游戏时间：" + time);
+                startGamTime = DateTime.Parse(time);
                 DataController.instance.MyRoomInfo.CurState = RoomActorState.Gaming;
+                GameManager.instance.saveTime = GameManager.instance.startTime;
                 break;
             case MessageConvention.gamingTime:
                 messageInfo = SerializeHelper.ConvertToString(tempMessageContent);
@@ -748,13 +752,24 @@ public class SocketManager : MonoBehaviour
                 //    //Debug.LogError("已重复请求同一帧域。");
                 //}
                 List<FrameInfo> fInfos = SerializeHelper.Deserialize<List<FrameInfo>>(tempMessageContent);
+                if (tempMessageContent.Length > 200)
+                {
+                    Debug.LogError("接收帧数据超长,解析个数：" + fInfos.Count);
+                }
+                if (fInfos == null)
+                {
+                    Debug.LogError("请检查，该逻辑不能为空。" + DataController.instance.MyRoomInfo.FrameIndex);
+                }
                 FrameInfo fInfo = null;
                 for (int i = 0; i < fInfos.Count; i++)
                 {
                     fInfo = fInfos[i];
                     if (!GameManager.instance.FrameInfos.ContainsKey(fInfo.frameIndex))
                     {
-                        GameManager.instance.FrameInfos.Add(fInfo.frameIndex, fInfo);
+                        lock (GameManager.instance.FrameInfos)
+                        {
+                            GameManager.instance.FrameInfos.Add(fInfo.frameIndex, fInfo);
+                        }
                         if (fInfo.frameIndex > DataController.instance.MyRoomInfo.FrameIndex)
                         {
                             DataController.instance.MyRoomInfo.FrameIndex = fInfo.frameIndex;
