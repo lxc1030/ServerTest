@@ -213,12 +213,10 @@
     <Compile Include="Assets\Scripts\3D\BulletGrity.cs" />
     <Compile Include="Assets\Scripts\3D\CharacterCommon.cs" />
     <Compile Include="Assets\Scripts\3D\MyController.cs" />
-    <Compile Include="Assets\Scripts\3D\MyJoystick.cs" />
     <Compile Include="Assets\Scripts\Client\ClassGroup.cs" />
     <Compile Include="Assets\Scripts\Client\HttpClient.cs" />
     <Compile Include="Assets\Scripts\Client\MessageXieYi.cs" />
     <Compile Include="Assets\Scripts\Client\SocketManager.cs" />
-    <Compile Include="Assets\Scripts\Client\UI\NetInfoNeedBack.cs" />
     <Compile Include="Assets\Scripts\Client\UI\SocketConnectUI.cs" />
     <Compile Include="Assets\Scripts\Data\DataController.cs" />
     <Compile Include="Assets\Scripts\IOCPSoket\AsyncUserToken.cs" />
@@ -230,7 +228,6 @@
     <Compile Include="Assets\Scripts\Manager\ActivityManager.cs" />
     <Compile Include="Assets\Scripts\Manager\AudioManager.cs" />
     <Compile Include="Assets\Scripts\Manager\CameraManager.cs" />
-    <Compile Include="Assets\Scripts\Manager\ErrorManager.cs" />
     <Compile Include="Assets\Scripts\Manager\GameManager.cs" />
     <Compile Include="Assets\Scripts\Manager\MyJoystickManager.cs" />
     <Compile Include="Assets\Scripts\Manager\PaymentManager.cs" />

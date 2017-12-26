@@ -41,7 +41,7 @@ public class RoomActor// 因為要多記錄加入房間時間的屬性，因此�
         {
             userIndex = uniqueID
         };
-        deadTimer = null;
+        timerDead = null;
         this.InitActor();
     }
 
@@ -74,14 +74,23 @@ public class RoomActor// 因為要多記錄加入房間時間的屬性，因此�
     /// 相对射击点的射击半径
     /// </summary>
     public static float ShootRadius = 4f;
-    /// <summary>
-    /// 死亡复活时间（毫秒）
-    /// </summary>
-    public static int DeadToReviveTime = 3000;
+
     #endregion
     public DateTime heartbeatTime { get; set; }// 最新一次心跳时间
     public DateTime JoinTime { get; set; }
-    public Timer deadTimer { get; set; }
+
+    #region 计时器变量
+    /// <summary>
+    /// 死亡复活时间（毫秒）
+    /// </summary>
+    public static int DeadLastTime = 3000;
+    public Timer timerDead { get; set; }
+    /// <summary>
+    /// 无敌时间（毫秒）
+    /// </summary>
+    public static int InvincibleLastTime = 1000;
+    public Timer timerInvincible { get; set; }
+    #endregion
     public GameModelData MyModelInfo { get; set; }//模型的相关属性
 
 }

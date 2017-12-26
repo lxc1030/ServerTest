@@ -356,6 +356,7 @@ public enum RoomActorState
     ModelPrepared,
     WaitForStart,
     Gaming,
+    Invincible,//无敌
     Dead,
     GameEnd,
 }

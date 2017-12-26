@@ -53,6 +53,11 @@ public class BulletGrity : MonoBehaviour
         //位移模拟轨迹
         transform.Translate(MoveSpeed * Time.fixedDeltaTime);
         transform.Translate(GritySpeed * Time.fixedDeltaTime);//
+        if (transform.position.y > DataController.bulletAutoDestory)
+        {
+            isMove = false;
+            PoolDestory();
+        }
     }
 
     public void OnTriggerEnter(Collider other)
@@ -61,25 +66,38 @@ public class BulletGrity : MonoBehaviour
         {
             isMove = false;
             GameObject obj = other.gameObject;
-
             BulletInfo bulletInfo = new BulletInfo();
-
-            if (obj.tag == nameof(Tag.Box))
+            switch (obj.tag)
             {
-                Box box = obj.GetComponent<Box>();
-                bulletInfo.shootTag = ShootTag.Box;
-                bulletInfo.shootInfo = box.myInfo.myIndex + "";
-            }
-            else if (obj.tag == nameof(Tag.Member))
-            {
-                CharacterCommon member = obj.GetComponent<CharacterCommon>();
-                bulletInfo.shootTag = ShootTag.Character;
-                bulletInfo.shootInfo = member.myIndex + "";
-            }
-            else
-            {
-                bulletInfo.shootTag = ShootTag.Wall;
-                bulletInfo.shootInfo = obj.name + "";
+                case nameof(Tag.Box):
+                    Box box = obj.GetComponent<Box>();
+                    bulletInfo.shootTag = ShootTag.Box;
+                    bulletInfo.shootInfo = box.myInfo.myIndex + "";
+                    break;
+                case nameof(Tag.Member):
+                    CharacterCommon member = obj.GetComponent<CharacterCommon>();
+                    bulletInfo.shootTag = ShootTag.Character;
+                    bulletInfo.shootInfo = member.myIndex + "";
+                    RoomActorState state = DataController.instance.MyRoomInfo.ActorList[member.myIndex].CurState;
+                    string tip = "";
+                    switch (state)
+                    {
+                        case RoomActorState.Dead:
+                            tip = "该玩家已死亡";
+                            break;
+                        case RoomActorState.Invincible:
+                            tip = "该玩家当前无敌";
+                            break;
+                    }
+                    if (!string.IsNullOrEmpty(tip))
+                    {
+                        UIManager.instance.ShowAlertTip(tip);
+                        isSendTrigger = false;
+                    }
+                    break;
+                default://墙体及障碍物
+                    isSendTrigger = false;
+                    break;
             }
             if (isSendTrigger)
             {
@@ -89,8 +107,11 @@ public class BulletGrity : MonoBehaviour
                 byte[] message = SerializeHelper.Serialize<BulletInfo>(bulletInfo);
                 SocketManager.instance.SendSave((byte)MessageConvention.bulletInfo, message, false);
             }
-            PoolManager.instance.SetPoolObjByType(PreLoadType.Bullet, gameObject);
+            PoolDestory();
         }
     }
-
+    private void PoolDestory()
+    {
+        PoolManager.instance.SetPoolObjByType(PreLoadType.Bullet, gameObject);
+    }
 }

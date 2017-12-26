@@ -127,7 +127,7 @@ public class CharacterCommon : MonoBehaviour
     }
     public void BeShoot()
     {
-        Debug.LogError("播放死亡动画，设置到初始位置.");
+        Debug.Log("播放死亡动画，设置到初始位置.");
         GameModelData info = new GameModelData()
         {
             userIndex = myIndex,

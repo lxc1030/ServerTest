@@ -11,7 +11,7 @@ public class SingleRoom
 
     public int PassedGameTime = 0;// 游戏已经过了多久
     private int FrameCount;
-    
+
     public RoomInfo RoomInfo { get; set; }//客户端和服务器通用保存房间属性的变量类
 
     /// <summary>
@@ -82,7 +82,7 @@ public class SingleRoom
                         }
                         break;
                     case GameModel.Boss模式:
-
+                        myTeam = TeamType.Blue;
                         break;
                 }
                 //
@@ -215,7 +215,7 @@ public class SingleRoom
                         }
                         break;
                     case RoomActorState.Dead:
-                        RoomInfo.ActorList[index].deadTimer = new Timer(new TimerCallback(SetActorDeadToGaming), index, RoomActor.DeadToReviveTime, 0);
+                        RoomInfo.ActorList[index].timerDead = new Timer(new TimerCallback(SetAfterDead), index, RoomActor.DeadLastTime, 0);
                         break;
                 }
             }
@@ -374,12 +374,15 @@ public class SingleRoom
                     //};
                     //SetRecondFrame(SerializeHelper.Serialize<GameModelData>(dead), FrameIndex);
                 }
+                else if (RoomInfo.ActorList[shootedIndex].CurState == RoomActorState.Invincible)
+                {
+                    Log4Debug("射击者站位：" + bulletInfo.userIndex + " 攻击无敌站位：->" + shootedIndex);
+                }
                 else
                 {
                     Log4Debug("射击者站位：" + bulletInfo.userIndex + " 正在鞭尸位置->" + shootedIndex);
                     return;
                 }
-
                 break;
             case ShootTag.Wall:
                 break;
@@ -390,21 +393,24 @@ public class SingleRoom
         //BoardcastMessage(MessageConvention.bulletInfo, message);
     }
 
-    public void SetActorDeadToGaming(object unique)
+    private void SetAfterDead(object unique)
     {
         int index = (int)unique;
-        RoomInfo.ActorList[index].deadTimer.Dispose();
-        Log4Debug("执行回调设置复活。");
+        RoomInfo.ActorList[index].timerDead.Dispose();
+        Log4Debug("执行回调设置复活，状态无敌。");
+        RoomActorUpdate roomActorUpdate = new RoomActorUpdate() { userIndex = index, update = (int)RoomActorState.Invincible + "" };
+        UpdateState(roomActorUpdate);
+        RoomInfo.ActorList[index].timerInvincible = new Timer(new TimerCallback(SetAfterInvincible), index, RoomActor.InvincibleLastTime, 0);
+    }
+    private void SetAfterInvincible(object unique)
+    {
+        int index = (int)unique;
+        RoomInfo.ActorList[index].timerInvincible.Dispose();
+        Log4Debug("执行回调取消无敌。");
         RoomActorUpdate roomActorUpdate = new RoomActorUpdate() { userIndex = index, update = (int)RoomActorState.Gaming + "" };
         UpdateState(roomActorUpdate);
     }
 
-    //public void ShootBullet(ShootInfo shootInfo)
-    //{
-    //    //广播发送消息
-    //    byte[] message = SerializeHelper.ConvertToByte(shootInfo.GetSendInfo());
-    //    BoardcastMessage(MessageConvention.shootBullet, message, shootInfo.userIndex);
-    //}
     public void UpdatePrepare(RoomActorUpdate roomActorUpdate, AsyncUserToken userToken)
     {
         if (RoomInfo.ActorList[roomActorUpdate.userIndex] == null)

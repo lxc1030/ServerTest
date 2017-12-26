@@ -27,3 +27,4 @@ E:\MyGit\ServerTest\SocketTest\MySocket\SerializeClass\bin\Debug\UnityEngine.dll
 E:\MyGit\ServerTest\SocketTest\MySocket\SerializeClass\bin\Debug\protobuf-net.xml
 E:\MyGit\ServerTest\SocketTest\MySocket\SerializeClass\obj\Debug\Serialize.dll
 E:\MyGit\ServerTest\SocketTest\MySocket\SerializeClass\obj\Debug\Serialize.pdb
+E:\MyGit\ServerTest\SocketTest\MySocket\SerializeClass\obj\Debug\Serialize.csprojResolveAssemblyReference.cache

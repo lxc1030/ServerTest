@@ -751,6 +751,7 @@ public class SocketManager : MonoBehaviour
                 //{
                 //    //Debug.LogError("已重复请求同一帧域。");
                 //}
+
                 List<FrameInfo> fInfos = SerializeHelper.Deserialize<List<FrameInfo>>(tempMessageContent);
                 if (tempMessageContent.Length > 200)
                 {
@@ -769,6 +770,7 @@ public class SocketManager : MonoBehaviour
                         lock (GameManager.instance.FrameInfos)
                         {
                             GameManager.instance.FrameInfos.Add(fInfo.frameIndex, fInfo);
+                            Debug.Log("成功保存帧：" + fInfo.frameIndex);
                         }
                         if (fInfo.frameIndex > DataController.instance.MyRoomInfo.FrameIndex)
                         {

@@ -13,7 +13,7 @@ public class GameManager : MonoBehaviour
     //public Dictionary<int, EndlessHardConfig> config = new Dictionary<int, EndlessHardConfig>();
 
     public const float timeActorMoveSpan = 0.03f; //每隔30帧发送一次坐标
-    public const float myActorMoveSpeed = 3;//人物移动速度
+    public const float myActorMoveSpeed = 5;//人物移动速度
     public const float myCameraMoveSpeed = 100;
     public const float gravity = 9.8f;
 
@@ -34,7 +34,6 @@ public class GameManager : MonoBehaviour
     public int frameIndex = 0;//当前复现到哪一帧了
     public float frameIndexTime;//运行到这帧时的时间
 
-    public int frameEmpty = 0;//判断重连时，服务器广播了哪一帧的数据，用来请求前面的数据
 
     public Dictionary<int, FrameInfo> FrameInfos = new Dictionary<int, FrameInfo>();
 
@@ -45,7 +44,9 @@ public class GameManager : MonoBehaviour
 
 
     public bool isOnFrame;//是否正在处理帧逻辑
-    private float requestMaxTime = 1;//等待数据时长
+    private float requestMaxTime = 5f;//等待数据时长
+    public int frameEmpty = 0;//判断重连时，服务器广播了哪一帧的数据，用来请求前面的数据
+
     private float FrameFixedTime = 0;//一帧转换成时间
     public float timeDeal;//游戏时间存储数值
     #endregion
@@ -522,9 +523,12 @@ public class GameManager : MonoBehaviour
             AllFrameObj();
         }
         //
-        FrameInfos.Remove(frameIndex);
-        frameIndexTime = Time.realtimeSinceStartup;
-        frameIndex++;
+        lock (FrameInfos)
+        {
+            FrameInfos.Remove(frameIndex);
+            frameIndexTime = Time.realtimeSinceStartup;
+            frameIndex++;
+        }
     }
 
     /// <summary>

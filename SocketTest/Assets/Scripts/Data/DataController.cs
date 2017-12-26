@@ -68,7 +68,7 @@ public class DataController : MonoBehaviour
     }
 
 
-
+    public const int bulletAutoDestory = 100;
 
     //UI
     public const string iconPathSkill = "Image/";
@@ -102,6 +102,7 @@ public class DataController : MonoBehaviour
     /// 看广告奖励的金币
     /// </summary>
     public const int adAddCoin = 5;
+    
 
 
     private static string XMLName = "EffectConfig";

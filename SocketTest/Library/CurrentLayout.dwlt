@@ -111,7 +111,7 @@ MonoBehaviour:
   m_MinSize: {x: 1115, y: 342}
   m_MaxSize: {x: 26010, y: 10021}
   vertical: 0
-  controlID: 157
+  controlID: 181
 --- !u!114 &6
 MonoBehaviour:
   m_ObjectHideFlags: 52
@@ -135,7 +135,7 @@ MonoBehaviour:
   m_MinSize: {x: 406, y: 342}
   m_MaxSize: {x: 8006, y: 8042}
   vertical: 1
-  controlID: 46
+  controlID: 182
 --- !u!114 &7
 MonoBehaviour:
   m_ObjectHideFlags: 52
@@ -229,8 +229,8 @@ MonoBehaviour:
     y: 533
     width: 704
     height: 398
-  m_MinSize: {x: 100, y: 100}
-  m_MaxSize: {x: 4000, y: 4000}
+  m_MinSize: {x: 102, y: 121}
+  m_MaxSize: {x: 4002, y: 4021}
   m_ActualView: {fileID: 17}
   m_Panes:
   - {fileID: 17}
@@ -590,7 +590,7 @@ MonoBehaviour:
     scrollPos: {x: 0, y: 0}
     m_SelectedIDs: 
     m_LastClickedID: 0
-    m_ExpandedIDs: e4fbffff00000000
+    m_ExpandedIDs: b0b3ffffaeb4ffff3cb6ffffe4fbffff00000000
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 
@@ -649,7 +649,8 @@ MonoBehaviour:
     m_ScenePaths: []
     m_ShowAllHits: 0
     m_SearchArea: 0
-    m_Folders: []
+    m_Folders:
+    - Assets/DLLs
   m_ViewMode: 0
   m_StartGridSize: 64
   m_LastFolders: []
@@ -685,24 +686,24 @@ MonoBehaviour:
       m_Icon: {fileID: 0}
       m_ResourceFile: 
   m_AssetTreeState:
-    scrollPos: {x: 0, y: 3821.1523}
+    scrollPos: {x: 0, y: 278.95264}
     m_SelectedIDs: 
     m_LastClickedID: 0
-    m_ExpandedIDs: 0000000064260000e8260000f626000008270000102700001e270000242700002627000040270000702700007227000094270000a6270000be270000ea270000f027000024280000322800007e2800008828000098280000e22800002429000050290000822900008629000088290000902900009c290000e02c0000422d0000562d0000b02d0000422e0000702e00008a2e0000b62e0000ce2e0000082f00001c2f00003c2f00008e2f00005a30000084300000c2300000c6300000ca300000de3000001431000048310000543100005c31000082310000fa340000fc340000fe34000000350000023500000435000006350000083500000a3500000c3500000e35000010350000123500001435000016350000183500001a3500001c3500001e350000
+    m_ExpandedIDs: 0000000064260000f62600000827000010270000242700002627000040270000702700007227000094270000be270000ea270000f0270000322800007e2800008828000098280000e228000050290000822900008629000088290000902900009c290000e02c0000422d0000562d0000b02d0000422e0000702e00008a2e0000b62e0000082f00001c2f00003c2f00008e2f00005a30000084300000c2300000ca300000de3000001431000054310000fa340000fc340000fe34000000350000023500000435000006350000083500000a3500000c3500000e35000010350000123500001435000016350000183500001a3500001c3500001e350000
     m_RenameOverlay:
       m_UserAcceptedRename: 0
-      m_Name: 
-      m_OriginalName: 
+      m_Name: ErrorManager
+      m_OriginalName: ErrorManager
       m_EditFieldRect:
         serializedVersion: 2
         x: 0
         y: 0
         width: 0
         height: 0
-      m_UserData: 0
+      m_UserData: 1374
       m_IsWaitingForDelay: 0
       m_IsRenaming: 0
-      m_OriginalEventType: 11
+      m_OriginalEventType: 0
       m_IsRenamingFilename: 1
       m_ClientGUIView: {fileID: 12}
     m_SearchString: 
