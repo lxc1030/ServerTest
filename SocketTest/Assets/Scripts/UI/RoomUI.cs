@@ -133,7 +133,7 @@ public class RoomUI : MonoBehaviour
             }
         }
         //
-        txRoomLimet.text = memberNum + "/" + DataController.instance.MyRoomInfo.Limit;
+        txRoomLimet.text = memberNum + "/" + DataController.instance.MyRoomInfo.Limet;
     }
     /// <summary>
     /// 刷新用户显示状态

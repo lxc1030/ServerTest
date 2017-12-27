@@ -36,14 +36,13 @@ namespace NetFrame.Net
             get { return _receiveBuffer; }
             set { _receiveBuffer = value; }
         }
-
-
+        
         /// <summary>
         /// 数据是否在循环处理中
         /// </summary>
         public bool isOnLoop { get; set; }
 
-        public MessageXieYi HalfMessage { get; set; }
+        public byte[] halfMessage { get; set; }
 
         //public Queue<byte[]> SendBuffer
         //{
@@ -119,7 +118,7 @@ namespace NetFrame.Net
 
             _receiveBuffer = new Queue<byte>();
 
-
+            halfMessage = new byte[] { };
             isOnLoop = false;
             //_receiveBuffer = new DynamicBufferManager(receiveBufferSize * sizeExtend);
             //_sendBuffer = new DynamicBufferManager(receiveBufferSize * sizeExtend);

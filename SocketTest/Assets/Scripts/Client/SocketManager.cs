@@ -393,7 +393,6 @@ public class SocketManager : MonoBehaviour
                 userToken.isOnLoop = true;
                 Handle(userToken);
             }
-
         }
         else//接收数据小于等于0
         {
@@ -483,72 +482,148 @@ public class SocketManager : MonoBehaviour
         }
     }
     */
+    [ContextMenu("测试halfmessage")]
+    public void TestSocket()
+    {
+        AsyncUserToken userToken = new AsyncUserToken(1000);
+        userToken.ReceiveBuffer = new Queue<byte>();
+        MessageXieYi move = new MessageXieYi((byte)MessageConvention.moveDirection, 0, new byte[] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 });
+        byte[] temp = move.ToBytes();
+        for (int i = 0; i < 10; i++)
+        {
+            for (int j = 0; j < temp.Length; j++)
+            {
+                userToken.ReceiveBuffer.Enqueue(temp[j]);
+            }
+        }
+        Handle(userToken);
+    }
+
+
     public void Handle(object obj)
     {
         AsyncUserToken userToken = (AsyncUserToken)obj;
-        while (userToken.ReceiveBuffer.Count > 0)
+        //while (userToken.ReceiveBuffer.Count > 0)
+        //{
+        //    byte[] buffer = new byte[] { };
+        //    if (userToken.HalfMessage == null)//上一次循环的数据处理完毕
+        //    {
+        //        int startLength = MessageXieYi.XieYiLength + 1;
+        //        //TODO 处理数据
+        //        if (userToken.ReceiveBuffer.Count < startLength)
+        //        {
+        //            Console.WriteLine("剩余长度{0}小于协议默认长度{1}", userToken.ReceiveBuffer.Count(), startLength);
+        //            break;
+        //        }
+        //        //查找开头标识
+        //        byte markStart = 0;
+        //        lock (userToken.ReceiveBuffer)
+        //        {
+        //            do
+        //            {
+        //                markStart = userToken.ReceiveBuffer.Dequeue();
+        //            }
+        //            while (markStart != MessageXieYi.markStart);//此处有可能删除数据
+        //        }
+        //        //
+        //        //至少6位数据  解析传输数据长度
+        //        buffer = new byte[MessageXieYi.XieYiLength];
+        //        lock (userToken.ReceiveBuffer)
+        //        {
+        //            for (int i = 0; i < buffer.Length; i++)
+        //            {
+        //                buffer[i] = userToken.ReceiveBuffer.Dequeue();
+        //            }
+        //        }
+        //        userToken.HalfMessage = MessageXieYi.BackMessageType(buffer);// 读取协议长度的数值来判断该协议中数据长度的数值
+        //        //Debug.LogError("处理到的协议：" + (MessageConvention)userToken.HalfMessage.XieYiFirstFlag);
+        //    }
+        //    if (userToken.HalfMessage.IsLengthCanFillMessage(userToken.ReceiveBuffer))//长度是否足够填充信息（接收数据是否够完成本次）
+        //    {
+        //        lock (userToken.ReceiveBuffer)
+        //        {
+        //            userToken.HalfMessage.FillMessageContent(userToken.ReceiveBuffer);
+        //            //检查填充完成的下一位是否是结尾符
+        //            byte end = userToken.ReceiveBuffer.Peek();
+        //            if (end == MessageXieYi.markEnd)//一致的话清除结尾符
+        //            {
+        //                userToken.ReceiveBuffer.Dequeue();
+        //            }
+        //            else
+        //            {
+        //                Debug.LogError("检查->处理数据结束后的markEnd不一致:" + end);
+        //            }
+        //        }
+        //        DoReceiveEvent(userToken.HalfMessage);
+        //        userToken.HalfMessage = null;
+        //    }
+        //    else
+        //    {
+        //        string info = "接收长度不够填充完整处理，保留HalfMessage。";
+        //        Debug.LogError(info);
+        //        break;
+        //    }
+        //}
+        //userToken.isOnLoop = false;
+
+
+
+
+
+
+
+        int startLength = MessageXieYi.XieYiLength + 1 + 1;
+        if (userToken.ReceiveBuffer.Count < startLength)
         {
-            //userToken.isOnLoop = true;
-            byte[] buffer = new byte[] { };
-            if (userToken.HalfMessage == null)//上一次循环的数据处理完毕
+            Debug.LogError("待处理长度{0}小于协议默认长度{1}" + userToken.ReceiveBuffer.Count() + "/" + startLength);
+            return;
+        }
+        byte[] mix = new byte[userToken.ReceiveBuffer.Count + userToken.halfMessage.Length];
+        Array.Copy(userToken.halfMessage, 0, mix, 0, userToken.halfMessage.Length);
+        Array.Copy(userToken.ReceiveBuffer.ToArray(), 0, mix, userToken.halfMessage.Length, userToken.ReceiveBuffer.Count);
+
+        do
+        {
+            MessageXieYi xieyi = MessageXieYi.FromBytes(mix, true, true);
+            if (xieyi != null)
             {
-                int startLength = MessageXieYi.XieYiLength + 1;
-                //TODO 处理数据
-                if (userToken.ReceiveBuffer.Count < startLength)
-                {
-                    Console.WriteLine("剩余长度{0}小于协议默认长度{1}", userToken.ReceiveBuffer.Count(), startLength);
-                    break;
-                }
-                //查找开头标识
-                byte markStart = 0;
+                int dealLength = xieyi.MessageContentLength + MessageXieYi.XieYiLength + 1 + 1;
+                byte[] duoyu = mix.Skip(dealLength).ToArray();
                 lock (userToken.ReceiveBuffer)
                 {
-                    do
-                    {
-                        markStart = userToken.ReceiveBuffer.Dequeue();
-                    }
-                    while (markStart != MessageXieYi.markStart);//此处有可能删除数据
-                }
-                //
-                //至少6位数据  解析传输数据长度
-                buffer = new byte[MessageXieYi.XieYiLength];
-                lock (userToken.ReceiveBuffer)
-                {
-                    for (int i = 0; i < buffer.Length; i++)
-                    {
-                        buffer[i] = userToken.ReceiveBuffer.Dequeue();
-                    }
-                }
-                userToken.HalfMessage = MessageXieYi.BackMessageType(buffer);// 读取协议长度的数值来判断该协议中数据长度的数值
-                //Debug.LogError("处理到的协议：" + (MessageConvention)userToken.HalfMessage.XieYiFirstFlag);
-            }
-            if (userToken.HalfMessage.IsLengthCanFillMessage(userToken.ReceiveBuffer))//长度是否足够填充信息（接收数据是否够完成本次）
-            {
-                lock (userToken.ReceiveBuffer)
-                {
-                    userToken.HalfMessage.FillMessageContent(userToken.ReceiveBuffer);
-                    //检查填充完成的下一位是否是结尾符
-                    byte end = userToken.ReceiveBuffer.Peek();
-                    if (end == MessageXieYi.markEnd)//一致的话清除结尾符
+                    for (int i = 0; i < dealLength; i++)
                     {
                         userToken.ReceiveBuffer.Dequeue();
                     }
-                    else
-                    {
-                        Debug.LogError("检查->处理数据结束后的markEnd不一致:" + end);
-                    }
                 }
-                DoReceiveEvent(userToken.HalfMessage);
-                userToken.HalfMessage = null;
+                mix = new byte[duoyu.Length];
+                mix = duoyu;
+                DoReceiveEvent(xieyi);
             }
             else
             {
-                string info = "接收长度不够填充完整处理，保留HalfMessage。";
-                Debug.LogError(info);
-                break;
+                lock (userToken.halfMessage)
+                {
+                    Debug.LogError("缓存未处理完，保留长度：" + mix.Length);
+                    userToken.halfMessage = new byte[mix.Length];
+                    userToken.halfMessage = mix;
+                    break;
+                }
             }
-        }
+        } while (mix.Length > 0);
         userToken.isOnLoop = false;
+
+
+
+
+
+
+
+
+
+
+
+
     }
 
     #endregion
@@ -711,10 +786,9 @@ public class SocketManager : MonoBehaviour
                 break;
             case MessageConvention.startGaming:
                 string time = SerializeHelper.ConvertToString(tempMessageContent);
-                Debug.LogError("开始游戏时间：" + time);
+                Debug.LogError("开始游戏服务器时间：" + time);
                 startGamTime = DateTime.Parse(time);
                 DataController.instance.MyRoomInfo.CurState = RoomActorState.Gaming;
-                GameManager.instance.saveTime = GameManager.instance.startTime;
                 break;
             case MessageConvention.gamingTime:
                 messageInfo = SerializeHelper.ConvertToString(tempMessageContent);
@@ -732,26 +806,7 @@ public class SocketManager : MonoBehaviour
             case MessageConvention.moveDirection://GameManager中处理帧同步相应协议
 
                 break;
-            case MessageConvention.frameData:
-                //FrameInfo fInfo = SerializeHelper.Deserialize<FrameInfo>(tempMessageContent);
-                //if (DataController.instance.myRoomInfo.FrameIndex < fInfo.frameIndex)
-                //{
-                //    DataController.instance.myRoomInfo.FrameIndex = fInfo.frameIndex;
-                //    if (fInfo.frameData != null)
-                //    {
-                //        Debug.LogError("frameDataCount:" + fInfo.frameData.Count);
-                //        for (int i = 0; i < fInfo.frameData.Count; i++)
-                //        {
-                //            MessageXieYi frameXY = MessageXieYi.FromBytes(fInfo.frameData[i], true);
-                //            DoReceiveEvent(frameXY);
-                //        }
-                //    }
-                //}
-                //else
-                //{
-                //    //Debug.LogError("已重复请求同一帧域。");
-                //}
-
+            case MessageConvention.frameData://////////////////////////////////////////////////////////////////////
                 List<FrameInfo> fInfos = SerializeHelper.Deserialize<List<FrameInfo>>(tempMessageContent);
                 if (tempMessageContent.Length > 200)
                 {
