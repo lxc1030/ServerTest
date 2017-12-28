@@ -81,8 +81,9 @@ public class RoomUI : MonoBehaviour
                 uiNoReady.btnReady.SetActive(true);
 
                 UpdateUIInfo();
-                ReflashRoomInfo();
-                ReflashRoomState();
+                GameManager.GetRoommateInfo();
+                //ReflashRoomInfo();
+                //ReflashRoomState();
                 break;
             case RoomState.倒计时:
                 uiNoReady.all.SetActive(false);
@@ -211,6 +212,7 @@ public class RoomUI : MonoBehaviour
                 }
                 else
                 {
+                    HomeUI.Close();
                     Debug.Log("根据玩家数据刷新房间UI");
                     ReflashRoomInfo();
                     ReflashRoomState();

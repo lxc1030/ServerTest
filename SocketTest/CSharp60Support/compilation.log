@@ -1,5 +1,5 @@
 ********************************************************************************
-*                    Tuesday, December 26, 2017 5:52:15 PM                     *
+*                    Thursday, December 28, 2017 4:45:05 PM                    *
 ********************************************************************************
 CSharpCompilerWrapper.exe version: 2.0.3.30
 Platform: Windows
@@ -12,9 +12,9 @@ Compiler: Microsoft C# 6.0
 - Compilation -----------------------------------------------
 
 Process: E:\MyGit\ServerTest\SocketTest\CSharp60Support\Roslyn\csc.exe
-Arguments: -nostdlib+ -noconfig -nologo -r:"D:\Unity5.6.1\Unity\Editor\Data\MonoBleedingEdge\lib\mono\2.0-api\mscorlib.dll" -r:"D:\Unity5.6.1\Unity\Editor\Data\MonoBleedingEdge\lib\mono\2.0-api\System.dll" -r:"D:\Unity5.6.1\Unity\Editor\Data\MonoBleedingEdge\lib\mono\2.0-api\System.Core.dll" -r:"D:\Unity5.6.1\Unity\Editor\Data\MonoBleedingEdge\lib\mono\2.0-api\System.Xml.dll" @Temp/UnityTempFile-bb75310adacfb5b4f9b043fb7fd4988d 
+Arguments: -nostdlib+ -noconfig -nologo -r:"D:\Unity5.6.1\Unity\Editor\Data\MonoBleedingEdge\lib\mono\2.0-api\mscorlib.dll" -r:"D:\Unity5.6.1\Unity\Editor\Data\MonoBleedingEdge\lib\mono\2.0-api\System.dll" -r:"D:\Unity5.6.1\Unity\Editor\Data\MonoBleedingEdge\lib\mono\2.0-api\System.Core.dll" -r:"D:\Unity5.6.1\Unity\Editor\Data\MonoBleedingEdge\lib\mono\2.0-api\System.Xml.dll" @Temp/UnityTempFile-cc8dfb2c73f76d144a4e0a9b35414017 
 Exit code: 0
-Elapsed time: 1.60 sec
+Elapsed time: 1.15 sec
 
 - Compiler output (0 lines):
 
@@ -30,15 +30,15 @@ Elapsed time: 1.60 sec
 8: Assets\EasyTouchBundle\EasyTouchControls\Examples\Version 1.X\LoadLevelScript.cs(69,3): warning CS0618: 'Application.LoadLevel(string)' is obsolete: 'Use SceneManager.LoadScene'
 9: Assets\EasyTouchBundle\EasyTouchControls\Examples\Version 1.X\LoadLevelScript.cs(77,3): warning CS0618: 'Application.LoadLevel(string)' is obsolete: 'Use SceneManager.LoadScene'
 10: Assets\EasyTouchBundle\EasyTouchControls\Examples\Version 1.X\LoadLevelScript.cs(85,3): warning CS0618: 'Application.LoadLevel(string)' is obsolete: 'Use SceneManager.LoadScene'
-11: Assets\Scripts\Client\SocketManager.cs(814,9): warning CS0162: Unreachable code detected
-12: Assets\Scripts\Manager\GameManager.cs(541,16): warning CS0219: The variable 'messageInfo' is assigned but its value is never used
-13: Assets\Scripts\IOCPSoket\AsyncUserToken.cs(29,28): warning CS0414: The field 'AsyncUserToken.sizeExtend' is assigned but its value is never used
-14: Assets\Scripts\Client\HttpClient.cs(72,12): warning CS0414: The field 'HttpClient.url' is assigned but its value is never used
-15: Assets\Scripts\Data\DataController.cs(108,27): warning CS0414: The field 'DataController.XMLName' is assigned but its value is never used
-16: Assets\Scripts\uMeng\Analytics.cs(25,15): warning CS0414: The field 'Analytics.hasInit' is assigned but its value is never used
+11: Assets\Scripts\Manager\GameManager.cs(516,16): warning CS0219: The variable 'messageInfo' is assigned but its value is never used
+12: Assets\Scripts\Client\SocketManager.cs(845,9): warning CS0162: Unreachable code detected
+13: Assets\Scripts\Client\SocketManager.cs(837,20): warning CS0414: The field 'SocketManager.errorDetail' is assigned but its value is never used
+14: Assets\Scripts\Data\DataController.cs(108,27): warning CS0414: The field 'DataController.XMLName' is assigned but its value is never used
+15: Assets\Scripts\Client\HttpClient.cs(72,12): warning CS0414: The field 'HttpClient.url' is assigned but its value is never used
+16: Assets\Scripts\Manager\GameManager.cs(12,27): warning CS0414: The field 'GameManager.XMLName' is assigned but its value is never used
 17: Assets\Scripts\Client\HttpClient.cs(70,20): warning CS0414: The field 'HttpClient.myRequest' is assigned but its value is never used
-18: Assets\Scripts\Client\SocketManager.cs(806,20): warning CS0414: The field 'SocketManager.errorDetail' is assigned but its value is never used
-19: Assets\Scripts\Manager\GameManager.cs(12,27): warning CS0414: The field 'GameManager.XMLName' is assigned but its value is never used
+18: Assets\Scripts\uMeng\Analytics.cs(25,15): warning CS0414: The field 'Analytics.hasInit' is assigned but its value is never used
+19: Assets\Scripts\IOCPSoket\AsyncUserToken.cs(29,28): warning CS0414: The field 'AsyncUserToken.sizeExtend' is assigned but its value is never used
 20: Assets\Scripts\Client\HttpClient.cs(71,14): warning CS0414: The field 'HttpClient.encode' is assigned but its value is never used
 
 - PDB to MDB conversion --------------------------------------
@@ -46,11 +46,11 @@ Elapsed time: 1.60 sec
 Process: E:\MyGit\ServerTest\SocketTest\CSharp60Support\Roslyn\pdb2mdb.exe
 Arguments: Temp\Assembly-CSharp.dll
 Exit code: 0
-Elapsed time: 0.11 sec
+Elapsed time: 0.10 sec
 
 - pdb2mdb.exe output (0 lines):
 ********************************************************************************
-*                    Tuesday, December 26, 2017 5:52:22 PM                     *
+*                    Thursday, December 28, 2017 4:45:08 PM                    *
 ********************************************************************************
 CSharpCompilerWrapper.exe version: 2.0.3.30
 Platform: Windows
@@ -63,59 +63,9 @@ Compiler: Microsoft C# 6.0
 - Compilation -----------------------------------------------
 
 Process: E:\MyGit\ServerTest\SocketTest\CSharp60Support\Roslyn\csc.exe
-Arguments: -nostdlib+ -noconfig -nologo -r:"D:\Unity5.6.1\Unity\Editor\Data\MonoBleedingEdge\lib\mono\2.0-api\mscorlib.dll" -r:"D:\Unity5.6.1\Unity\Editor\Data\MonoBleedingEdge\lib\mono\2.0-api\System.dll" -r:"D:\Unity5.6.1\Unity\Editor\Data\MonoBleedingEdge\lib\mono\2.0-api\System.Core.dll" -r:"D:\Unity5.6.1\Unity\Editor\Data\MonoBleedingEdge\lib\mono\2.0-api\System.Xml.dll" @Temp/UnityTempFile-cab858da1e473d4449159de86a2ae6e4 
+Arguments: -nostdlib+ -noconfig -nologo -r:"D:\Unity5.6.1\Unity\Editor\Data\MonoBleedingEdge\lib\mono\2.0-api\mscorlib.dll" -r:"D:\Unity5.6.1\Unity\Editor\Data\MonoBleedingEdge\lib\mono\2.0-api\System.dll" -r:"D:\Unity5.6.1\Unity\Editor\Data\MonoBleedingEdge\lib\mono\2.0-api\System.Core.dll" -r:"D:\Unity5.6.1\Unity\Editor\Data\MonoBleedingEdge\lib\mono\2.0-api\System.Xml.dll" @Temp/UnityTempFile-4c4179abd7ee1ec4c9a48a32ac582e30 
 Exit code: 0
-Elapsed time: 1.07 sec
-
-- Compiler output (0 lines):
-
-- Compiler errors (20 lines):
-0: Assets\EasyTouchBundle\EasyTouch\Examples\4.X\LoadExamples.cs(9,3): warning CS0618: 'Application.LoadLevel(string)' is obsolete: 'Use SceneManager.LoadScene'
-1: Assets\EasyTouchBundle\EasyTouchControls\Examples\Version 1.X\LoadLevelScript.cs(13,3): warning CS0618: 'Application.LoadLevel(string)' is obsolete: 'Use SceneManager.LoadScene'
-2: Assets\EasyTouchBundle\EasyTouchControls\Examples\Version 1.X\LoadLevelScript.cs(21,3): warning CS0618: 'Application.LoadLevel(string)' is obsolete: 'Use SceneManager.LoadScene'
-3: Assets\EasyTouchBundle\EasyTouchControls\Examples\Version 1.X\LoadLevelScript.cs(29,3): warning CS0618: 'Application.LoadLevel(string)' is obsolete: 'Use SceneManager.LoadScene'
-4: Assets\EasyTouchBundle\EasyTouchControls\Examples\Version 1.X\LoadLevelScript.cs(37,3): warning CS0618: 'Application.LoadLevel(string)' is obsolete: 'Use SceneManager.LoadScene'
-5: Assets\EasyTouchBundle\EasyTouchControls\Examples\Version 1.X\LoadLevelScript.cs(45,3): warning CS0618: 'Application.LoadLevel(string)' is obsolete: 'Use SceneManager.LoadScene'
-6: Assets\EasyTouchBundle\EasyTouchControls\Examples\Version 1.X\LoadLevelScript.cs(53,3): warning CS0618: 'Application.LoadLevel(string)' is obsolete: 'Use SceneManager.LoadScene'
-7: Assets\EasyTouchBundle\EasyTouchControls\Examples\Version 1.X\LoadLevelScript.cs(61,3): warning CS0618: 'Application.LoadLevel(string)' is obsolete: 'Use SceneManager.LoadScene'
-8: Assets\EasyTouchBundle\EasyTouchControls\Examples\Version 1.X\LoadLevelScript.cs(69,3): warning CS0618: 'Application.LoadLevel(string)' is obsolete: 'Use SceneManager.LoadScene'
-9: Assets\EasyTouchBundle\EasyTouchControls\Examples\Version 1.X\LoadLevelScript.cs(77,3): warning CS0618: 'Application.LoadLevel(string)' is obsolete: 'Use SceneManager.LoadScene'
-10: Assets\EasyTouchBundle\EasyTouchControls\Examples\Version 1.X\LoadLevelScript.cs(85,3): warning CS0618: 'Application.LoadLevel(string)' is obsolete: 'Use SceneManager.LoadScene'
-11: Assets\Scripts\Manager\GameManager.cs(541,16): warning CS0219: The variable 'messageInfo' is assigned but its value is never used
-12: Assets\Scripts\Client\SocketManager.cs(814,9): warning CS0162: Unreachable code detected
-13: Assets\Scripts\IOCPSoket\AsyncUserToken.cs(29,28): warning CS0414: The field 'AsyncUserToken.sizeExtend' is assigned but its value is never used
-14: Assets\Scripts\Client\HttpClient.cs(72,12): warning CS0414: The field 'HttpClient.url' is assigned but its value is never used
-15: Assets\Scripts\Client\HttpClient.cs(70,20): warning CS0414: The field 'HttpClient.myRequest' is assigned but its value is never used
-16: Assets\Scripts\Client\HttpClient.cs(71,14): warning CS0414: The field 'HttpClient.encode' is assigned but its value is never used
-17: Assets\Scripts\Data\DataController.cs(108,27): warning CS0414: The field 'DataController.XMLName' is assigned but its value is never used
-18: Assets\Scripts\Client\SocketManager.cs(806,20): warning CS0414: The field 'SocketManager.errorDetail' is assigned but its value is never used
-19: Assets\Scripts\Manager\GameManager.cs(12,27): warning CS0414: The field 'GameManager.XMLName' is assigned but its value is never used
-
-- PDB to MDB conversion --------------------------------------
-
-Process: E:\MyGit\ServerTest\SocketTest\CSharp60Support\Roslyn\pdb2mdb.exe
-Arguments: Temp\Assembly-CSharp.dll
-Exit code: 0
-Elapsed time: 0.11 sec
-
-- pdb2mdb.exe output (0 lines):
-********************************************************************************
-*                    Tuesday, December 26, 2017 5:52:38 PM                     *
-********************************************************************************
-CSharpCompilerWrapper.exe version: 2.0.3.30
-Platform: Windows
-Target assembly: Assembly-CSharp.dll
-Project directory: E:\MyGit\ServerTest\SocketTest
-Target profile directory: D:\Unity5.6.1\Unity\Editor\Data\MonoBleedingEdge\lib\mono\2.0-api
-Unity 'Data' or 'Frameworks' directory: D:/Unity5.6.1/Unity/Editor/Data
-Compiler: Microsoft C# 6.0
-
-- Compilation -----------------------------------------------
-
-Process: E:\MyGit\ServerTest\SocketTest\CSharp60Support\Roslyn\csc.exe
-Arguments: -nostdlib+ -noconfig -nologo -r:"D:\Unity5.6.1\Unity\Editor\Data\MonoBleedingEdge\lib\mono\2.0-api\mscorlib.dll" -r:"D:\Unity5.6.1\Unity\Editor\Data\MonoBleedingEdge\lib\mono\2.0-api\System.dll" -r:"D:\Unity5.6.1\Unity\Editor\Data\MonoBleedingEdge\lib\mono\2.0-api\System.Core.dll" -r:"D:\Unity5.6.1\Unity\Editor\Data\MonoBleedingEdge\lib\mono\2.0-api\System.Xml.dll" @Temp/UnityTempFile-223547fee0c7e924bba695819ad0cea0 
-Exit code: 0
-Elapsed time: 1.66 sec
+Elapsed time: 1.23 sec
 
 - Compiler output (0 lines):
 
@@ -131,27 +81,27 @@ Elapsed time: 1.66 sec
 8: Assets\EasyTouchBundle\EasyTouchControls\Examples\Version 1.X\LoadLevelScript.cs(69,3): warning CS0618: 'Application.LoadLevel(string)' is obsolete: 'Use SceneManager.LoadScene'
 9: Assets\EasyTouchBundle\EasyTouchControls\Examples\Version 1.X\LoadLevelScript.cs(77,3): warning CS0618: 'Application.LoadLevel(string)' is obsolete: 'Use SceneManager.LoadScene'
 10: Assets\EasyTouchBundle\EasyTouchControls\Examples\Version 1.X\LoadLevelScript.cs(85,3): warning CS0618: 'Application.LoadLevel(string)' is obsolete: 'Use SceneManager.LoadScene'
-11: Assets\Scripts\Client\SocketManager.cs(814,9): warning CS0162: Unreachable code detected
-12: Assets\Scripts\Manager\GameManager.cs(541,16): warning CS0219: The variable 'messageInfo' is assigned but its value is never used
-13: Assets\Scripts\Client\SocketManager.cs(806,20): warning CS0414: The field 'SocketManager.errorDetail' is assigned but its value is never used
-14: Assets\Scripts\Client\HttpClient.cs(70,20): warning CS0414: The field 'HttpClient.myRequest' is assigned but its value is never used
+11: Assets\Scripts\Manager\GameManager.cs(516,16): warning CS0219: The variable 'messageInfo' is assigned but its value is never used
+12: Assets\Scripts\Client\SocketManager.cs(845,9): warning CS0162: Unreachable code detected
+13: Assets\Scripts\Client\HttpClient.cs(71,14): warning CS0414: The field 'HttpClient.encode' is assigned but its value is never used
+14: Assets\Scripts\uMeng\Analytics.cs(25,15): warning CS0414: The field 'Analytics.hasInit' is assigned but its value is never used
 15: Assets\Scripts\IOCPSoket\AsyncUserToken.cs(29,28): warning CS0414: The field 'AsyncUserToken.sizeExtend' is assigned but its value is never used
-16: Assets\Scripts\uMeng\Analytics.cs(25,15): warning CS0414: The field 'Analytics.hasInit' is assigned but its value is never used
-17: Assets\Scripts\Data\DataController.cs(108,27): warning CS0414: The field 'DataController.XMLName' is assigned but its value is never used
-18: Assets\Scripts\Manager\GameManager.cs(12,27): warning CS0414: The field 'GameManager.XMLName' is assigned but its value is never used
-19: Assets\Scripts\Client\HttpClient.cs(71,14): warning CS0414: The field 'HttpClient.encode' is assigned but its value is never used
-20: Assets\Scripts\Client\HttpClient.cs(72,12): warning CS0414: The field 'HttpClient.url' is assigned but its value is never used
+16: Assets\Scripts\Client\HttpClient.cs(72,12): warning CS0414: The field 'HttpClient.url' is assigned but its value is never used
+17: Assets\Scripts\Client\SocketManager.cs(837,20): warning CS0414: The field 'SocketManager.errorDetail' is assigned but its value is never used
+18: Assets\Scripts\Client\HttpClient.cs(70,20): warning CS0414: The field 'HttpClient.myRequest' is assigned but its value is never used
+19: Assets\Scripts\Manager\GameManager.cs(12,27): warning CS0414: The field 'GameManager.XMLName' is assigned but its value is never used
+20: Assets\Scripts\Data\DataController.cs(108,27): warning CS0414: The field 'DataController.XMLName' is assigned but its value is never used
 
 - PDB to MDB conversion --------------------------------------
 
 Process: E:\MyGit\ServerTest\SocketTest\CSharp60Support\Roslyn\pdb2mdb.exe
 Arguments: Temp\Assembly-CSharp.dll
 Exit code: 0
-Elapsed time: 0.11 sec
+Elapsed time: 0.09 sec
 
 - pdb2mdb.exe output (0 lines):
 ********************************************************************************
-*                    Tuesday, December 26, 2017 5:52:41 PM                     *
+*                    Thursday, December 28, 2017 4:45:10 PM                    *
 ********************************************************************************
 CSharpCompilerWrapper.exe version: 2.0.3.30
 Platform: Windows
@@ -164,9 +114,9 @@ Compiler: Microsoft C# 6.0
 - Compilation -----------------------------------------------
 
 Process: E:\MyGit\ServerTest\SocketTest\CSharp60Support\Roslyn\csc.exe
-Arguments: -nostdlib+ -noconfig -nologo -r:"D:\Unity5.6.1\Unity\Editor\Data\MonoBleedingEdge\lib\mono\2.0-api\mscorlib.dll" -r:"D:\Unity5.6.1\Unity\Editor\Data\MonoBleedingEdge\lib\mono\2.0-api\System.dll" -r:"D:\Unity5.6.1\Unity\Editor\Data\MonoBleedingEdge\lib\mono\2.0-api\System.Core.dll" -r:"D:\Unity5.6.1\Unity\Editor\Data\MonoBleedingEdge\lib\mono\2.0-api\System.Xml.dll" @Temp/UnityTempFile-cd95fc5bbfd447842aa536dc85a99d86 
+Arguments: -nostdlib+ -noconfig -nologo -r:"D:\Unity5.6.1\Unity\Editor\Data\MonoBleedingEdge\lib\mono\2.0-api\mscorlib.dll" -r:"D:\Unity5.6.1\Unity\Editor\Data\MonoBleedingEdge\lib\mono\2.0-api\System.dll" -r:"D:\Unity5.6.1\Unity\Editor\Data\MonoBleedingEdge\lib\mono\2.0-api\System.Core.dll" -r:"D:\Unity5.6.1\Unity\Editor\Data\MonoBleedingEdge\lib\mono\2.0-api\System.Xml.dll" @Temp/UnityTempFile-f320a790dfe687848ba9744ef676b615 
 Exit code: 0
-Elapsed time: 1.14 sec
+Elapsed time: 0.78 sec
 
 - Compiler output (0 lines):
 
@@ -176,20 +126,20 @@ Elapsed time: 1.14 sec
 2: Assets\EasyTouchBundle\EasyTouchControls\Plugins\Editor\ETCMenu.cs(150,79): warning CS0618: 'TouchInputModule' is obsolete: 'TouchInputModule is no longer required as Touch input is now handled in StandaloneInputModule.'
 3: Assets\EasyTouchBundle\EasyTouchControls\Plugins\Editor\ETCMenu.cs(150,27): warning CS0618: 'TouchInputModule' is obsolete: 'TouchInputModule is no longer required as Touch input is now handled in StandaloneInputModule.'
 4: Assets\EasyTouchBundle\EasyTouchControls\Plugins\Editor\ETCMenu.cs(164,60): warning CS0618: 'TouchInputModule' is obsolete: 'TouchInputModule is no longer required as Touch input is now handled in StandaloneInputModule.'
-5: Assets\BuildReport\Scripts\Editor\ReportGeneration\BRT_ReportGenerator.cs(198,25): warning CS0618: 'PlayerSettings.apiCompatibilityLevel' is obsolete: 'apiCompatibilityLevel is deprecated. Use PlayerSettings.GetApiCompatibilityLevel()/PlayerSettings.SetApiCompatibilityLevel() instead.'
-6: Assets\BuildReport\Scripts\Editor\ReportGeneration\BRT_UnityBuildSettingsUtility.cs(309,49): warning CS0618: 'PlayerSettings.apiCompatibilityLevel' is obsolete: 'apiCompatibilityLevel is deprecated. Use PlayerSettings.GetApiCompatibilityLevel()/PlayerSettings.SetApiCompatibilityLevel() instead.'
-7: Assets\BuildReport\Scripts\Editor\ReportGeneration\BRT_UnityBuildSettingsUtility.cs(322,42): warning CS0618: 'PlayerSettings.renderingPath' is obsolete: 'renderingPath is ignored, use UnityEditor.Rendering.TierSettings with UnityEditor.Rendering.SetTierSettings/GetTierSettings instead'
-8: Assets\BuildReport\Scripts\Editor\ReportGeneration\BRT_UnityBuildSettingsUtility.cs(495,43): warning CS0618: 'PlayerSettings.iOS.targetOSVersion' is obsolete: 'targetOSVersion is obsolete, use targetOSVersionString'
-9: Assets\BuildReport\Scripts\Editor\ReportGeneration\BRT_UnityBuildSettingsUtility.cs(777,31): warning CS0618: 'PlayerSettings.XboxOne.SandboxId' is obsolete: 'SandboxId is obsolete please remove'
-10: Assets\BuildReport\Scripts\Editor\ReportGeneration\BRT_UnityBuildSettingsUtility.cs(819,36): warning CS0618: 'PlayerSettings.PS4.videoOutResolution' is obsolete: 'videoOutResolution is deprecated. Use PlayerSettings.PS4.videoOutInitialWidth and PlayerSettings.PS4.videoOutReprojectionRate to control initial display resolution and reprojection rate.'
-11: Assets\BuildReport\Scripts\Editor\Utility\BRT_Util.cs(121,9): warning CS0618: 'BuildTarget.XBOX360' is obsolete: 'XBOX360 has been removed in 5.5'
-12: Assets\BuildReport\Scripts\Editor\Utility\BRT_Util.cs(124,9): warning CS0618: 'BuildTarget.PS3' is obsolete: 'PS3 has been removed in >=5.5'
+5: Assets\BuildReport\Scripts\Editor\Utility\BRT_Util.cs(121,9): warning CS0618: 'BuildTarget.XBOX360' is obsolete: 'XBOX360 has been removed in 5.5'
+6: Assets\BuildReport\Scripts\Editor\Utility\BRT_Util.cs(124,9): warning CS0618: 'BuildTarget.PS3' is obsolete: 'PS3 has been removed in >=5.5'
+7: Assets\BuildReport\Scripts\Editor\ReportGeneration\BRT_ReportGenerator.cs(198,25): warning CS0618: 'PlayerSettings.apiCompatibilityLevel' is obsolete: 'apiCompatibilityLevel is deprecated. Use PlayerSettings.GetApiCompatibilityLevel()/PlayerSettings.SetApiCompatibilityLevel() instead.'
+8: Assets\BuildReport\Scripts\Editor\ReportGeneration\BRT_UnityBuildSettingsUtility.cs(309,49): warning CS0618: 'PlayerSettings.apiCompatibilityLevel' is obsolete: 'apiCompatibilityLevel is deprecated. Use PlayerSettings.GetApiCompatibilityLevel()/PlayerSettings.SetApiCompatibilityLevel() instead.'
+9: Assets\BuildReport\Scripts\Editor\ReportGeneration\BRT_UnityBuildSettingsUtility.cs(322,42): warning CS0618: 'PlayerSettings.renderingPath' is obsolete: 'renderingPath is ignored, use UnityEditor.Rendering.TierSettings with UnityEditor.Rendering.SetTierSettings/GetTierSettings instead'
+10: Assets\BuildReport\Scripts\Editor\ReportGeneration\BRT_UnityBuildSettingsUtility.cs(495,43): warning CS0618: 'PlayerSettings.iOS.targetOSVersion' is obsolete: 'targetOSVersion is obsolete, use targetOSVersionString'
+11: Assets\BuildReport\Scripts\Editor\ReportGeneration\BRT_UnityBuildSettingsUtility.cs(777,31): warning CS0618: 'PlayerSettings.XboxOne.SandboxId' is obsolete: 'SandboxId is obsolete please remove'
+12: Assets\BuildReport\Scripts\Editor\ReportGeneration\BRT_UnityBuildSettingsUtility.cs(819,36): warning CS0618: 'PlayerSettings.PS4.videoOutResolution' is obsolete: 'videoOutResolution is deprecated. Use PlayerSettings.PS4.videoOutInitialWidth and PlayerSettings.PS4.videoOutReprojectionRate to control initial display resolution and reprojection rate.'
 
 - PDB to MDB conversion --------------------------------------
 
 Process: E:\MyGit\ServerTest\SocketTest\CSharp60Support\Roslyn\pdb2mdb.exe
 Arguments: Temp\Assembly-CSharp-Editor.dll
 Exit code: 0
-Elapsed time: 0.07 sec
+Elapsed time: 0.06 sec
 
 - pdb2mdb.exe output (0 lines):

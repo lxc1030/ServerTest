@@ -44,7 +44,7 @@ namespace NetFrame.Net
         public bool isOnLoop { get; set; }
 
         public MessageXieYi HalfMessage { get; set; }
-
+        public byte[] halfMessage { get; set; }
         //public Queue<byte[]> SendBuffer
         //{
         //    get { return _sendBuffer; }
@@ -119,7 +119,7 @@ namespace NetFrame.Net
 
             _receiveBuffer = new Queue<byte>();
 
-
+            halfMessage = new byte[] { };
             isOnLoop = false;
             //_receiveBuffer = new DynamicBufferManager(receiveBufferSize * sizeExtend);
             //_sendBuffer = new DynamicBufferManager(receiveBufferSize * sizeExtend);

@@ -287,7 +287,20 @@ public class CreateRoomUI : MonoBehaviour
         if (serverEvent.Count > 0)
         {
             MessageXieYi xieyi = serverEvent.Dequeue();
-
+            if ((MessageConvention)xieyi.XieYiFirstFlag == MessageConvention.createRoom
+              || (MessageConvention)xieyi.XieYiFirstFlag == MessageConvention.joinRoom)
+            {
+                ErrorType error = ClassGroup.CheckIsError(xieyi);
+                if (error != ErrorType.none)
+                {
+                    UIManager.instance.ShowAlertTip("加入房间失败" + error);
+                }
+                else
+                {
+                    RoomUI.Show();
+                    CreateRoomUI.Close();
+                }
+            }
             if ((MessageConvention)xieyi.XieYiFirstFlag == MessageConvention.updateRoom)
             {
                 ErrorType error = ClassGroup.CheckIsError(xieyi);

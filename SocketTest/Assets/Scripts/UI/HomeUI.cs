@@ -80,7 +80,7 @@ public class HomeUI : MonoBehaviour
         instance.Init();
     }
 
-    public void Close()
+    public static void Close()
     {
         UIManager.instance.HidePanel(Name);
     }

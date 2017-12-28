@@ -216,10 +216,10 @@ namespace NetFrame.Net
             //    Log4Debug("处理逻辑错误：" + error.Message);
             //}
             //  创建一个发送缓冲区。   
-            byte[] sendBuffer = newBuffer;
+            byte[] sendBuffer = null;
             if (newBuffer != null)//用户需要服务器返回值给自己的话
             {
-                xieyi = new MessageXieYi(xieyi.XieYiFirstFlag, xieyi.XieYiSecondFlag, sendBuffer);
+                xieyi = new MessageXieYi(xieyi.XieYiFirstFlag, xieyi.XieYiSecondFlag, newBuffer);
                 sendBuffer = xieyi.ToBytes();
             }
             return sendBuffer;
