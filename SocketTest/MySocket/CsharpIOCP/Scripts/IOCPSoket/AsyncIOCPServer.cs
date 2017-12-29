@@ -286,32 +286,30 @@ namespace NetFrame.Net
         /// </summary>
         /// <param name="e"></param>
         /// <param name="data"></param>
-        public void SaveSendMessage(AsyncUserToken e, byte[] data)
+        public void SaveSendMessage(AsyncUserToken userToken, byte[] data)
         {
-            //Log4Debug("发送出去的数据大小：" + data.Length);
-            //Send(e, data);//发送
-
-            //SocketAsyncEventArgs e = null;
-            //Int32 BytesToProcess = e.BytesTransferred;
-            //Byte[] bt = new Byte[BytesToProcess];
-            //Buffer.BlockCopy(e.Buffer, e.Offset, bt, 0, BytesToProcess);
-            //string strReceive = Encoding.Default.GetString(bt);
-
-            //Send(token.Socket, bt, 0, bt.Length, 1000);
             string INFO = "发送:";
             for (int i = 0; i < data.Length; i++)
             {
                 INFO += "_" + data[i];
             }
-            //Console.WriteLine(INFO);
-
-            //int offset = e.SendBuffer.Count;
-            //e.SendBuffer.Enqueue(data);
-
-            //if (offset == 0)//当前只有data一条需要传输
+            //Log4Debug(INFO);
+            
+            lock (userToken.SendBuffer)
             {
-                Send(e, data, 0, data.Length, 1000);
+                //存值
+                for (int i = 0; i < data.Length; i++)
+                {
+                    //将buffer保存到队列
+                    userToken.SendBuffer.Enqueue(data[i]);
+                }
             }
+            if (!userToken.isDealSend)
+            {
+                userToken.isDealSend = true;
+                Send(userToken);
+            }
+
         }
 
         ///// <summary>
@@ -366,7 +364,7 @@ namespace NetFrame.Net
 
 
 
-        public static void Send(AsyncUserToken userToken, byte[] buffer, int offset, int size, int timeout)
+        public void Send(AsyncUserToken userToken)
         {
             Socket socket = userToken.ConnectSocket;
             //判断Socket是否存在以及是否掉线
@@ -383,52 +381,53 @@ namespace NetFrame.Net
             {
                 return;
             }
-            //开始发送
-            socket.SendTimeout = 0;
-            int startTickCount = Environment.TickCount;
-            int sent = 0; // how many bytes is already sent
-            do
-            {
-                //throw new Exception("Timeout.");
-                try
-                {
-                    sent += socket.Send(buffer, offset + sent, size - sent, SocketFlags.None);
-                }
-                catch (SocketException ex)
-                {
-                    instance.Log4Debug("sendError:" + ex.SocketErrorCode);
-                    //
-                    if (ex.SocketErrorCode == SocketError.WouldBlock ||
-                    ex.SocketErrorCode == SocketError.IOPending ||
-                    ex.SocketErrorCode == SocketError.NoBufferSpaceAvailable)
-                    {
-                        // socket buffer is probably full, wait and try again
-                        Thread.Sleep(30);
-                    }
-                    else
-                    {
-                        if (ex.SocketErrorCode == SocketError.ConnectionAborted)//您的主机中的软件中止了一个已建立的连接。
-                        {
-                            return;
-                        }
-                        //throw ex; // any serious error occurr
-                        instance.Log4Debug("send错误：" + ex.Message);
-                    }
-                }
-            } while (sent < size);
-            //
-            //lock (userToken.SendBuffer.Buffer)
-            //{
-            //    userToken.SendBuffer.Clear(size);
-            //}
-            //int buffSize = userToken.SendBuffer.GetDataCount();
-            //if (buffSize > 0)
-            //{
-            //    Console.WriteLine("未发送长度：" + buffSize);
-            //    Send(userToken, userToken.SendBuffer.Buffer, 0, buffSize, timeout);
-            //}
-        }
 
+            //开始发送
+            socket.SendTimeout = 10000;//设置发送后判断超时的时长
+            while (userToken.SendBuffer.Count > 0)
+            {
+                byte[] buffer = null;
+                lock (userToken.SendBuffer)
+                {
+                    buffer = userToken.SendBuffer.ToArray();
+                    userToken.ClearSend();
+                }
+
+                int startTickCount = Environment.TickCount;
+                int sent = 0; // how many bytes is already sent
+                do
+                {
+                    try
+                    {
+                        sent += socket.Send(buffer, sent, buffer.Length - sent, SocketFlags.None);
+                    }
+                    catch (SocketException ex)
+                    {
+                        Log4Debug("sendError:" + ex.SocketErrorCode);
+                        //
+                        if (ex.SocketErrorCode == SocketError.WouldBlock ||
+                        ex.SocketErrorCode == SocketError.IOPending ||
+                        ex.SocketErrorCode == SocketError.NoBufferSpaceAvailable)
+                        {
+                            // socket buffer is probably full, wait and try again
+                            Thread.Sleep(30);
+                            Log4Debug("睡眠30秒后继续发送。");
+                        }
+                        else
+                        {
+                            if (ex.SocketErrorCode == SocketError.ConnectionAborted)//您的主机中的软件中止了一个已建立的连接。
+                            {
+                                return;
+                            }
+                            //throw ex; // any serious error occurr
+                            Log4Debug("send错误：" + ex.Message);
+                        }
+                    }
+                } while (sent < buffer.Length);
+                //Log4Debug("发送用时毫秒：" + (Environment.TickCount - startTickCount));
+            }
+            userToken.isDealSend = false;
+        }
         #endregion
 
         #region 接收数据
@@ -453,52 +452,43 @@ namespace NetFrame.Net
             Socket socket = userToken.ConnectSocket;
             try
             {
-                int read = 0;
                 if (socket == null || !socket.Connected)
                 {
                     return;
                 }
-                else
+                lock (userToken.ReceiveBuffer)
                 {
-                    if (ar.IsCompleted)
+                    //从远程设备读取数据
+                    int read = socket.EndReceive(ar);
+                    if (read > 0)
                     {
-                        //从远程设备读取数据
-                        read = socket.EndReceive(ar);
-                    }
-                    else
-                    {
-                        Log4Debug("异步操作未完成，却进了回调函数。");
-                        return;
-                    }
-                }
-                if (read > 0)
-                {
-                    byte[] buffer = new byte[read];
-                    //将getBuffer数组的前read个字节拷贝到buffer数组中
-                    Array.Copy(userToken.AsyncReceiveBuffer, 0, buffer, 0, read);
-                    userToken.userInfo.heartbeatTime = DateTime.Now;
-                    //接收数据保存以后继续接收
-                    ProcessReceive(userToken);
+                        byte[] buffer = new byte[read];
+                        //将getBuffer数组的前read个字节拷贝到buffer数组中
+                        Array.Copy(userToken.AsyncReceiveBuffer, 0, buffer, 0, read);
+                        userToken.userInfo.heartbeatTime = DateTime.Now;
+                        //接收数据保存以后继续接收
+                        ProcessReceive(userToken);
 
-                    lock (userToken.ReceiveBuffer)
-                    {
-                        //存值
-                        for (int i = 0; i < buffer.Length; i++)
+                        lock (userToken.ReceiveBuffer)
                         {
-                            //将buffer保存到队列
-                            userToken.ReceiveBuffer.Enqueue(buffer[i]);
+                            //存值
+                            for (int i = 0; i < buffer.Length; i++)
+                            {
+                                //将buffer保存到队列
+                                userToken.ReceiveBuffer.Enqueue(buffer[i]);
+                            }
+                        }
+                        if (!userToken.isDealReceive)
+                        {
+                            userToken.isDealReceive = true;
+                            Handle(userToken);
                         }
                     }
-                    if (!userToken.isOnLoop)
+                    else//接收数据小于等于0
                     {
-                        userToken.isOnLoop = true;
-                        Handle(userToken);
+                        CloseClientSocket(userToken);
+                        return;
                     }
-                }
-                else//接收数据小于等于0
-                {
-                    CloseClientSocket(userToken);
-                    return;
                 }
             }
             catch (Exception error)
@@ -510,76 +500,123 @@ namespace NetFrame.Net
 
 
 
+
         public void Handle(object obj)
         {
+            //AsyncUserToken userToken = (AsyncUserToken)obj;
+            //while (userToken.ReceiveBuffer.Count > 0)
+            //{
+            //    //userToken.isOnLoop = true;
+            //    byte[] buffer = new byte[] { };
+            //    if (userToken.HalfMessage == null)//上一次循环的数据处理完毕
+            //    {
+            //        int startLength = MessageXieYi.XieYiLength + 1;
+            //        //TODO 处理数据
+            //        if (userToken.ReceiveBuffer.Count < startLength)
+            //        {
+            //            Log4Debug("剩余长度:" + userToken.ReceiveBuffer.Count() + "小于协议默认长度:" + startLength);
+            //            break;
+            //        }
+            //        //查找开头标识
+            //        byte markStart = 0;
+            //        lock (userToken.ReceiveBuffer)
+            //        {
+            //            do
+            //            {
+            //                markStart = userToken.ReceiveBuffer.Dequeue();
+            //            }
+            //            while (markStart != MessageXieYi.markStart);//此处有可能删除数据
+            //        }
+            //        //
+            //        //至少6位数据  解析传输数据长度
+            //        buffer = new byte[MessageXieYi.XieYiLength];
+            //        lock (userToken.ReceiveBuffer)
+            //        {
+            //            for (int i = 0; i < buffer.Length; i++)
+            //            {
+            //                buffer[i] = userToken.ReceiveBuffer.Dequeue();
+            //            }
+            //        }
+            //        userToken.HalfMessage = MessageXieYi.BackMessageType(buffer);// 读取协议长度的数值来判断该协议中数据长度的数值
+            //    }
+            //    if (userToken.HalfMessage.IsLengthCanFillMessage(userToken.ReceiveBuffer))//长度是否足够填充信息（接收数据是否够完成本次）
+            //    {
+            //        lock (userToken.ReceiveBuffer)
+            //        {
+            //            userToken.HalfMessage.FillMessageContent(userToken.ReceiveBuffer);
+            //            //检查填充完成的下一位是否是结尾符
+            //            byte end = userToken.ReceiveBuffer.Peek();
+            //            if (end == MessageXieYi.markEnd)//一致的话清除结尾符
+            //            {
+            //                userToken.ReceiveBuffer.Dequeue();
+            //            }
+            //            else
+            //            {
+            //                Log4Debug("检查->处理数据结束后的markEnd不一致:" + end);
+            //            }
+            //        }
+            //        byte[] backInfo = ServerDataManager.instance.SelectMessage(userToken.HalfMessage, userToken); //判断逻辑
+            //        userToken.HalfMessage = null;
+            //        if (backInfo != null)//用户需要服务器返回值的话
+            //        {
+            //            //存储要发送的消息并判断是否发送
+            //            AsyncIOCPServer.instance.SaveSendMessage(userToken, backInfo);
+            //        }
+            //    }
+            //    else
+            //    {
+            //        string info = "接收长度不够填充完整处理，保留HalfMessage。";
+            //        Log4Debug(info);
+            //        break;
+            //    }
+            //}
+            //userToken.isOnLoop = false;
+
+
             AsyncUserToken userToken = (AsyncUserToken)obj;
             while (userToken.ReceiveBuffer.Count > 0)
             {
-                //userToken.isOnLoop = true;
-                byte[] buffer = new byte[] { };
-                if (userToken.HalfMessage == null)//上一次循环的数据处理完毕
+                byte[] mix = new byte[userToken.halfMessage.Length + userToken.ReceiveBuffer.Count];
+                Array.Copy(userToken.halfMessage, 0, mix, 0, userToken.halfMessage.Length);
+                //lock (userToken.ReceiveBuffer)//锁住以后Copy并且置空
                 {
-                    int startLength = MessageXieYi.XieYiLength + 1;
-                    //TODO 处理数据
-                    if (userToken.ReceiveBuffer.Count < startLength)
+                    Array.Copy(userToken.ReceiveBuffer.ToArray(), 0, mix, userToken.halfMessage.Length, userToken.ReceiveBuffer.Count);
+                    userToken.ClearReceive();
+                }
+                do
+                {
+                    MessageXieYi xieyi = MessageXieYi.FromBytes(mix);
+                    if (xieyi != null)
                     {
-                        Log4Debug("剩余长度:" + userToken.ReceiveBuffer.Count() + "小于协议默认长度:" + startLength);
+                        int messageLength = xieyi.MessageContentLength + MessageXieYi.XieYiLength + 1 + 1;
+                        byte[] backInfo = ServerDataManager.instance.SelectMessage(xieyi, userToken); //判断逻辑
+                        if (backInfo != null)//用户需要服务器返回值的话
+                        {
+                            //存储要发送的消息并判断是否发送
+                            AsyncIOCPServer.instance.SaveSendMessage(userToken, backInfo);
+                        }
+                        mix = mix.Skip(messageLength).ToArray();
+                    }
+                    else
+                    {
+                        string info = "sy:";
+                        for (int i = 0; i < mix.Length; i++)
+                        {
+                            info += mix[i] + ",";
+                        }
+                        Log4Debug("剩余未处理数据长度：" + mix.Length + "/" + info);
                         break;
                     }
-                    //查找开头标识
-                    byte markStart = 0;
-                    lock (userToken.ReceiveBuffer)
-                    {
-                        do
-                        {
-                            markStart = userToken.ReceiveBuffer.Dequeue();
-                        }
-                        while (markStart != MessageXieYi.markStart);//此处有可能删除数据
-                    }
-                    //
-                    //至少6位数据  解析传输数据长度
-                    buffer = new byte[MessageXieYi.XieYiLength];
-                    lock (userToken.ReceiveBuffer)
-                    {
-                        for (int i = 0; i < buffer.Length; i++)
-                        {
-                            buffer[i] = userToken.ReceiveBuffer.Dequeue();
-                        }
-                    }
-                    userToken.HalfMessage = MessageXieYi.BackMessageType(buffer);// 读取协议长度的数值来判断该协议中数据长度的数值
-                }
-                if (userToken.HalfMessage.IsLengthCanFillMessage(userToken.ReceiveBuffer))//长度是否足够填充信息（接收数据是否够完成本次）
-                {
-                    lock (userToken.ReceiveBuffer)
-                    {
-                        userToken.HalfMessage.FillMessageContent(userToken.ReceiveBuffer);
-                        //检查填充完成的下一位是否是结尾符
-                        byte end = userToken.ReceiveBuffer.Peek();
-                        if (end == MessageXieYi.markEnd)//一致的话清除结尾符
-                        {
-                            userToken.ReceiveBuffer.Dequeue();
-                        }
-                        else
-                        {
-                            Log4Debug("检查->处理数据结束后的markEnd不一致:" + end);
-                        }
-                    }
-                    byte[] backInfo = ServerDataManager.instance.SelectMessage(userToken.HalfMessage, userToken); //判断逻辑
-                    userToken.HalfMessage = null;
-                    if (backInfo != null)//用户需要服务器返回值的话
-                    {
-                        //存储要发送的消息并判断是否发送
-                        AsyncIOCPServer.instance.SaveSendMessage(userToken, backInfo);
-                    }
-                }
-                else
-                {
-                    string info = "接收长度不够填充完整处理，保留HalfMessage。";
-                    Log4Debug(info);
-                    break;
-                }
+
+                } while (mix.Length > 0);
+                userToken.halfMessage = new byte[mix.Length];
+                userToken.halfMessage = mix;//保存未处理的数据长度
             }
-            userToken.isOnLoop = false;
+            userToken.isDealReceive = false;
+
+
+
+
         }
 
 

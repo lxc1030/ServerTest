@@ -857,8 +857,9 @@ public class SingleRoom
         {
             //Log4Debug("----------ReConnect--------" + userToken.ConnectSocket.RemoteEndPoint);
             //给自己发送重连消息，因为没有先初始化房间
+            int curFrame = RoomInfo.FrameIndex;
             MessageXieYi xieyi = null;
-            xieyi = new MessageXieYi((byte)MessageConvention.reConnect, 0, SerializeHelper.ConvertToByte("" + RoomInfo.FrameIndex));
+            xieyi = new MessageXieYi((byte)MessageConvention.reConnect, 0, SerializeHelper.ConvertToByte("" + curFrame));
             AsyncIOCPServer.instance.SaveSendMessage(userToken, xieyi.ToBytes());
             //
             switch (RoomInfo.CurState)
@@ -893,8 +894,7 @@ public class SingleRoom
                     //UpdateState(roomActorUpdate);
 
                     //帧数据
-                    int limetNum = 100;
-                    int curFrame = RoomInfo.FrameIndex;
+                    int limetNum = 50;
                     Log4Debug("重连截止帧：" + curFrame);
                     int count = curFrame / limetNum;
                     count += 1;

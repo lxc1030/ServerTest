@@ -42,7 +42,7 @@ public class GameManager : MonoBehaviour
     /// <summary>
     /// 重连时客户端一帧复现X帧的数据
     /// </summary>
-    private int reConnectSpan = 100;
+    private int reConnectSpan = 50;
 
 
     public bool isOnFrame;//是否正在处理帧逻辑
@@ -379,6 +379,7 @@ public class GameManager : MonoBehaviour
     private void EndGaming(MessageXieYi xieyi)
     {
         isOnFrame = false;
+        reConnectIndex = 0;//游戏结束的时候未完成复现，怎清除重连记录帧
         MyJoystickManager.instance.Close();
         Debug.LogError("结束游戏");
         foreach (var item in memberGroup)
@@ -490,8 +491,20 @@ public class GameManager : MonoBehaviour
                 }
                 for (int i = 0; i < info.frameData.Count; i++)
                 {
-                    MessageXieYi frameXY = MessageXieYi.FromBytes(info.frameData[i], true);
-                    SelectFrameInfo(frameXY);
+                    MessageXieYi frameXY = MessageXieYi.FromBytes(info.frameData[i]);
+                    if (frameXY != null)
+                    {
+                        SelectFrameInfo(frameXY);
+                    }
+                    else
+                    {
+                        string debug = "";
+                        for (int j = 0; j < info.frameData[i].Length; j++)
+                        {
+                            debug += info.frameData[i][j] + ",";
+                        }
+                        Debug.LogError("服务器数据无法解析还原:" + debug);
+                    }
                 }
             }
             //子件需要每帧判断的逻辑

@@ -29,7 +29,7 @@ namespace NetFrame.Net
         private static int sizeExtend = 4;
 
         private Queue<byte> _receiveBuffer;
-        //private Queue<byte[]> _sendBuffer;
+       
 
         public Queue<byte> ReceiveBuffer
         {
@@ -37,13 +37,20 @@ namespace NetFrame.Net
             set { _receiveBuffer = value; }
         }
 
+        private Queue<byte> _sendBuffer;
+        public Queue<byte> SendBuffer
+        {
+            get { return _sendBuffer; }
+            set { _sendBuffer = value; }
+        }
+
+        public bool isDealSend { get; set; }
 
         /// <summary>
         /// 数据是否在循环处理中
         /// </summary>
-        public bool isOnLoop { get; set; }
-
-        public MessageXieYi HalfMessage { get; set; }
+        public bool isDealReceive { get; set; }
+        public byte[] halfMessage { get; set; }
 
         //public Queue<byte[]> SendBuffer
         //{
@@ -117,13 +124,23 @@ namespace NetFrame.Net
             _asyncReceiveBuffer = new byte[receiveBufferSize];
             _syncSendBuffer = new byte[receiveBufferSize];
 
-            _receiveBuffer = new Queue<byte>();
-            
-            isOnLoop = false;
+            ClearReceive();
+            ClearSend();
+
+            halfMessage = new byte[] { };
+            isDealReceive = false;
+            isDealSend = false;
             //_receiveBuffer = new DynamicBufferManager(receiveBufferSize * sizeExtend);
             //_sendBuffer = new DynamicBufferManager(receiveBufferSize * sizeExtend);
 
         }
-    
+        public void ClearReceive()
+        {
+            _receiveBuffer = new Queue<byte>();
+        }
+        public void ClearSend()
+        {
+            _sendBuffer = new Queue<byte>();
+        }
     }
 }

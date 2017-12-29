@@ -127,28 +127,6 @@ public class MessageXieYi
 
     #endregion
 
-    #region 填充信息数据
-    public bool IsLengthCanFillMessage(Queue<byte> buffer)
-    {
-        if (buffer.Count >= messageContentLength + 1)//此处的1是（结尾符）占用大小
-        {
-            return true;
-        }
-        return false;
-    }
-    public void FillMessageContent(Queue<byte> buffer)
-    {
-        lock (messageContent)
-        {
-            messageContent = new byte[messageContentLength];
-            for (int i = 0; i < messageContentLength; i++)
-            {
-                messageContent[i] = buffer.Dequeue();//待处理数据拷贝剩余数据长度的值到新数组
-            }
-        }
-    }
-    #endregion
-
 
 
     #region byte[] 转换为 MessageXieYi
@@ -180,24 +158,26 @@ public class MessageXieYi
     /// </summary>
     /// <param name="buffer">字节数组缓冲器。</param>
     /// <returns></returns>
-    public static MessageXieYi FromBytes(byte[] buffer, bool isMoveStart = false)
+    public static MessageXieYi FromBytes(byte[] buffer)
     {
         int bufferLength = buffer.Length;
 
-        MessageXieYi messageXieYi = new MessageXieYi();
+        int limet = 2;
+        if (bufferLength < XieYiLength + limet)
+        {
+            return null;
+        }
 
+        MessageXieYi messageXieYi = new MessageXieYi();
         using (MemoryStream memoryStream = new MemoryStream(buffer)) //将字节数组填充至内存流
         {
             BinaryReader binaryReader = new BinaryReader(memoryStream); //以二进制读取器读取该流内容
-
-            //byte start = binaryReader.ReadByte();
-            //if (start != markStart)
-            //{
-            //    System.Console.WriteLine("第一位Byte不是协议标识开头");
-            //}
-            if (isMoveStart)
+            
+            byte start = binaryReader.ReadByte();//把开头的标识符去掉
+            if (start != markStart)
             {
-                byte start = binaryReader.ReadByte();//把开头的标识符去掉
+                Console.WriteLine("开头：" + start);
+                return null;
             }
 
             messageXieYi.xieYiFirstFlag = binaryReader.ReadByte(); //读取协议一级标志，读1个字节
@@ -216,16 +196,22 @@ public class MessageXieYi
             {
                 messageXieYi.messageContent = binaryReader.ReadBytes(messageXieYi.messageContentLength); //读取实际消息内容，从第7个字节开始读
             }
+            //如果【进来的Bytes长度】小于【一个完整的MessageXieYi长度】
+            if ((bufferLength - 6) < messageXieYi.messageContentLength)
+            {
+                Console.WriteLine("数据接收不齐：" + (bufferLength - 6) + "/" + messageXieYi.messageContentLength);
+                return null;
+            }
 
-            //byte end = binaryReader.ReadByte();
-            //if (end != markEnd)
-            //{
-            //    System.Console.WriteLine("最后一位Byte不是协议标识结尾");
-            //}
+            byte end = binaryReader.ReadByte();
+            if (end != markEnd)
+            {
+                Console.WriteLine("结尾：" + end + "消息长度：" + messageXieYi.messageContentLength);
+                return null;
+            }
 
             binaryReader.Close(); //关闭二进制读取器，是否资源
         }
-
         return messageXieYi; //返回消息协议对象
     }
     #endregion
