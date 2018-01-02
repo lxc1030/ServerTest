@@ -29,8 +29,6 @@ namespace NetFrame.Net
         private static int sizeExtend = 4;
 
         private Queue<byte> _receiveBuffer;
-       
-
         public Queue<byte> ReceiveBuffer
         {
             get { return _receiveBuffer; }
@@ -45,19 +43,14 @@ namespace NetFrame.Net
         }
 
         public bool isDealSend { get; set; }
-
         /// <summary>
         /// 数据是否在循环处理中
         /// </summary>
         public bool isDealReceive { get; set; }
-        public byte[] halfMessage { get; set; }
-
-        //public Queue<byte[]> SendBuffer
-        //{
-        //    get { return _sendBuffer; }
-        //    set { _sendBuffer = value; }
-        //}
-
+        public byte[] halfReceiveMessage { get; set; }
+        public int sendIndex { get; set; }
+        public int receiveIndex { get; set; }
+        public Dictionary<int,byte[]> outOrders { get; set; }
 
         ///// <summary>
         ///// 动态的接收缓冲区
@@ -124,16 +117,27 @@ namespace NetFrame.Net
             _asyncReceiveBuffer = new byte[receiveBufferSize];
             _syncSendBuffer = new byte[receiveBufferSize];
 
-            ClearReceive();
-            ClearSend();
+            Init();
 
-            halfMessage = new byte[] { };
-            isDealReceive = false;
-            isDealSend = false;
             //_receiveBuffer = new DynamicBufferManager(receiveBufferSize * sizeExtend);
             //_sendBuffer = new DynamicBufferManager(receiveBufferSize * sizeExtend);
 
         }
+
+        public void Init()
+        {
+            ClearReceive();
+            ClearSend();
+
+            halfReceiveMessage = new byte[] { };
+            isDealReceive = false;
+            isDealSend = false;
+
+            sendIndex = 0;
+            receiveIndex = 0;
+            outOrders = new Dictionary<int, byte[]>();
+        }
+
         public void ClearReceive()
         {
             _receiveBuffer = new Queue<byte>();

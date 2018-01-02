@@ -254,6 +254,7 @@ namespace NetFrame.Net
                     {
                         Interlocked.Increment(ref _clientCount);//原子操作加1
                         AsyncUserToken userToken = _userTokenPool.Pop();
+                        userToken.Init();
                         userToken.ConnectSocket = sock;
 
                         //创建处理数据线程
@@ -288,13 +289,13 @@ namespace NetFrame.Net
         /// <param name="data"></param>
         public void SaveSendMessage(AsyncUserToken userToken, byte[] data)
         {
-            string INFO = "发送:";
-            for (int i = 0; i < data.Length; i++)
-            {
-                INFO += "_" + data[i];
-            }
+            //string INFO = "保存待发送:";
+            //for (int i = 0; i < data.Length; i++)
+            //{
+            //    INFO += "_" + data[i];
+            //}
             //Log4Debug(INFO);
-            
+
             lock (userToken.SendBuffer)
             {
                 //存值
@@ -386,45 +387,65 @@ namespace NetFrame.Net
             socket.SendTimeout = 10000;//设置发送后判断超时的时长
             while (userToken.SendBuffer.Count > 0)
             {
-                byte[] buffer = null;
+                byte[] mix = new byte[userToken.SendBuffer.Count];
                 lock (userToken.SendBuffer)
                 {
-                    buffer = userToken.SendBuffer.ToArray();
+                    Array.Copy(userToken.SendBuffer.ToArray(), 0, mix, 0, userToken.SendBuffer.Count);
                     userToken.ClearSend();
                 }
 
-                int startTickCount = Environment.TickCount;
-                int sent = 0; // how many bytes is already sent
-                do
+                //int startTickCount = Environment.TickCount;
+                while (mix.Length > 0)
                 {
-                    try
+                    byte[] intBuff = BitConverter.GetBytes(userToken.sendIndex);// 将 int 转换成字节数组
+                    userToken.sendIndex++;
+                    int dealLength = 0;
+                    if (mix.Length > 1020)
                     {
-                        sent += socket.Send(buffer, sent, buffer.Length - sent, SocketFlags.None);
+                        dealLength = 1020;
                     }
-                    catch (SocketException ex)
+                    else
                     {
-                        Log4Debug("sendError:" + ex.SocketErrorCode);
-                        //
-                        if (ex.SocketErrorCode == SocketError.WouldBlock ||
-                        ex.SocketErrorCode == SocketError.IOPending ||
-                        ex.SocketErrorCode == SocketError.NoBufferSpaceAvailable)
+                        dealLength = mix.Length;
+                    }
+                    byte[] buffer = new byte[intBuff.Length + dealLength];
+                    Array.Copy(intBuff, 0, buffer, 0, intBuff.Length);//4
+                    Array.Copy(mix, 0, buffer, intBuff.Length, dealLength);//dealLength
+                    mix = mix.Skip(buffer.Length).ToArray();
+
+                    //
+                    int sent = 0; // how many bytes is already sent
+                    do
+                    {
+                        try
                         {
-                            // socket buffer is probably full, wait and try again
-                            Thread.Sleep(30);
-                            Log4Debug("睡眠30秒后继续发送。");
+                            sent += socket.Send(buffer, sent, buffer.Length - sent, SocketFlags.None);
                         }
-                        else
+                        catch (SocketException ex)
                         {
-                            if (ex.SocketErrorCode == SocketError.ConnectionAborted)//您的主机中的软件中止了一个已建立的连接。
+                            Log4Debug("sendError:" + ex.SocketErrorCode);
+                            //
+                            if (ex.SocketErrorCode == SocketError.WouldBlock ||
+                            ex.SocketErrorCode == SocketError.IOPending ||
+                            ex.SocketErrorCode == SocketError.NoBufferSpaceAvailable)
                             {
-                                return;
+                                // socket buffer is probably full, wait and try again
+                                Thread.Sleep(30);
+                                Log4Debug("睡眠30秒后继续发送。");
                             }
-                            //throw ex; // any serious error occurr
-                            Log4Debug("send错误：" + ex.Message);
+                            else
+                            {
+                                if (ex.SocketErrorCode == SocketError.ConnectionAborted)//您的主机中的软件中止了一个已建立的连接。
+                                {
+                                    return;
+                                }
+                                //throw ex; // any serious error occurr
+                                Log4Debug("send错误：" + ex.Message);
+                            }
                         }
-                    }
-                } while (sent < buffer.Length);
-                //Log4Debug("发送用时毫秒：" + (Environment.TickCount - startTickCount));
+                    } while (sent < buffer.Length);
+                    //Log4Debug("发送用时毫秒：" + (Environment.TickCount - startTickCount));
+                }
             }
             userToken.isDealSend = false;
         }
@@ -462,27 +483,75 @@ namespace NetFrame.Net
                     int read = socket.EndReceive(ar);
                     if (read > 0)
                     {
+                        //byte[] buffer = new byte[read];
+                        ////将getBuffer数组的前read个字节拷贝到buffer数组中
+                        //Array.Copy(userToken.AsyncReceiveBuffer, 0, buffer, 0, read);
+                        //userToken.userInfo.heartbeatTime = DateTime.Now;
+                        ////接收数据保存以后继续接收
+                        //ProcessReceive(userToken);
+
+                        //lock (userToken.ReceiveBuffer)
+                        //{
+                        //    //存值
+                        //    for (int i = 0; i < buffer.Length; i++)
+                        //    {
+                        //        //将buffer保存到队列
+                        //        userToken.ReceiveBuffer.Enqueue(buffer[i]);
+                        //    }
+                        //}
+                        //if (!userToken.isDealReceive)
+                        //{
+                        //    userToken.isDealReceive = true;
+                        //    Handle(userToken);
+                        //}
+
+
+
                         byte[] buffer = new byte[read];
                         //将getBuffer数组的前read个字节拷贝到buffer数组中
                         Array.Copy(userToken.AsyncReceiveBuffer, 0, buffer, 0, read);
-                        userToken.userInfo.heartbeatTime = DateTime.Now;
                         //接收数据保存以后继续接收
                         ProcessReceive(userToken);
 
-                        lock (userToken.ReceiveBuffer)
+                        string info = "";
+                        for (int i = 0; i < buffer.Length; i++)
                         {
-                            //存值
-                            for (int i = 0; i < buffer.Length; i++)
-                            {
-                                //将buffer保存到队列
-                                userToken.ReceiveBuffer.Enqueue(buffer[i]);
-                            }
+                            info += buffer[i] + ",";
                         }
+                        Log4Debug("接收数据：" + info);
+
+                        byte[] intBuff = new byte[4] { buffer[0], buffer[1], buffer[2], buffer[3] };
+                        int index = BitConverter.ToInt32(intBuff, 0);           // 从字节数组转换成 int
+
+                        byte[] dealBuffer = new byte[buffer.Length - intBuff.Length];
+                        Array.Copy(buffer, intBuff.Length, dealBuffer, 0, dealBuffer.Length);
+                        userToken.outOrders.Add(index, dealBuffer);
+                        //while (userToken.outOrders.ContainsKey(userToken.sendIndex))
+                        //{
+                        //    //存值
+                        //    for (int i = 0; i < userToken.outOrders[userToken.sendIndex].Length; i++)
+                        //    {
+                        //        //将buffer保存到队列
+                        //        userToken.ReceiveBuffer.Enqueue(userToken.outOrders[userToken.sendIndex][i]);
+                        //    }
+                        //    userToken.sendIndex++;
+                        //}
                         if (!userToken.isDealReceive)
                         {
                             userToken.isDealReceive = true;
                             Handle(userToken);
                         }
+
+
+
+
+
+
+
+
+
+
+
                     }
                     else//接收数据小于等于0
                     {
@@ -572,59 +641,112 @@ namespace NetFrame.Net
             //}
             //userToken.isOnLoop = false;
 
+            ///////////////2
+            //AsyncUserToken userToken = (AsyncUserToken)obj;
+            //while (userToken.ReceiveBuffer.Count > 0)
+            //{
+            //    byte[] mix = new byte[userToken.halfReceiveMessage.Length + userToken.ReceiveBuffer.Count];
+            //    Array.Copy(userToken.halfReceiveMessage, 0, mix, 0, userToken.halfReceiveMessage.Length);
+            //    //lock (userToken.ReceiveBuffer)//锁住以后Copy并且置空
+            //    {
+            //        Array.Copy(userToken.ReceiveBuffer.ToArray(), 0, mix, userToken.halfReceiveMessage.Length, userToken.ReceiveBuffer.Count);
+            //        userToken.ClearReceive();
+            //    }
+            //    do
+            //    {
+            //        MessageXieYi xieyi = MessageXieYi.FromBytes(mix);
+            //        if (xieyi != null)
+            //        {
+            //            int messageLength = xieyi.MessageContentLength + MessageXieYi.XieYiLength + 1 + 1;
+            //            byte[] backInfo = ServerDataManager.instance.SelectMessage(xieyi, userToken); //判断逻辑
+            //            if (backInfo != null)//用户需要服务器返回值的话
+            //            {
+            //                //存储要发送的消息并判断是否发送
+            //                AsyncIOCPServer.instance.SaveSendMessage(userToken, backInfo);
+            //            }
+            //            mix = mix.Skip(messageLength).ToArray();
+            //        }
+            //        else
+            //        {
+            //            string info = "sy:";
+            //            for (int i = 0; i < mix.Length; i++)
+            //            {
+            //                info += mix[i] + ",";
+            //            }
+            //            Log4Debug("剩余未处理数据长度：" + mix.Length + "/" + info);
+            //            break;
+            //        }
+
+            //    } while (mix.Length > 0);
+            //    userToken.halfReceiveMessage = new byte[mix.Length];
+            //    userToken.halfReceiveMessage = mix;//保存未处理的数据长度
+            //}
+            //userToken.isDealReceive = false;
+            //////////////2
+
 
             AsyncUserToken userToken = (AsyncUserToken)obj;
-            while (userToken.ReceiveBuffer.Count > 0)
+            while (userToken.outOrders.ContainsKey(userToken.receiveIndex))
             {
-                byte[] mix = new byte[userToken.halfMessage.Length + userToken.ReceiveBuffer.Count];
-                Array.Copy(userToken.halfMessage, 0, mix, 0, userToken.halfMessage.Length);
-                //lock (userToken.ReceiveBuffer)//锁住以后Copy并且置空
+                byte[] buffer = userToken.outOrders[userToken.receiveIndex];
+                userToken.outOrders.Remove(userToken.receiveIndex);
+                byte[] mix = new byte[userToken.halfReceiveMessage.Length + buffer.Length];
+                userToken.halfReceiveMessage.CopyTo(mix, 0);
+                Array.Copy(buffer, 0, mix, userToken.halfReceiveMessage.Length, buffer.Length);
+                userToken.halfReceiveMessage = new byte[] { };
+                userToken.receiveIndex++;
+
+                MessageXieYi xieyi = MessageXieYi.FromBytes(mix);
+                if (xieyi != null)
                 {
-                    Array.Copy(userToken.ReceiveBuffer.ToArray(), 0, mix, userToken.halfMessage.Length, userToken.ReceiveBuffer.Count);
-                    userToken.ClearReceive();
-                }
-                do
-                {
-                    MessageXieYi xieyi = MessageXieYi.FromBytes(mix);
-                    if (xieyi != null)
+                    int messageLength = xieyi.MessageContentLength + MessageXieYi.XieYiLength + 1 + 1;
+                    Log4Debug("快速处理协议：" + (MessageConvention)xieyi.XieYiFirstFlag);
+                    DealReceive(xieyi, userToken);
+
+                    mix = mix.Skip(messageLength).ToArray();
+                    if (mix.Length > 0)
                     {
-                        int messageLength = xieyi.MessageContentLength + MessageXieYi.XieYiLength + 1 + 1;
-                        byte[] backInfo = ServerDataManager.instance.SelectMessage(xieyi, userToken); //判断逻辑
-                        if (backInfo != null)//用户需要服务器返回值的话
-                        {
-                            //存储要发送的消息并判断是否发送
-                            AsyncIOCPServer.instance.SaveSendMessage(userToken, backInfo);
-                        }
-                        mix = mix.Skip(messageLength).ToArray();
+                        byte[] intBuff = new byte[4] { mix[0], mix[1], mix[2], mix[3] };
+                        int index = BitConverter.ToInt32(intBuff, 0);// 从字节数组转换成 int
+                        mix = mix.Skip(intBuff.Length).ToArray();
+                        userToken.outOrders.Add(index, mix);
+                        userToken.receiveIndex = index;
+                        continue;
                     }
                     else
                     {
-                        string info = "sy:";
-                        for (int i = 0; i < mix.Length; i++)
-                        {
-                            info += mix[i] + ",";
-                        }
-                        Log4Debug("剩余未处理数据长度：" + mix.Length + "/" + info);
                         break;
                     }
+                }
+                else
+                {
+                    Array.Copy(mix, 0, userToken.halfReceiveMessage, 0, mix.Length);
+                    string info = "sy:";
+                    for (int i = 0; i < mix.Length; i++)
+                    {
+                        info += mix[i] + ",";
+                    }
+                    //Debug.LogError("剩余未处理数据长度：" + mix.Length + "当前帧：" + GameManager.instance.frameIndex + "/" + DataController.instance.MyRoomInfo.FrameIndex + info);
+                    break;
+                }
 
-                } while (mix.Length > 0);
-                userToken.halfMessage = new byte[mix.Length];
-                userToken.halfMessage = mix;//保存未处理的数据长度
+
             }
             userToken.isDealReceive = false;
-
-
-
 
         }
 
 
 
-
-
-
-
+        private void DealReceive(MessageXieYi xieyi, AsyncUserToken userToken)
+        {
+            byte[] backInfo = ServerDataManager.instance.SelectMessage(xieyi, userToken); //判断逻辑
+            if (backInfo != null)//用户需要服务器返回值的话
+            {
+                //存储要发送的消息并判断是否发送
+                AsyncIOCPServer.instance.SaveSendMessage(userToken, backInfo);
+            }
+        }
 
 
 
