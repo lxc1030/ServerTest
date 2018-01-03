@@ -188,7 +188,7 @@ public class MessageXieYi
             //如果【进来的Bytes长度】大于【一个完整的MessageXieYi长度】
             if ((bufferLength - 6) > messageXieYi.messageContentLength)
             {
-                Debug.Log("数据接收足够，已处理：" + messageXieYi.messageContentLength);
+                //Debug.Log("数据接收足够，已处理：" + messageXieYi.messageContentLength);
                 messageXieYi.messageContent = binaryReader.ReadBytes(messageXieYi.messageContentLength); //读取实际消息内容，从第7个字节开始读
                 //messageXieYi.duoYvBytes = binaryReader.ReadBytes(bufferLength - 6 - messageXieYi.messageContentLength);
             }
@@ -196,7 +196,7 @@ public class MessageXieYi
             //如果【进来的Bytes长度】等于【一个完整的MessageXieYi长度】
             if ((bufferLength - 6) == messageXieYi.messageContentLength)
             {
-                Debug.Log("数据接收等量，已处理：" + messageXieYi.messageContentLength);
+                //Debug.Log("数据接收等量，已处理：" + messageXieYi.messageContentLength);
                 messageXieYi.messageContent = binaryReader.ReadBytes(messageXieYi.messageContentLength); //读取实际消息内容，从第7个字节开始读
             }
             //如果【进来的Bytes长度】小于【一个完整的MessageXieYi长度】

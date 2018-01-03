@@ -472,7 +472,7 @@ public class GameManager : MonoBehaviour
     /// </summary>
     private void FrameMainLogic()
     {
-        //Debug.Log("当前执行帧：" + frameIndex);
+        Debug.Log("当前执行帧：" + frameIndex);
         FrameInfo info = FrameInfos[frameIndex];
         if (info == null)
         {

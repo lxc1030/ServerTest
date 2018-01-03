@@ -66,13 +66,16 @@ public class Testing : MonoBehaviour
         }
         //RaycastHit2D hit = Physics2D.Linecast(transform.position, transform.position + new Vector3(1, 1, 1));
         //Debug.LogError(hit.collider.gameObject.name);
-        
+
     }
 
     [ContextMenu("真实时间")]
     void AddCoin()
     {
-
+        //byte[] intBuff = new byte[] { 10, 0, 0, 0 };
+        //int index = BitConverter.ToInt32(intBuff, 0);
+        //Debug.LogError(index);
+     
     }
 
 

@@ -238,7 +238,7 @@ public class SocketManager : MonoBehaviour
         {
             INFO += "_" + data[i];
         }
-        Log4Debug(INFO);
+        //Log4Debug(INFO);
 
         lock (userToken.SendBuffer)
         {
@@ -402,22 +402,45 @@ public class SocketManager : MonoBehaviour
             //int startTickCount = Environment.TickCount;
             while (mix.Length > 0)
             {
-                byte[] intBuff = BitConverter.GetBytes(userToken.sendIndex);// 将 int 转换成字节数组
-                userToken.sendIndex++;
-                int dealLength = 0;
-                if (mix.Length > 1020)
-                {
-                    dealLength = 1020;
-                }
-                else
-                {
-                    dealLength = mix.Length;
-                }
-                byte[] buffer = new byte[intBuff.Length + dealLength];
-                Array.Copy(intBuff, 0, buffer, 0, intBuff.Length);//4
-                Array.Copy(mix, 0, buffer, intBuff.Length, dealLength);//dealLength
-                mix = mix.Skip(buffer.Length).ToArray();
+                int curIndex = userToken.sendIndex;
+                MessageOperation oper = MessageOperation.FromBytes(curIndex, mix);
+                byte[] buffer = null;
 
+                buffer = oper.ToBytes();
+                userToken.sendIndex++;
+                mix = mix.Skip(buffer.Length).ToArray();
+                string sendIfo = "userToken.sendIndex:" + curIndex + "----";
+                for (int i = 0; i < buffer.Length; i++)
+                {
+                    sendIfo += buffer[i] + ",";
+                }
+                //Log4Debug(sendIfo);
+
+
+
+
+                //byte[] idBuffer = BitConverter.GetBytes(curIndex);// 将 int 转换成字节数组
+                //byte[] lengthBuffer = new byte[4];
+                //userToken.sendIndex++;
+                //int dealLength = 0;
+                //if (mix.Length > 1020)
+                //{
+                //    dealLength = 1020;
+                //}
+                //else
+                //{
+                //    dealLength = mix.Length;
+                //}
+                //byte[] buffer = new byte[idBuffer.Length + dealLength];
+                //Array.Copy(idBuffer, 0, buffer, 0, idBuffer.Length);//4
+                //Array.Copy(mix, 0, buffer, idBuffer.Length, dealLength);//dealLength
+                //mix = mix.Skip(buffer.Length).ToArray();
+                //string sendIfo = "userToken.sendIndex:" + curIndex + "----";
+                //for (int i = 0; i < buffer.Length; i++)
+                //{
+                //    sendIfo += buffer[i] + ",";
+                //}
+                //Log4Debug(sendIfo);
                 //
                 int sent = 0; // how many bytes is already sent
                 do
@@ -485,6 +508,9 @@ public class SocketManager : MonoBehaviour
             int read = socket.EndReceive(ar);
             if (read > 0)
             {
+                zijie += read;
+                kb = zijie / 1024;
+                //
                 byte[] buffer = new byte[read];
                 //将getBuffer数组的前read个字节拷贝到buffer数组中
                 Array.Copy(userToken.AsyncReceiveBuffer, 0, buffer, 0, read);
@@ -496,17 +522,67 @@ public class SocketManager : MonoBehaviour
                 {
                     info += buffer[i] + ",";
                 }
-                Debug.LogError("接收数据：" + info);
+                Log4Debug("接收数据：" + info);
 
-                zijie += read;
-                kb = zijie / 1024;
 
-                byte[] intBuff = new byte[4] { buffer[0], buffer[1], buffer[2], buffer[3] };
-                int index = BitConverter.ToInt32(intBuff, 0);           // 从字节数组转换成 int
 
-                byte[] dealBuffer = new byte[buffer.Length - intBuff.Length];
-                Array.Copy(buffer, intBuff.Length, dealBuffer, 0, dealBuffer.Length);
-                userToken.outOrders.Add(index, dealBuffer);
+                while (buffer.Length > 0)
+                {
+                    if (buffer[0] == MessageOperation.markStart)//检查是否是传输标头
+                    {
+                        MessageOperation oper = MessageOperation.FromBytes(buffer);
+                        if (oper != null)
+                        {
+                            lock (userToken.outOrders)
+                            {
+                                userToken.outOrders.Add(oper.GetId(), oper.Message);
+                            }
+                            buffer = buffer.Skip(MessageOperation.lengthID + MessageOperation.lengthLength + oper.Message.Length).ToArray();
+                        }
+                        else//是断包前面部分
+                        {
+                            if (userToken.halfReceiveMessage.Length == 0)
+                            {
+                                userToken.halfReceiveMessage = new byte[buffer.Length];
+                                buffer.CopyTo(userToken.halfReceiveMessage, 0);
+                                DealHalf(userToken);
+                            }
+                            else
+                            {
+                                Log4Debug("断包前数据保存时，存储区有数值。");
+                            }
+                            break;
+                        }
+                    }
+                    else//是断包后面部分
+                    {
+                        if (userToken.halfReceiveMessage.Length == 0)
+                        {
+                            Log4Debug("断包后数据保存时，存储区无数值。");
+                        }
+                        else
+                        {
+                            int halfLength = userToken.halfReceiveMessage.Length;
+                            byte[] mix = userToken.halfReceiveMessage;
+                            userToken.halfReceiveMessage = new byte[halfLength + buffer.Length];
+                            mix.CopyTo(userToken.halfReceiveMessage, 0);
+                            Array.Copy(buffer, 0, userToken.halfReceiveMessage, halfLength, buffer.Length);
+                            DealHalf(userToken);
+                        }
+                        break;
+                    }
+                }
+
+
+                //byte[] intBuff = new byte[4] { buffer[0], buffer[1], buffer[2], buffer[3] };
+                //int index = BitConverter.ToInt32(intBuff, 0);           // 从字节数组转换成 int
+                //byte[] dealBuffer = new byte[buffer.Length - intBuff.Length];
+                //Array.Copy(buffer, intBuff.Length, dealBuffer, 0, dealBuffer.Length);
+
+                //lock (userToken.outOrders)
+                //{
+                //    userToken.outOrders.Add(index, dealBuffer);
+                //}
                 //while (userToken.outOrders.ContainsKey(userToken.sendIndex))
                 //{
                 //    //存值
@@ -536,8 +612,10 @@ public class SocketManager : MonoBehaviour
 
 
 
+    private void DealHalf(AsyncUserToken userToken)
+    {
 
-
+    }
 
 
 
@@ -548,59 +626,66 @@ public class SocketManager : MonoBehaviour
     public void Handle(object obj)
     {
         AsyncUserToken userToken = (AsyncUserToken)obj;
-        while (userToken.outOrders.ContainsKey(userToken.receiveIndex))
+        while (true)
         {
-            byte[] buffer = userToken.outOrders[userToken.receiveIndex];
-            userToken.outOrders.Remove(userToken.receiveIndex);
-            byte[] mix = new byte[userToken.halfReceiveMessage.Length + buffer.Length];
-            userToken.halfReceiveMessage.CopyTo(mix, 0);
-            Array.Copy(buffer, 0, mix, userToken.halfReceiveMessage.Length, buffer.Length);
-            userToken.halfReceiveMessage = new byte[] { };
-
-            MessageXieYi xieyi = MessageXieYi.FromBytes(mix);
-            if (xieyi != null)
+            if (userToken.outOrders.ContainsKey(userToken.receiveIndex))
             {
-                userToken.receiveIndex++;
-                int messageLength = xieyi.MessageContentLength + MessageXieYi.XieYiLength + 1 + 1;
-                Debug.LogError("快速处理协议：" + (MessageConvention)xieyi.XieYiFirstFlag + " 编号：" + userToken.receiveIndex);
-
-                DealReceive(xieyi, userToken);
-
-                mix = mix.Skip(messageLength).ToArray();
-                if (mix.Length > 0)
+                Debug.LogError("准备处理序号：" + userToken.receiveIndex);
+                byte[] buffer = userToken.outOrders[userToken.receiveIndex];
+                lock (userToken.outOrders)
                 {
-                    byte[] intBuff = new byte[4] { mix[0], mix[1], mix[2], mix[3] };
-                    int index = BitConverter.ToInt32(intBuff, 0);// 从字节数组转换成 int
-                    mix = mix.Skip(intBuff.Length).ToArray();
-                    userToken.outOrders.Add(index, mix);
-                    //userToken.receiveIndex = (index + 1);
-                    continue;
+                    userToken.outOrders.Remove(userToken.receiveIndex);
                 }
-                else
+                byte[] mix = new byte[userToken.halfReceiveMessage.Length + buffer.Length];
+                userToken.halfReceiveMessage.CopyTo(mix, 0);
+                Array.Copy(buffer, 0, mix, userToken.halfReceiveMessage.Length, buffer.Length);
+                userToken.halfReceiveMessage = new byte[] { };
+                userToken.receiveIndex++;
+
+                while (mix.Length > 0)
                 {
-                    break;
+                    MessageXieYi xieyi = MessageXieYi.FromBytes(mix);
+                    if (xieyi != null)
+                    {
+                        int messageLength = xieyi.MessageContentLength + MessageXieYi.XieYiLength + 1 + 1;
+                        Log4Debug("--处理协议：" + (MessageConvention)xieyi.XieYiFirstFlag);
+                        DealReceive(xieyi, userToken);
+
+                        mix = mix.Skip(messageLength).ToArray();
+                        //if (mix.Length > 0)
+                        //{
+                        //    byte[] intBuff = new byte[4] { mix[0], mix[1], mix[2], mix[3] };
+                        //    int index = BitConverter.ToInt32(intBuff, 0);// 从字节数组转换成 int
+                        //    mix = mix.Skip(intBuff.Length).ToArray();
+                        //    userToken.outOrders.Add(index, mix);
+                        //    userToken.receiveIndex = index;
+                        //    continue;
+                        //}
+                        //else
+                        //{
+                        //    break;
+                        //}
+                    }
+                    else
+                    {
+                        Array.Copy(mix, 0, userToken.halfReceiveMessage, 0, mix.Length);
+                        string info = "sy:";
+                        for (int i = 0; i < mix.Length; i++)
+                        {
+                            info += mix[i] + ",";
+                        }
+                        Debug.LogError("剩余未处理数据：" + info);
+                        break;
+                    }
                 }
             }
             else
             {
-                Array.Copy(mix, 0, userToken.halfReceiveMessage, 0, mix.Length);
-                string info = "sy:";
-                for (int i = 0; i < mix.Length; i++)
-                {
-                    info += mix[i] + ",";
-                }
-                Debug.LogError("剩余未处理数据长度：" + mix.Length + "当前帧：" + GameManager.instance.frameIndex + "/" + DataController.instance.MyRoomInfo.FrameIndex + info);
+                Debug.LogError("不包含该序号：" + userToken.receiveIndex);
                 break;
             }
-
-
-
         }
-
-
-
-
-
+        userToken.isDealReceive = false;
 
 
 
@@ -638,12 +723,14 @@ public class SocketManager : MonoBehaviour
         //    userToken.halfReceiveMessage = new byte[mix.Length];
         //    userToken.halfReceiveMessage = mix;//保存未处理的数据长度
         //}
-        userToken.isDealReceive = false;
+        //userToken.isDealReceive = false;
     }
     private void DealReceive(MessageXieYi xieyi, AsyncUserToken userToken)
     {
         DoReceiveEvent(xieyi);
     }
+
+
 
     #endregion
 

@@ -397,22 +397,45 @@ namespace NetFrame.Net
                 //int startTickCount = Environment.TickCount;
                 while (mix.Length > 0)
                 {
-                    byte[] intBuff = BitConverter.GetBytes(userToken.sendIndex);// 将 int 转换成字节数组
-                    userToken.sendIndex++;
-                    int dealLength = 0;
-                    if (mix.Length > 1020)
-                    {
-                        dealLength = 1020;
-                    }
-                    else
-                    {
-                        dealLength = mix.Length;
-                    }
-                    byte[] buffer = new byte[intBuff.Length + dealLength];
-                    Array.Copy(intBuff, 0, buffer, 0, intBuff.Length);//4
-                    Array.Copy(mix, 0, buffer, intBuff.Length, dealLength);//dealLength
-                    mix = mix.Skip(buffer.Length).ToArray();
+                    int curIndex = userToken.sendIndex;
+                    MessageOperation oper = MessageOperation.FromBytes(curIndex, mix);
+                    byte[] buffer = null;
 
+                    buffer = oper.ToBytes();
+                    userToken.sendIndex++;
+                    mix = mix.Skip(buffer.Length).ToArray();
+                    string sendIfo = "userToken.sendIndex:" + curIndex + "----";
+                    for (int i = 0; i < buffer.Length; i++)
+                    {
+                        sendIfo += buffer[i] + ",";
+                    }
+                    Log4Debug(sendIfo);
+
+
+
+
+                    //byte[] idBuffer = BitConverter.GetBytes(curIndex);// 将 int 转换成字节数组
+                    //byte[] lengthBuffer = new byte[4];
+                    //userToken.sendIndex++;
+                    //int dealLength = 0;
+                    //if (mix.Length > 1020)
+                    //{
+                    //    dealLength = 1020;
+                    //}
+                    //else
+                    //{
+                    //    dealLength = mix.Length;
+                    //}
+                    //byte[] buffer = new byte[idBuffer.Length + dealLength];
+                    //Array.Copy(idBuffer, 0, buffer, 0, idBuffer.Length);//4
+                    //Array.Copy(mix, 0, buffer, idBuffer.Length, dealLength);//dealLength
+                    //mix = mix.Skip(buffer.Length).ToArray();
+                    //string sendIfo = "userToken.sendIndex:" + curIndex + "----";
+                    //for (int i = 0; i < buffer.Length; i++)
+                    //{
+                    //    sendIfo += buffer[i] + ",";
+                    //}
+                    //Log4Debug(sendIfo);
                     //
                     int sent = 0; // how many bytes is already sent
                     do
@@ -518,14 +541,18 @@ namespace NetFrame.Net
                         {
                             info += buffer[i] + ",";
                         }
-                        Log4Debug("接收数据：" + info);
+                        //Log4Debug("接收数据：" + info);
 
-                        byte[] intBuff = new byte[4] { buffer[0], buffer[1], buffer[2], buffer[3] };
-                        int index = BitConverter.ToInt32(intBuff, 0);           // 从字节数组转换成 int
+                        MessageOperation oper = MessageOperation.FromBytes(buffer);
+                        userToken.outOrders.Add(oper.GetId(), oper.Message);
 
-                        byte[] dealBuffer = new byte[buffer.Length - intBuff.Length];
-                        Array.Copy(buffer, intBuff.Length, dealBuffer, 0, dealBuffer.Length);
-                        userToken.outOrders.Add(index, dealBuffer);
+
+                        //byte[] intBuff = new byte[4] { buffer[0], buffer[1], buffer[2], buffer[3] };
+                        //int index = BitConverter.ToInt32(intBuff, 0);           // 从字节数组转换成 int
+
+                        //byte[] dealBuffer = new byte[buffer.Length - intBuff.Length];
+                        //Array.Copy(buffer, intBuff.Length, dealBuffer, 0, dealBuffer.Length);
+                        //userToken.outOrders.Add(index, dealBuffer);
                         //while (userToken.outOrders.ContainsKey(userToken.sendIndex))
                         //{
                         //    //存值
@@ -700,23 +727,23 @@ namespace NetFrame.Net
                 if (xieyi != null)
                 {
                     int messageLength = xieyi.MessageContentLength + MessageXieYi.XieYiLength + 1 + 1;
-                    Log4Debug("快速处理协议：" + (MessageConvention)xieyi.XieYiFirstFlag);
+                    //Log4Debug("快速处理协议：" + (MessageConvention)xieyi.XieYiFirstFlag);
                     DealReceive(xieyi, userToken);
 
                     mix = mix.Skip(messageLength).ToArray();
-                    if (mix.Length > 0)
-                    {
-                        byte[] intBuff = new byte[4] { mix[0], mix[1], mix[2], mix[3] };
-                        int index = BitConverter.ToInt32(intBuff, 0);// 从字节数组转换成 int
-                        mix = mix.Skip(intBuff.Length).ToArray();
-                        userToken.outOrders.Add(index, mix);
-                        userToken.receiveIndex = index;
-                        continue;
-                    }
-                    else
-                    {
-                        break;
-                    }
+                    //if (mix.Length > 0)
+                    //{
+                    //    byte[] intBuff = new byte[4] { mix[0], mix[1], mix[2], mix[3] };
+                    //    int index = BitConverter.ToInt32(intBuff, 0);// 从字节数组转换成 int
+                    //    mix = mix.Skip(intBuff.Length).ToArray();
+                    //    userToken.outOrders.Add(index, mix);
+                    //    userToken.receiveIndex = index;
+                    //    continue;
+                    //}
+                    //else
+                    //{
+                    //    break;
+                    //}
                 }
                 else
                 {
