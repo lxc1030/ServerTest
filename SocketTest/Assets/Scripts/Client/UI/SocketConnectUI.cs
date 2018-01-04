@@ -174,7 +174,11 @@ public class SocketConnectUI : MonoBehaviour
 
     void Update()
     {
-        if (SocketManager.instance.MyUserToken.ConnectSocket != null && !SocketManager.instance.isConnected)
+        if (
+            SocketManager.instance.MyUserToken != null
+            && SocketManager.instance.MyUserToken.ConnectSocket != null
+            && !SocketManager.instance.isConnected
+            )
         {
             if (CurState != NetState.断线重连)
             {

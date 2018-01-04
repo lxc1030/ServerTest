@@ -210,7 +210,7 @@ public class SingleRoom
                         Log4Debug("模型未准备好的玩家准备好进入游戏了。");
                         string starttime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
                         byte[] start = SerializeHelper.ConvertToByte(starttime);
-                        AsyncIOCPServer.instance.SendMessageToUser(
+                        AsyncIOCPServer.instance.SendSave(
                             RoomInfo.ActorList[index].Register.userID,
                             start,
                             (byte)MessageConvention.startGaming, 0);
@@ -662,12 +662,12 @@ public class SingleRoom
                 animation = 0
             });//此处是初始数据
             xieyi = new MessageXieYi((byte)MessageConvention.updateModelInfo, 0, message);
-            AsyncIOCPServer.instance.SaveSendMessage(userToken, xieyi.ToBytes());
+            AsyncIOCPServer.instance.SendSave(userToken, xieyi.ToBytes());
         }
         //准备数据发送完毕，打开UI
         message = new byte[] { 1 };//此处的数组应该是初始数据
         MessageXieYi xieyiFinish = new MessageXieYi((byte)MessageConvention.getPreGameData, 0, message);
-        AsyncIOCPServer.instance.SaveSendMessage(userToken, xieyiFinish.ToBytes());
+        AsyncIOCPServer.instance.SendSave(userToken, xieyiFinish.ToBytes());
     }
 
 
@@ -703,7 +703,7 @@ public class SingleRoom
             }
             if (RoomInfo.ActorList[i].UniqueID != uniqueID)
             {
-                AsyncIOCPServer.instance.SendMessageToUser(RoomInfo.ActorList[i].Register.userID, message, (byte)convention, xieyiSecond);
+                AsyncIOCPServer.instance.SendSave(RoomInfo.ActorList[i].Register.userID, message, (byte)convention, xieyiSecond);
             }
         }
     }
@@ -860,7 +860,7 @@ public class SingleRoom
             int curFrame = RoomInfo.FrameIndex;
             MessageXieYi xieyi = null;
             xieyi = new MessageXieYi((byte)MessageConvention.reConnect, 0, SerializeHelper.ConvertToByte("" + curFrame));
-            AsyncIOCPServer.instance.SaveSendMessage(userToken, xieyi.ToBytes());
+            AsyncIOCPServer.instance.SendSave(userToken, xieyi.ToBytes());
             //
             switch (RoomInfo.CurState)
             {
@@ -872,11 +872,11 @@ public class SingleRoom
                     message = SerializeHelper.Serialize<RoomInfo>(RoomInfo);
                     xieyi = new MessageXieYi((byte)MessageConvention.joinRoom, 0, message);
                     Log4Debug("数据长度：" + xieyi.ToBytes().Length);
-                    AsyncIOCPServer.instance.SaveSendMessage(userToken, xieyi.ToBytes());
+                    AsyncIOCPServer.instance.SendSave(userToken, xieyi.ToBytes());
                     //
                     message = SerializeHelper.Serialize<List<RoomActor>>(new List<RoomActor>(RoomInfo.ActorList.Values));
                     xieyi = new MessageXieYi((byte)MessageConvention.getRoommateInfo, 0, message);
-                    AsyncIOCPServer.instance.SaveSendMessage(userToken, xieyi.ToBytes());
+                    AsyncIOCPServer.instance.SendSave(userToken, xieyi.ToBytes());
                     //给房间其他玩家发送更新重连状态
                     RoomActorUpdate roomActorUpdate = new RoomActorUpdate()
                     {
@@ -916,7 +916,7 @@ public class SingleRoom
                             info += xieyiBytes[m] + ",";
                         }
                         Log4Debug("从：" + min + "到：" + max + "/" + xieyiBytes.Length + info);
-                        AsyncIOCPServer.instance.SaveSendMessage(userToken, xieyiBytes);
+                        AsyncIOCPServer.instance.SendSave(userToken, xieyiBytes);
                     }
                     break;
                 default:
