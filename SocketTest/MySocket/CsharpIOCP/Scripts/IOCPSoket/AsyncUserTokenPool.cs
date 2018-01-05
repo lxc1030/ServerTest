@@ -30,6 +30,9 @@ public class AsyncUserTokenPool
         lock (pool)
         {
             pool.Push(item);
+        }
+        lock (used)
+        {
             used.Remove(item);
         }
         return true;
@@ -39,16 +42,19 @@ public class AsyncUserTokenPool
     // and returns the object removed from the pool
     public AsyncUserToken Pop()
     {
+        AsyncUserToken temp = null;
         lock (pool)
         {
-            AsyncUserToken temp = null;
             if (pool.Count > 0)
             {
                 temp = pool.Pop();
-                used.Add(temp);
             }
-            return temp;
         }
+        lock (used)
+        {
+            used.Add(temp);
+        }
+        return temp;
     }
     public int Count()
     {
@@ -63,7 +69,7 @@ public class AsyncUserTokenPool
             {
                 if (used[i].userInfo.heartbeatTime.AddMilliseconds(iCheckInterval).CompareTo(DateTime.Now) < 0)
                 {
-                    Log4Debug(used[i].userInfo.Register.name + " the heartbeat timeout ！");
+                    Log4Debug(used[i].userInfo.Register.name + " 最后心跳 :" + used[i].userInfo.heartbeatTime.ToString("G") + " 当前心跳：" + DateTime.Now);
                     //
                     closeAction(used[i]);
                 }

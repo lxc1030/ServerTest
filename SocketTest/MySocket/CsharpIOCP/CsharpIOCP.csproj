@@ -67,7 +67,6 @@
     <Compile Include="Scripts\IOCPSoket\ServerDataManager.cs" />
     <Compile Include="Scripts\Tools\ClassGroup.cs" />
     <Compile Include="Scripts\Tools\LogManager.cs" />
-    <Compile Include="Scripts\Tools\MessageXieYi.cs" />
     <Compile Include="Scripts\SqlGroup\SqlManager.cs" />
     <Compile Include="Scripts\Tools\TcpServerBase.cs" />
   </ItemGroup>

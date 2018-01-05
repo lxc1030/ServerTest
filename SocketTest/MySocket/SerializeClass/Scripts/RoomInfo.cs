@@ -56,7 +56,7 @@ public class RoomInfo
     /// <summary>
     /// 用户操作数据存储后，间隔该帧返回
     /// </summary>
-    public static int frameInterval = 2;
+    public static int frameInterval = 10;
     /// <summary>
     /// 一帧对应的时间
     /// </summary>

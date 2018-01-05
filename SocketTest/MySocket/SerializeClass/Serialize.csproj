@@ -129,6 +129,7 @@
     <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\Zip\ZipInputStream.cs" />
     <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\Zip\ZipNameTransform.cs" />
     <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\Zip\ZipOutputStream.cs" />
+    <Compile Include="Socket\MessageXieYi.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

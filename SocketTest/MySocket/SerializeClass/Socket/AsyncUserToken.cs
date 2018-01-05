@@ -20,8 +20,8 @@ public class AsyncUserToken
     /// <summary>
     /// 接收数据的缓冲区
     /// </summary>
-    private Queue<byte> _receiveBuffer;
-    public Queue<byte> ReceiveBuffer
+    private List<byte> _receiveBuffer;
+    public List<byte> ReceiveBuffer
     {
         get { return _receiveBuffer; }
         set { _receiveBuffer = value; }
@@ -29,14 +29,12 @@ public class AsyncUserToken
     /// <summary>
     /// 发送数据的缓冲区
     /// </summary>
-    private Queue<byte> _sendBuffer;
-    public Queue<byte> SendBuffer
+    private List<byte> _sendBuffer;
+    public List<byte> SendBuffer
     {
         get { return _sendBuffer; }
         set { _sendBuffer = value; }
     }
-
-    public byte[] halfReceiveMessage { get; set; }
 
     /// <summary>
     /// 连接套接字
@@ -51,19 +49,13 @@ public class AsyncUserToken
     /// <summary>
     /// 记录发送套接字是否发送结束
     /// </summary>
-    public bool isSending;
-
-    public bool isDealReceive;
+    public bool isSending { get; set; }
 
 
     /// <summary>
     /// 用户数据
     /// </summary>
-    public RoomActor userInfo;
-    /// <summary>
-    /// 最新一次心跳时间
-    /// </summary>
-    public DateTime HeartbeatTime;
+    public RoomActor userInfo { get; set; }
 
 
     public AsyncUserToken(int size)
@@ -77,39 +69,13 @@ public class AsyncUserToken
         SAEA_Send = new SocketAsyncEventArgs();
         SAEA_Send.SetBuffer(byteSend, 0, size);
 
-        _receiveBuffer = new Queue<byte>();
-        _sendBuffer = new Queue<byte>();
-
-        halfReceiveMessage = new byte[] { };
+        _receiveBuffer = new List<byte>();
+        _sendBuffer = new List<byte>();
 
         isSending = false;
-        isDealReceive = false;
 
         ConnectSocket = null;
-
-    }
-
-    public void Clear(Queue<byte> buffer)
-    {
-        buffer.Clear();
-    }
-    public void Clear(byte[] buffer)
-    {
-        buffer = new byte[] { };
-    }
-    public void SendSave(byte[] data)
-    {
-        lock (SendBuffer)
-        {
-            //存值
-            for (int i = 0; i < data.Length; i++)
-            {
-                //将buffer保存到队列
-                SendBuffer.Enqueue(data[i]);
-            }
-        }
     }
 
 
 }
-

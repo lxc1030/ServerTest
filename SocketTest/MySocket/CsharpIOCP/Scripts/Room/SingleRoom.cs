@@ -915,7 +915,7 @@ public class SingleRoom
                         {
                             info += xieyiBytes[m] + ",";
                         }
-                        Log4Debug("从：" + min + "到：" + max + "/" + xieyiBytes.Length + info);
+                        //Log4Debug("从：" + min + "到：" + max + "/" + xieyiBytes.Length + info);
                         AsyncIOCPServer.instance.SendSave(userToken, xieyiBytes);
                     }
                     break;

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using UnityEngine;
 /// <summary>
 /// 【消息协议】=【协议一级标志】+【协议二级标志】+【实际消息长度】+【实际消息内容】+【多于消息内容】
 /// http://www.cnblogs.com/sungong1987/p/5267011.html
@@ -130,29 +131,6 @@ public class MessageXieYi
 
 
     #region byte[] 转换为 MessageXieYi
-
-    public static MessageXieYi BackMessageType(byte[] buffer)
-    {
-        if (buffer.Length < MessageXieYi.XieYiLength)//如果长度不足6  就无法转换 return null
-        {
-            return null;
-        }
-
-        MessageXieYi messageXieYi = new MessageXieYi();
-        using (MemoryStream memoryStream = new MemoryStream(buffer)) //将字节数组填充至内存流
-        {
-            BinaryReader binaryReader = new BinaryReader(memoryStream); //以二进制读取器读取该流内容
-
-            messageXieYi.xieYiFirstFlag = binaryReader.ReadByte(); //读取协议一级标志，读1个字节
-            messageXieYi.xieYiSecondFlag = binaryReader.ReadByte(); //读取协议二级标志，读1个字节
-            messageXieYi.messageContentLength = binaryReader.ReadInt32(); //读取实际消息长度，读4个字节     
-
-            binaryReader.Close();
-        }
-        return messageXieYi;
-    }
-
-
     /// <summary>
     /// byte[] 转换为 MessageXieYi
     /// </summary>
@@ -176,7 +154,9 @@ public class MessageXieYi
             byte start = binaryReader.ReadByte();//把开头的标识符去掉
             if (start != markStart)
             {
-                Console.WriteLine("开头：" + start);
+                string info = "开头：" + start;
+                Console.WriteLine(info);
+                Debug.LogError(info);
                 return null;
             }
 
@@ -199,14 +179,19 @@ public class MessageXieYi
             //如果【进来的Bytes长度】小于【一个完整的MessageXieYi长度】
             if ((bufferLength - 6) < messageXieYi.messageContentLength)
             {
-                Console.WriteLine("数据接收不齐：" + (bufferLength - 6) + "/" + messageXieYi.messageContentLength);
+                string info = "数据接收不齐：" + (bufferLength - 6) + "/" + messageXieYi.messageContentLength;
+                Console.WriteLine(info);
+                Debug.LogError(info);
+                    
                 return null;
             }
 
             byte end = binaryReader.ReadByte();
             if (end != markEnd)
             {
-                Console.WriteLine("结尾：" + end + "消息长度：" + messageXieYi.messageContentLength);
+                string info = "结尾：" + end + "消息长度：" + messageXieYi.messageContentLength;
+                Console.WriteLine(info);
+                Debug.LogError(info);
                 return null;
             }
 
@@ -216,7 +201,7 @@ public class MessageXieYi
     }
     #endregion
 
-
+  
 
 
 
@@ -246,7 +231,7 @@ public class CombineBytes
             bw.Write(secondBytes, secondIndex, secondLength);
 
             bw.Close();
-            bw.Dispose();
+            //bw.Dispose();
 
             return ms.ToArray();
         }
