@@ -58,7 +58,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ProtoBuf\ProtoBuffData.cs" />
-    <Compile Include="Socket\AsyncUserToken.cs" />
     <Compile Include="Scripts\BoxInfo.cs" />
     <Compile Include="Scripts\GameTypeManager.cs" />
     <Compile Include="Scripts\MessageOperation.cs" />
@@ -129,6 +128,7 @@
     <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\Zip\ZipInputStream.cs" />
     <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\Zip\ZipNameTransform.cs" />
     <Compile Include="SharpZipLib-master\src\ICSharpCode.SharpZipLib\Zip\ZipOutputStream.cs" />
+    <Compile Include="Socket\AsyncUserToken.cs" />
     <Compile Include="Socket\MessageXieYi.cs" />
   </ItemGroup>
   <ItemGroup>

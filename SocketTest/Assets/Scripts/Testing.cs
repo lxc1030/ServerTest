@@ -3,6 +3,8 @@ using System;
 using Newtonsoft.Json.Linq;
 using System.Threading;
 using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
 
 public class Testing : MonoBehaviour
 {
@@ -75,7 +77,9 @@ public class Testing : MonoBehaviour
         //byte[] intBuff = new byte[] { 10, 0, 0, 0 };
         //int index = BitConverter.ToInt32(intBuff, 0);
         //Debug.LogError(index);
-  
+        List<int> tt = new List<int>() { 1, 2, 3, 4 };
+        tt.Take(2);
+        int i = 0;
     }
 
 

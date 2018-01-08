@@ -126,7 +126,7 @@ public class SocketManager : MonoBehaviour
         //{
         //    OnConnect(callback, connectArgs);
         //};
-        if (_clientSock.ConnectAsync(connectArgs))
+        if (!_clientSock.ConnectAsync(connectArgs))
         {
             ProcessConnected(connectArgs);
         }
@@ -154,7 +154,6 @@ public class SocketManager : MonoBehaviour
             MyUserToken.SAEA_Send.Completed += new EventHandler<SocketAsyncEventArgs>(OnIOCompleted);
             MyUserToken.SAEA_Send.UserToken = MyUserToken;
 
-
             if (!MyUserToken.ConnectSocket.ReceiveAsync(MyUserToken.SAEA_Receive))
             {
                 ProcessReceive(MyUserToken);
@@ -179,72 +178,106 @@ public class SocketManager : MonoBehaviour
                 userToken.userInfo.heartbeatTime = DateTime.Now;
             }
             string sClientIP = ((IPEndPoint)userToken.ConnectSocket.RemoteEndPoint).Address.ToString();
-            //try
+            try
             {
                 byte[] copy = new byte[e.BytesTransferred];
                 Array.Copy(e.Buffer, e.Offset, copy, 0, e.BytesTransferred);
-                lock (userToken.ReceiveBuffer)
-                {
-                    userToken.ReceiveBuffer.AddRange(copy);
-                }
+                //
+                userToken.ReceiveBuffer.AddRange(copy);
 
-                List<MessageXieYi> dealXieYi = new List<MessageXieYi>();
 
-                byte[] buffer = null;
+
+                //do
+                //{
+                //    byte[] buffer = null;
+                //    lock (userToken.ReceiveBuffer)
+                //    {
+                //        buffer = userToken.ReceiveBuffer.ToArray();
+                //    }
+                //    MessageXieYi xieyi = MessageXieYi.FromBytes(buffer);
+                //    if (xieyi != null)
+                //    {
+                //        int messageLength = xieyi.MessageContentLength + MessageXieYi.XieYiLength + 1 + 1;
+                //        lock (userToken.ReceiveBuffer)
+                //        {
+                //            userToken.ReceiveBuffer.RemoveRange(0, messageLength);
+                //        }
+                //        DealReceive(xieyi, userToken);
+                //    }
+                //    else
+                //    {
+                //        string info = "数据未收完，剩余:";
+                //        for (int i = 0; i < buffer.Length; i++)
+                //        {
+                //            info += buffer[i] + ",";
+                //        }
+                //        Log4Debug(info);
+                //        break;
+                //    }
+                //} while (userToken.ReceiveBuffer.Count > 0);
+
+                //byte[] buffer = null;
+                //lock (userToken.ReceiveBuffer)
+                //{
+                //    buffer = userToken.ReceiveBuffer.ToArray();
+                //}
 
                 do
                 {
-                    lock (userToken.ReceiveBuffer)
+                    if (userToken.ReceiveBuffer.Count < AsyncUserToken.lengthLength)
                     {
-                        buffer = userToken.ReceiveBuffer.ToArray();
+                        break;
                     }
-                    string info2 = "处理保存数据长度" + buffer.Length + " :";
-                    for (int i = 0; i < buffer.Length; i++)
-                    {
-                        info2 += buffer[i] + ",";
-                    }
-                    Log4Debug(info2);
 
-                    MessageXieYi xieyi = null;
-                    xieyi = MessageXieYi.FromBytes(buffer);
-                    if (xieyi != null)
+                    byte[] lengthB = new byte[AsyncUserToken.lengthLength];
+                    lengthB = userToken.ReceiveBuffer.Take(lengthB.Length).ToArray();
+                    int length = BitConverter.ToInt32(lengthB, 0);
+                    if (userToken.ReceiveBuffer.Count < length + lengthB.Length)
                     {
-                        int messageLength = xieyi.MessageContentLength + MessageXieYi.XieYiLength + 1 + 1;
-                        buffer = buffer.Skip(messageLength).ToArray();
-                        lock (userToken.ReceiveBuffer)
-                        {
-                            userToken.ReceiveBuffer.RemoveRange(0, messageLength);
-                        }
-                        //dealXieYi.Add(xieyi);
-                        DealReceive(xieyi, userToken);
+                        Log4Debug("还未收齐，继续接收");
+                        break;
                     }
                     else
                     {
-                        string info = "数据未收完，剩余:";
-                        for (int i = 0; i < buffer.Length; i++)
+                        byte[] buffer = null;
+                        userToken.ReceiveBuffer.RemoveRange(0, lengthB.Length);
+                        buffer = userToken.ReceiveBuffer.Take(length).ToArray();
+                        userToken.ReceiveBuffer.RemoveRange(0, length);
+
+                        do
                         {
-                            info += buffer[i] + ",";
-                        }
-                        Log4Debug(info);
-                        break;
+                            MessageXieYi xieyi = MessageXieYi.FromBytes(buffer);
+                            if (xieyi != null)
+                            {
+                                int messageLength = xieyi.MessageContentLength + MessageXieYi.XieYiLength + 1 + 1;
+                                buffer = buffer.Skip(messageLength).ToArray();
+                               
+                                DealReceive(xieyi, userToken);
+                            }
+                            else
+                            {
+                                string info = "数据应该直接处理完，不会到这:";
+                                for (int i = 0; i < buffer.Length; i++)
+                                {
+                                    info += buffer[i] + ",";
+                                }
+                                Log4Debug(info);
+                                break;
+                            }
+                        } while (buffer.Length > 0);
                     }
-                } while (buffer.Length > 0);
+
+                } while (userToken.ReceiveBuffer.Count > 0);
 
                 if (!userToken.ConnectSocket.ReceiveAsync(e))
-                {
                     ProcessReceive(userToken);
-                }
-                //for (int i = 0; i < dealXieYi.Count; i++)
-                //{
-                //    DealReceive(dealXieYi[i], userToken);
-                //}
 
             }
-            //catch (Exception error)
-            //{
-            //    Log4Debug(error.Message);
-            //}
-            //finally
+            catch (Exception error)
+            {
+                Log4Debug(error.Message);
+            }
+            finally
             {
 
             }
@@ -253,7 +286,6 @@ public class SocketManager : MonoBehaviour
         {
             CloseClientSocket(userToken);
         }
-
     }
     private void Handle(AsyncUserToken userToken)
     {
@@ -321,23 +353,21 @@ public class SocketManager : MonoBehaviour
         userToken.isSending = true;
 
         byte[] buffer = null;
-        lock (userToken.SendBuffer)
-        {
-            buffer = userToken.SendBuffer.ToArray();
-            userToken.SendBuffer.Clear();
-        }
-        string info = "Send:";
+        buffer = userToken.GetSendBytes();
+
+        string sClientIP = ((IPEndPoint)userToken.ConnectSocket.RemoteEndPoint).ToString();
+        string info = "";
         for (int i = 0; i < buffer.Length; i++)
         {
             info += buffer[i] + ",";
         }
-        //Log4Debug(info);
+        //Log4Debug("From the " + sClientIP + " to send " + buffer.Length + " bytes of data：" + info);
 
         userToken.SAEA_Send.SetBuffer(buffer, 0, buffer.Length);
         Socket s = userToken.ConnectSocket;
         SocketAsyncEventArgs e = userToken.SAEA_Send;
 
-        if (!s.SendAsync(e))//投递发送请求，这个函数有可能同步发送出去，这时返回false，并且不会引发SocketAsyncEventArgs.Completed事件  
+        if (!s.SendAsync(userToken.SAEA_Send))//投递发送请求，这个函数有可能同步发送出去，这时返回false，并且不会引发SocketAsyncEventArgs.Completed事件  
         {
             // 同步发送时处理发送完成事件  
             ProcessSend(userToken);

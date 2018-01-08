@@ -31,12 +31,16 @@ public class AsyncUserTokenPool
         {
             pool.Push(item);
         }
+        return true;
+    }
+    public void RemoveUsed(AsyncUserToken item)
+    {
         lock (used)
         {
             used.Remove(item);
         }
-        return true;
     }
+
 
     // Removes a AsyncUserToken instance from the pool
     // and returns the object removed from the pool
@@ -50,12 +54,14 @@ public class AsyncUserTokenPool
                 temp = pool.Pop();
             }
         }
-        lock (used)
-        {
-            used.Add(temp);
-        }
         return temp;
     }
+
+    public void AddUsed(AsyncUserToken userToken)
+    {
+        used.Add(userToken);
+    }
+
     public int Count()
     {
         return pool.Count;
