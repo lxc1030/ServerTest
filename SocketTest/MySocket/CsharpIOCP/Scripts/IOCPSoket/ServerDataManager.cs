@@ -331,7 +331,7 @@ public class ServerDataManager
 
     public void Log4Debug(string msg)
     {
-        LogManager.WriteLog(this.GetType().Name + ":" + msg);
+        LogManager.instance.WriteLog(this.GetType().Name + ":" + msg);
     }
 }
 

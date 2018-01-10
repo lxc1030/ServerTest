@@ -164,7 +164,7 @@ class SqlManager
     /// <param name="msg"></param>
     void Log4Debug(string msg)
     {
-        LogManager.WriteLog(this.GetType().Name + ":" + msg);
+        LogManager.instance.WriteLog(this.GetType().Name + ":" + msg);
     }
 
     //public SqlDataReader UserAccept(string clientID, string sql, ConnLevel level = ConnLevel.None)

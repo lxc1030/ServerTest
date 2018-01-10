@@ -178,7 +178,7 @@ public class RoomCollection
         switch (type)
         {
             case GameModel.组队模式:
-                limet = 2;
+                limet = 4;
                 break;
         }
         return limet;
@@ -190,6 +190,6 @@ public class RoomCollection
 
     public void Log4Debug(string msg)
     {
-        LogManager.WriteLog(this.GetType().Name + ":" + msg);
+        LogManager.instance.WriteLog(this.GetType().Name + ":" + msg);
     }
 }

@@ -152,109 +152,28 @@ public class AsyncIOCPServer
                 userToken.userInfo.heartbeatTime = DateTime.Now;
             }
             string sClientIP = ((IPEndPoint)userToken.ConnectSocket.RemoteEndPoint).Address.ToString();
-            try
+            //try
             {
                 byte[] copy = new byte[e.BytesTransferred];
                 Array.Copy(e.Buffer, e.Offset, copy, 0, e.BytesTransferred);
                 //
-                userToken.ReceiveBuffer.AddRange(copy);
-
-
-
-                //do
-                //{
-                //    byte[] buffer = null;
-                //    lock (userToken.ReceiveBuffer)
-                //    {
-                //        buffer = userToken.ReceiveBuffer.ToArray();
-                //    }
-                //    MessageXieYi xieyi = MessageXieYi.FromBytes(buffer);
-                //    if (xieyi != null)
-                //    {
-                //        int messageLength = xieyi.MessageContentLength + MessageXieYi.XieYiLength + 1 + 1;
-                //        lock (userToken.ReceiveBuffer)
-                //        {
-                //            userToken.ReceiveBuffer.RemoveRange(0, messageLength);
-                //        }
-                //        DealReceive(xieyi, userToken);
-                //    }
-                //    else
-                //    {
-                //        string info = "数据未收完，剩余:";
-                //        for (int i = 0; i < buffer.Length; i++)
-                //        {
-                //            info += buffer[i] + ",";
-                //        }
-                //        Log4Debug(info);
-                //        break;
-                //    }
-                //} while (userToken.ReceiveBuffer.Count > 0);
-
-                //byte[] buffer = null;
-                //lock (userToken.ReceiveBuffer)
-                //{
-                //    buffer = userToken.ReceiveBuffer.ToArray();
-                //}
-
-                do
+                lock (userToken.ReceiveBuffer)
                 {
-                    if (userToken.ReceiveBuffer.Count < AsyncUserToken.lengthLength)
-                    {
-                        break;
-                    }
-
-                    byte[] lengthB = new byte[AsyncUserToken.lengthLength];
-                    lengthB = userToken.ReceiveBuffer.Take(lengthB.Length).ToArray();
-                    int length = BitConverter.ToInt32(lengthB, 0);
-                    if (userToken.ReceiveBuffer.Count < length + lengthB.Length)
-                    {
-                        Log4Debug("还未收齐，继续接收");
-                        break;
-                    }
-                    else
-                    {
-                        byte[] buffer = null;
-                        userToken.ReceiveBuffer.RemoveRange(0, lengthB.Length);
-                        buffer = userToken.ReceiveBuffer.Take(length).ToArray();
-                        userToken.ReceiveBuffer.RemoveRange(0, length);
-
-                        do
-                        {
-                            MessageXieYi xieyi = MessageXieYi.FromBytes(buffer);
-                            if (xieyi != null)
-                            {
-                                int messageLength = xieyi.MessageContentLength + MessageXieYi.XieYiLength + 1 + 1;
-                                buffer = buffer.Skip(messageLength).ToArray();
-                                
-                                DealReceive(xieyi, userToken);
-                            }
-                            else
-                            {
-                                string info = "数据应该直接处理完，不会到这:";
-                                for (int i = 0; i < buffer.Length; i++)
-                                {
-                                    info += buffer[i] + ",";
-                                }
-                                Log4Debug(info);
-                                break;
-                            }
-                        } while (buffer.Length > 0);
-                    }
-
-                } while (userToken.ReceiveBuffer.Count > 0);
-                
+                    userToken.ReceiveBuffer.AddRange(copy);
+                }
                 if (!userToken.ConnectSocket.ReceiveAsync(e))
                     ProcessReceive(userToken);
 
+                if (!userToken.isDealReceive)
+                {
+                    userToken.isDealReceive = true;
+                    Handle(userToken);
+                }
             }
-            catch (Exception error)
-            {
-                Log4Debug(error.Message);
-            }
-            finally
-            {
-
-            }
+            //catch (Exception error)
+            //{
+            //    Log4Debug(error.Message);
+            //}
         }
         else
         {
@@ -263,36 +182,111 @@ public class AsyncIOCPServer
     }
     private void Handle(AsyncUserToken userToken)
     {
-        byte[] buffer = null;
-        lock (userToken.ReceiveBuffer)
+        while (userToken.ReceiveBuffer.Count > 0)
         {
-            buffer = userToken.ReceiveBuffer.ToArray();
-        }
+            byte[] rece = null;
+            lock (userToken.ReceiveBuffer)
+            {
+                rece = userToken.ReceiveBuffer.ToArray();
+                userToken.ReceiveBuffer.Clear();
+            }
+            userToken.DealBuffer.AddRange(rece);
+            //
+           
+            while (userToken.DealBuffer.Count > 0)
+            {
+                if (userToken.DealBuffer.Count < sizeof(int))
+                {
+                    break;
+                }
+                byte[] buffer = null;
 
-        do
-        {
-            MessageXieYi xieyi = MessageXieYi.FromBytes(buffer);
-            if (xieyi != null)
-            {
-                int messageLength = xieyi.MessageContentLength + MessageXieYi.XieYiLength + 1 + 1;
-                buffer = buffer.Skip(messageLength).ToArray();
-                lock (userToken.ReceiveBuffer)
+                byte[] lengthB = new byte[sizeof(int)];
+                lengthB = userToken.DealBuffer.Take(sizeof(int)).ToArray();
+                int length = BitConverter.ToInt32(lengthB, 0);
+                if (userToken.DealBuffer.Count < length + sizeof(int))
                 {
-                    userToken.ReceiveBuffer.RemoveRange(0, messageLength);
+                    //Log4Debug("还未收齐，继续接收");
+                    break;
                 }
-                DealReceive(xieyi, userToken);
-            }
-            else
-            {
-                string info = "数据未收完，剩余:";
-                for (int i = 0; i < buffer.Length; i++)
+                else
                 {
-                    info += buffer[i] + ",";
+                    userToken.DealBuffer.RemoveRange(0, sizeof(int));
+                    buffer = userToken.DealBuffer.Take(length).ToArray();
+                    userToken.DealBuffer.RemoveRange(0, length);
                 }
-                Log4Debug(info);
-                break;
+
+                do
+                {
+                    MessageXieYi xieyi = MessageXieYi.FromBytes(buffer);
+                    if (xieyi != null)
+                    {
+                        int messageLength = xieyi.MessageContentLength + MessageXieYi.XieYiLength + 1 + 1;
+                        buffer = buffer.Skip(messageLength).ToArray();
+                        DealReceive(xieyi, userToken);
+                    }
+                    else
+                    {
+                        string info = "数据应该直接处理完，不会到这:";
+                        for (int i = 0; i < buffer.Length; i++)
+                        {
+                            info += buffer[i] + ",";
+                        }
+                        Log4Debug(info);
+                        break;
+                    }
+                } while (buffer.Length > 0);
             }
-        } while (buffer.Length > 0);
+
+
+
+
+
+            //if (userToken.ReceiveBuffer.Count < sizeof(int))
+            //{
+            //    break;
+            //}
+            //byte[] buffer = null;
+            //lock (userToken.ReceiveBuffer)
+            //{
+            //    byte[] lengthB = new byte[sizeof(int)];
+            //    lengthB = userToken.ReceiveBuffer.Take(sizeof(int)).ToArray();
+            //    int length = BitConverter.ToInt32(lengthB, 0);
+
+            //    if (userToken.ReceiveBuffer.Count < length + sizeof(int))
+            //    {
+            //        //Log4Debug("还未收齐，继续接收");
+            //        break;
+            //    }
+            //    else
+            //    {
+            //        userToken.ReceiveBuffer.RemoveRange(0, sizeof(int));
+            //        buffer = userToken.ReceiveBuffer.Take(length).ToArray();
+            //        userToken.ReceiveBuffer.RemoveRange(0, length);
+            //    }
+            //}
+            //do
+            //{
+            //    MessageXieYi xieyi = MessageXieYi.FromBytes(buffer);
+            //    if (xieyi != null)
+            //    {
+            //        int messageLength = xieyi.MessageContentLength + MessageXieYi.XieYiLength + 1 + 1;
+            //        buffer = buffer.Skip(messageLength).ToArray();
+            //        DealReceive(xieyi, userToken);
+            //    }
+            //    else
+            //    {
+            //        string info = "数据应该直接处理完，不会到这:";
+            //        for (int i = 0; i < buffer.Length; i++)
+            //        {
+            //            info += buffer[i] + ",";
+            //        }
+            //        Log4Debug(info);
+            //        break;
+            //    }
+            //} while (buffer.Length > 0);
+        }
+        userToken.isDealReceive = false;
     }
 
     #endregion
@@ -305,14 +299,16 @@ public class AsyncIOCPServer
     private void ProcessSend(AsyncUserToken userToken)
     {
         SocketAsyncEventArgs e = userToken.SAEA_Send;
-
         if (e.SocketError == SocketError.Success)
         {
             //TODO
-            userToken.isSending = false;
             if (userToken.SendBuffer.Count > 0)
             {
                 Send(userToken);
+            }
+            else
+            {
+                userToken.isSending = false;
             }
         }
         else
@@ -327,13 +323,13 @@ public class AsyncIOCPServer
         byte[] buffer = null;
         buffer = userToken.GetSendBytes();
 
-        string sClientIP = ((IPEndPoint)userToken.ConnectSocket.RemoteEndPoint).ToString();
-        string info = "";
-        for (int i = 0; i < buffer.Length; i++)
-        {
-            info += buffer[i] + ",";
-        }
-        Log4Debug("From the " + sClientIP + " to send " + buffer.Length + " bytes of data：" + info);
+        //string sClientIP = ((IPEndPoint)userToken.ConnectSocket.RemoteEndPoint).ToString();
+        //string info = "";
+        //for (int i = 0; i < buffer.Length; i++)
+        //{
+        //    info += buffer[i] + ",";
+        //}
+        //Log4Debug("From the " + sClientIP + " to send " + buffer.Length + " bytes of data：" + info);
 
         userToken.SAEA_Send.SetBuffer(buffer, 0, buffer.Length);
         Socket s = userToken.ConnectSocket;
@@ -486,7 +482,7 @@ public class AsyncIOCPServer
     }
     public void Log4Debug(string msg)
     {
-        LogManager.WriteLog(this.GetType().Name + ":" + msg);
+        LogManager.instance.WriteLog(this.GetType().Name + ":" + msg);
     }
 
 }

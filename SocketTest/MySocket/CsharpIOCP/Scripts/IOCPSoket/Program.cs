@@ -8,7 +8,7 @@ class Program
     public const int portNo = 500;
     static void Main(string[] args)
     {
-        LogManager.DeleteFiles();//清除Log文件夹
+        LogManager.Init();//清除Log文件夹
         SqlManager.Init();
         ServerDataManager.Init();
         new AsyncIOCPServer(IP, portNo, 20);

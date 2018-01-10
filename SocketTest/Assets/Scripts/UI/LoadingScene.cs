@@ -54,6 +54,9 @@ public class LoadingScene : MonoBehaviour
     public float timeHealthyStart;
     private int timeHealthyDelay = 3;
 
+    public Text txVersion;
+
+
     private void Awake()
     {
         instance = this;
@@ -71,6 +74,7 @@ public class LoadingScene : MonoBehaviour
         FileUtil.loadConfig("LoadingTipCfg", ref cfg, null, false);
         isLoadFinish = false;
         TipShow();
+        txVersion.text = CurrentBundleVersion.version;
     }
     void TipShow()
     {

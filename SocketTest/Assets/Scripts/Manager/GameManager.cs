@@ -446,8 +446,9 @@ public class GameManager : MonoBehaviour
             int length = DataController.instance.MyRoomInfo.FrameIndex - frameIndex;
             if (length > frameDiffer)//本地运行帧和接收帧差距超过RoomInfo.frameDiffer*，快进
             {
-                forwardNum = frameDiffer;
-                Debug.LogError("快进：" + frameIndex + "/" + DataController.instance.MyRoomInfo.FrameIndex);
+                forwardNum = length;
+                string info = "快进：" + frameIndex + "/" + DataController.instance.MyRoomInfo.FrameIndex;
+                Debug.LogError(info);
             }
             for (int i = 0; i < forwardNum; i++)//快进延迟帧的一般数值
             {
@@ -664,17 +665,14 @@ public class GameManager : MonoBehaviour
                     Debug.Log("准备执行帧：" + frameIndex);
                     FrameMainLogic();
                 }
-                //if (reConnectIndex <= 0)
-                //{
-                //    DoFrameRequest(frameIndex);
-                //}
             }
             if (reConnectIndex == 0)
             {
                 GameLoadingUI.Close();
             }
-            //Debug.LogError("最终标记时间：" + timeDeal);
         }
+
+
     }
 
 
