@@ -170,6 +170,7 @@ public class MyEditorScript
             {
                 throw new Exception("BuildPlayer failure: " + res);
             }
+            System.Diagnostics.Process.Start(target_dir);
         }
         catch (Exception e)
         {

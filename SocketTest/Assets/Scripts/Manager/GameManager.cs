@@ -31,14 +31,11 @@ public class GameManager : MonoBehaviour
     public int frameIndex = 0;//当前复现到哪一帧了
     public float frameIndexTime;//运行到这帧时的时间
 
+    public bool isReconnect = false;
     public int reConnectIndex = 0;//重连时需要复现到的帧编号
 
     public Dictionary<int, FrameInfo> FrameInfos = new Dictionary<int, FrameInfo>();
 
-    /// <summary>
-    /// 客户端运行和接收数据相差该帧就快进
-    /// </summary>
-    private int frameDiffer = 10;
     /// <summary>
     /// 重连时客户端一帧复现X帧的数据
     /// </summary>
@@ -81,7 +78,7 @@ public class GameManager : MonoBehaviour
         MessageConvention.login,
         MessageConvention.getHeartBeatTime,
         MessageConvention.heartBeat,
-        MessageConvention.reConnect,
+        MessageConvention.reConnectCheck,
         MessageConvention.getRoommateInfo,
         MessageConvention.quitRoom,
         MessageConvention.updateActorState,
@@ -184,10 +181,10 @@ public class GameManager : MonoBehaviour
     /// 重连逻辑
     /// </summary>
     /// <param name="state"></param>
-    private void ReConnectLogin(int index)
+    private void ReConnectLogin()
     {
-        reConnectIndex = index;
-        Debug.LogError("重连帧：" + reConnectIndex);
+        Debug.LogError("重连：" + isReconnect);
+        GameLoadingUI.Show();
     }
 
 
@@ -227,6 +224,10 @@ public class GameManager : MonoBehaviour
         byte[] message = SerializeHelper.ConvertToByte(info);
         SocketManager.instance.SendSave((byte)MessageConvention.updateActorState, message, false);
     }
+    public static void GetReconnectIndex()
+    {
+        SocketManager.instance.SendSave((byte)MessageConvention.reConnectIndex, new byte[] { }, false);
+    }
 
     /// <summary>
     /// 模型加载完成，设置初始状态
@@ -260,11 +261,10 @@ public class GameManager : MonoBehaviour
             switch (state)
             {
                 case RoomActorState.PrepareModel:
-                    Debug.Log("判断我的状态为预准备");
-                    PrepareLocalModel();
+                    GameLoadingUI.Show();
+                    //PrepareLocalModel();
                     break;
                 case RoomActorState.ModelPrepared:
-                    Debug.Log("模型准备好了");
                     break;
                 case RoomActorState.Gaming:
                     //MyJoystickManager.instance.ReLife();
@@ -274,22 +274,21 @@ public class GameManager : MonoBehaviour
     }
 
 
-    public bool isPreparing = false;
-    private void PrepareLocalModel()
+    //public bool isPreparing = false;
+    public void PrepareLocalModel()
     {
-        if (isPreparing)
-            return;
-        isPreparing = true;
+        //if (isPreparing)
+        //    return;
+        //isPreparing = true;
         RoomUI.Close();
-        GameRunUI.Show();
-        GameLoadingUI.Show();
-        SendLoadProgress(0);
+        //GameRunUI.Show();
+        //GameLoadingUI.Show();
+        SendLoadProgress(20);
         UpdateRoomActor();
         SendLoadProgress(50);
         BoxManager.instance.Init();
         SendLoadProgress(100);
-        isPreparing = false;
-        ShowModelUIName();
+        //isPreparing = false;
     }
     private void SendLoadProgress(int index)
     {
@@ -371,6 +370,7 @@ public class GameManager : MonoBehaviour
         frameIndex = 0;
         Debug.LogError("开始游戏");
         isOnFrame = true;
+        frameIndexTime = Time.realtimeSinceStartup;
     }
 
 
@@ -402,7 +402,7 @@ public class GameManager : MonoBehaviour
     #region 帧同步处理逻辑
 
 
-    private void DoFrameRequest(int startCheckIndex)
+    public void DoFrameRequest(int startCheckIndex)
     {
         for (int i = startCheckIndex; i >= 0; i++)
         {
@@ -413,7 +413,9 @@ public class GameManager : MonoBehaviour
             }
         }
         FrameInfo info = new FrameInfo() { frameIndex = frameEmpty, frameData = new List<byte[]>() };
-        UIManager.instance.ShowAlertTip("请求帧：" + info.frameIndex);
+        string debug = "请求帧：" + info.frameIndex;
+        UIManager.instance.ShowAlertTip(debug);
+        Debug.LogError(debug);
         byte[] message = SerializeHelper.Serialize<FrameInfo>(info);
         SocketManager.instance.SendSave((byte)MessageConvention.frameData, message, false);
     }
@@ -443,12 +445,13 @@ public class GameManager : MonoBehaviour
         if (FrameInfos.ContainsKey(frameIndex))
         {
             int forwardNum = 1;
-            int length = DataController.instance.MyRoomInfo.FrameIndex - frameIndex;
-            if (length > frameDiffer)//本地运行帧和接收帧差距超过RoomInfo.frameDiffer*，快进
+            int length = DataController.instance.FrameCanIndex - frameIndex;
+            if (length > DataController.instance.MyRoomInfo.FrameDelay)//本地运行帧和接收帧差距超过该值，快进
             {
                 forwardNum = length;
-                string info = "快进：" + frameIndex + "/" + DataController.instance.MyRoomInfo.FrameIndex;
-                Debug.LogError(info);
+                string info = "快进：" + frameIndex + "/" + DataController.instance.FrameCanIndex;
+                //Debug.LogError(info);
+                UIManager.instance.ShowAlertTip(info);
             }
             for (int i = 0; i < forwardNum; i++)//快进延迟帧的一般数值
             {
@@ -461,7 +464,7 @@ public class GameManager : MonoBehaviour
             if (overTime > requestMaxTime)
             {
                 frameIndexTime = Time.realtimeSinceStartup;//将该时间作为处理最后一帧的时间，这样可以重新等待延迟最大时间
-                Debug.LogError("超时：" + overTime + "请求帧：" + frameIndex + "/" + DataController.instance.MyRoomInfo.FrameIndex + "/" + (FrameInfos.ContainsKey(frameIndex) ? FrameInfos[frameIndex].frameData + "。" : "frameIndex = null"));
+                Debug.LogError("超时：" + overTime + "请求帧：" + frameIndex + "/" + DataController.instance.FrameCanIndex);
                 DoFrameRequest(frameIndex);
             }
         }
@@ -473,49 +476,44 @@ public class GameManager : MonoBehaviour
     /// </summary>
     private void FrameMainLogic()
     {
-        Debug.Log("当前执行帧：" + frameIndex);
-        FrameInfo info = FrameInfos[frameIndex];
-        if (info == null)
+        if (!FrameInfos.ContainsKey(frameIndex))
         {
-            Debug.LogError("该帧数据为空：" + frameIndex);
-            DoFrameRequest(frameIndex);
+            Debug.Log("该执行帧不存在：" + frameIndex);
             return;
         }
-        else
+        FrameInfo info = FrameInfos[frameIndex];
+        if (info.frameData != null)//有更新操作，更新数据
         {
-            //
-            if (info.frameData != null)//有更新操作，更新数据
+            frameIndexTime = Time.realtimeSinceStartup;
+            if (info.frameData.Count == 0)
             {
-                if (info.frameData.Count == 0)
+                Debug.LogError("检查长度为0的情况。");
+            }
+            for (int i = 0; i < info.frameData.Count; i++)
+            {
+                MessageXieYi frameXY = MessageXieYi.FromBytes(info.frameData[i]);
+                if (frameXY != null)
                 {
-                    Debug.LogError("检查长度为0的情况。");
+                    SelectFrameInfo(frameXY);
                 }
-                for (int i = 0; i < info.frameData.Count; i++)
+                else
                 {
-                    MessageXieYi frameXY = MessageXieYi.FromBytes(info.frameData[i]);
-                    if (frameXY != null)
+                    string debug = "";
+                    for (int j = 0; j < info.frameData[i].Length; j++)
                     {
-                        SelectFrameInfo(frameXY);
+                        debug += info.frameData[i][j] + ",";
                     }
-                    else
-                    {
-                        string debug = "";
-                        for (int j = 0; j < info.frameData[i].Length; j++)
-                        {
-                            debug += info.frameData[i][j] + ",";
-                        }
-                        Debug.LogError("服务器数据无法解析还原:" + debug);
-                    }
+                    Debug.LogError("服务器数据无法解析还原:" + debug);
                 }
             }
-            //子件需要每帧判断的逻辑
-            AllFrameObj();
         }
+        //子件需要每帧判断的逻辑
+        AllFrameObj();
+
         //
         lock (FrameInfos)
         {
             FrameInfos.Remove(frameIndex);
-            frameIndexTime = Time.realtimeSinceStartup;
             frameIndex++;
         }
     }
@@ -662,13 +660,16 @@ public class GameManager : MonoBehaviour
                 }
                 for (int i = 0; i < length; i++, reConnectIndex--)
                 {
-                    Debug.Log("准备执行帧：" + frameIndex);
                     FrameMainLogic();
                 }
             }
             if (reConnectIndex == 0)
             {
+                frameIndexTime = Time.realtimeSinceStartup;
+                reConnectIndex = -1;
                 GameLoadingUI.Close();
+                GameRunUI.Show();
+                ShowModelUIName();
             }
         }
 
@@ -681,6 +682,10 @@ public class GameManager : MonoBehaviour
         if (serverEvent.Count > 0)
         {
             MessageXieYi xieyi = serverEvent.Dequeue();
+            if (xieyi == null)
+            {
+                Debug.LogError("协议居然还能为null");
+            }
             if (xieyi.XieYiFirstFlag == (byte)MessageConvention.login)
             {
                 ErrorType error = ClassGroup.CheckIsError(xieyi);
@@ -708,10 +713,10 @@ public class GameManager : MonoBehaviour
                     HomeUI.Show();
                     //
                     Debug.Log("自身检查是否需要重连。");
-                    SocketManager.instance.SendSave((byte)MessageConvention.reConnect, new byte[] { }, false);
+                    SocketManager.instance.SendSave((byte)MessageConvention.reConnectCheck, new byte[] { }, false);
                 }
             }
-            if ((MessageConvention)xieyi.XieYiFirstFlag == MessageConvention.reConnect)
+            if ((MessageConvention)xieyi.XieYiFirstFlag == MessageConvention.reConnectCheck)
             {
                 ErrorType error = ClassGroup.CheckIsError(xieyi);
                 if (error != ErrorType.none)
@@ -720,8 +725,11 @@ public class GameManager : MonoBehaviour
                 }
                 else
                 {
-                    int index = int.Parse(SerializeHelper.ConvertToString(xieyi.MessageContent));
-                    ReConnectLogin(index);
+                    isReconnect = int.Parse(SerializeHelper.ConvertToString(xieyi.MessageContent)) == 1 ? true : false;
+                    if (isReconnect)
+                    {
+                        ReConnectLogin();
+                    }
                 }
             }
             //if ((MessageConvention)xieyi.XieYiFirstFlag == MessageConvention.getRoommateInfo)

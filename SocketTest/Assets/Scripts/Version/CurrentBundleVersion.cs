@@ -1,5 +1,5 @@
 public static class CurrentBundleVersion
 {
-	public static string version = "v0.0.3";
+	public static string version = "v0.0.4";
 }
 

@@ -66,15 +66,25 @@ public class ServerDataManager
                 case MessageConvention.getHeartBeatTime:
                     newBuffer = SerializeHelper.Serialize<HeartbeatTime>(new HeartbeatTime() { time = AsyncIOCPServer.HeartbeatSecondTime });
                     break;
-                case MessageConvention.reConnect:
+                case MessageConvention.reConnectCheck:
                     //检查是否是掉线用户
+                    int isReconnect = 0;
                     if (OffLineRooms.ContainsKey(userToken.userInfo.Register.userID))
                     {
                         int roomID = OffLineRooms[userToken.userInfo.Register.userID];
                         userToken.userInfo.RoomID = roomID;
                         allRoom.RoomList[roomID].ReConnect(userToken);
                         OffLineRooms.Remove(userToken.userInfo.Register.userID);
+                        isReconnect = 1;
                     }
+                    else
+                    {
+                        isReconnect = 0;
+                    }
+                    newBuffer = SerializeHelper.ConvertToByte("" + isReconnect);
+                    break;
+                case MessageConvention.reConnectIndex:
+                    room.GetReConnectFrameData(userToken.userInfo.UniqueID);
                     break;
                 case MessageConvention.heartBeat:
                     //心跳检测客户端传递服务器时间
@@ -101,6 +111,9 @@ public class ServerDataManager
                     json = JObject.Parse(SerializeHelper.ConvertToString(xieyi.MessageContent));
                     newBuffer = allRoom.UpdateRoom(json);
                     Log4Debug(newBuffer.Length + "newBuffer");
+                    break;
+                case MessageConvention.getRoomInfo:
+                    newBuffer = SerializeHelper.Serialize<RoomInfo>(room.RoomInfo);
                     break;
                 case MessageConvention.quitRoom:
                     QuitInfo quitInfo = new QuitInfo();

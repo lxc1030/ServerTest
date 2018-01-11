@@ -32,6 +32,9 @@ public class GameLoadingUI : MonoBehaviour
     /// </summary>
     private List<MessageConvention> messageHandle = new List<MessageConvention>()
     {
+        MessageConvention.getRoomInfo,
+        MessageConvention.getRoommateInfo,
+        MessageConvention.reConnectIndex,
         MessageConvention.prepareLocalModel,
     };
     private void Start()
@@ -72,6 +75,17 @@ public class GameLoadingUI : MonoBehaviour
         allLoad = new Dictionary<int, PrefabLoad>();
         Common.Clear(transTeamBlue);
         Common.Clear(transTeamRed);
+        GetRoomInfo();
+    }
+
+    private void GetRoomInfo()
+    {
+        SocketManager.instance.SendSave((byte)MessageConvention.getRoomInfo, new byte[] { }, false);
+    }
+
+
+    private void GenerateUserUI()
+    {
         foreach (var item in DataController.instance.MyRoomInfo.ActorList.Values)
         {
             if (!string.IsNullOrEmpty(item.Register.name))
@@ -81,13 +95,17 @@ public class GameLoadingUI : MonoBehaviour
         }
     }
 
+
     private void Generate(RoomActor actor)
     {
         TeamType team = actor.MyTeam;
         GameObject obj = Common.Generate(loadPrefab, team == TeamType.Blue ? transTeamBlue : transTeamRed);
         PrefabLoad info = obj.GetComponent<PrefabLoad>();
         info.Init(actor);
-        allLoad.Add(actor.UniqueID, info);
+        if (!allLoad.ContainsKey(actor.UniqueID))
+        {
+            allLoad.Add(actor.UniqueID, info);
+        }
     }
 
 
@@ -98,6 +116,27 @@ public class GameLoadingUI : MonoBehaviour
         if (serverEvent.Count > 0)
         {
             MessageXieYi xieyi = serverEvent.Dequeue();
+            if ((MessageConvention)xieyi.XieYiFirstFlag == MessageConvention.getRoomInfo)//房间信息
+            {
+                GameManager.GetRoommateInfo();
+            }
+            if ((MessageConvention)xieyi.XieYiFirstFlag == MessageConvention.getRoommateInfo)//房间中人物信息
+            {
+                GenerateUserUI();
+                if (GameManager.instance.isReconnect)
+                {
+                    GameManager.GetReconnectIndex();
+                }
+                else
+                {
+                    GameManager.instance.PrepareLocalModel();
+                }
+            }
+            if ((MessageConvention)xieyi.XieYiFirstFlag == MessageConvention.reConnectIndex)//获取重连帧编号
+            {
+                //GameManager.instance.DoFrameRequest(GameManager.instance.reConnectIndex);
+                GameManager.instance.PrepareLocalModel();//准备本地模型加载
+            }
             if ((MessageConvention)xieyi.XieYiFirstFlag == MessageConvention.prepareLocalModel)
             {
                 ErrorType error = ClassGroup.CheckIsError(xieyi);

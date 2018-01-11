@@ -11,7 +11,6 @@ using UnityEngine;
 public class AsyncUserToken
 {
     public SocketAsyncEventArgs SAEA_Receive;
-    public SocketAsyncEventArgs SAEA_Send;
 
     private byte[] byteReceive { get; set; }
     private byte[] byteSend { get; set; }
@@ -50,13 +49,8 @@ public class AsyncUserToken
         set { _connectSocket = value; }
     }
 
-    /// <summary>
-    /// 记录发送套接字是否发送结束
-    /// </summary>
-    public bool isSending { get; set; }
-
     public bool isDealReceive { get; set; }
-    
+
     /// <summary>
     /// 用户数据
     /// </summary>
@@ -72,8 +66,6 @@ public class AsyncUserToken
         SAEA_Receive.SetBuffer(byteReceive, 0, size);
 
         byteSend = new byte[size];
-        SAEA_Send = new SocketAsyncEventArgs();
-        SAEA_Send.SetBuffer(byteSend, 0, size);
     }
 
     public void Init()
@@ -84,33 +76,57 @@ public class AsyncUserToken
         _sendBuffer = new List<byte>();
         DealBuffer = new List<byte>();
 
-        isSending = false;
         isDealReceive = false;
 
         ConnectSocket = null;
     }
 
-    public static int lengthLength = 4;
+    //public static int lengthLength = 4;
 
 
-    public byte[] GetSendBytes()
+    //public byte[] GetSendBytes()
+    //{
+    //    List<byte> send = null;
+    //    lock (SendBuffer)
+    //    {
+    //        send = new List<byte>();
+
+    //        int length = SendBuffer.Count;
+    //        byte[] lengthB = BitConverter.GetBytes(length);
+    //        send.AddRange(lengthB);
+
+    //        byte[] body = SendBuffer.ToArray();
+    //        send.AddRange(body);
+    //        //
+    //        SendBuffer.Clear();
+    //    }
+    //    return send.ToArray();
+    //}
+    public static byte[] GetSendBytes(byte[] buffer)
     {
-        List<byte> send = null;
-        lock (SendBuffer)
-        {
-            send = new List<byte>();
+        int length = buffer.Length;
+        byte[] send = new byte[buffer.Length + sizeof(int)];
 
-            int length = SendBuffer.Count;
-            byte[] lengthB = BitConverter.GetBytes(length);
-            send.AddRange(lengthB);
+        byte[] temp = BitConverter.GetBytes(length);
 
-            byte[] body = SendBuffer.ToArray();
-            send.AddRange(body);
-            //
-            SendBuffer.Clear();
-        }
+        Array.Copy(temp, 0, send, 0, sizeof(int));
+        Array.Copy(buffer, 0, send, sizeof(int), length);
+        
         return send.ToArray();
     }
 
+}
+public class MySocketEventArgs : SocketAsyncEventArgs
+{
+
+    /// <summary>  
+    /// 标识，只是一个编号而已  
+    /// </summary>  
+    public int ArgsTag { get; set; }
+
+    /// <summary>  
+    /// 设置/获取使用状态  
+    /// </summary>  
+    public bool IsUsing { get; set; }
 
 }

@@ -5,6 +5,7 @@ using System.Threading;
 
 public class SingleRoom
 {
+    private Dictionary<int, AsyncUserToken> UserTokenInfo;
     public int PassedCountDownTime = 0;//倒计时已经过了多久
     public int CountDownTime = 5 * 1000;//倒计时X秒以后开始游戏
 
@@ -32,9 +33,14 @@ public class SingleRoom
     /// </summary>
     public Dictionary<int, FrameInfo> FrameGroup { get; set; }
 
-    public SingleRoom(int roomID, string roomName, GameModel roomType, int limit)
+    public SingleRoom(int roomID, string roomName, GameModel roomType)
     {
-        RoomInfo = new RoomInfo(roomID, roomName, roomType, limit);
+        int limit = RoomCollection.BackRoomLimetByModel(roomType);
+        UserTokenInfo = new Dictionary<int, AsyncUserToken>();
+        for (int i = 0; i < limit; i++)
+        {
+            UserTokenInfo.Add(i, null);
+        }
         //
         switch (roomType)
         {
@@ -48,6 +54,8 @@ public class SingleRoom
 
                 break;
         }
+
+        RoomInfo = new RoomInfo(roomID, roomName, roomType, limit);
     }
 
     // 會員加入房間
@@ -86,6 +94,7 @@ public class SingleRoom
                         break;
                 }
                 //
+                UserTokenInfo[UniqueID] = userToken;
                 RoomActor actor = new RoomActor(RoomInfo.RoomID, UniqueID, userToken.userInfo.Register, myTeam);
                 userToken.userInfo = actor;
                 RoomInfo.ActorList[UniqueID] = actor;
@@ -199,21 +208,13 @@ public class SingleRoom
                 switch (RoomInfo.ActorList[index].CurState)
                 {
                     case RoomActorState.ReConnect:
-                        roomActorUpdate = new RoomActorUpdate()
-                        {
-                            userIndex = index,
-                            update = (int)RoomActorState.PrepareModel + ""
-                        };
-                        UpdateState(roomActorUpdate);//广播,修改玩家状态用来准备本机数据
                         break;
                     case RoomActorState.WaitForStart:
                         Log4Debug("模型未准备好的玩家准备好进入游戏了。");
                         string starttime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
                         byte[] start = SerializeHelper.ConvertToByte(starttime);
-                        AsyncIOCPServer.instance.SendSave(
-                            RoomInfo.ActorList[index].Register.userID,
-                            start,
-                            (byte)MessageConvention.startGaming, 0);
+                        MessageXieYi xieyi = new MessageXieYi((byte)MessageConvention.startGaming, 0, start);
+                        AsyncIOCPServer.instance.SendSave(UserTokenInfo[index], xieyi.ToBytes());
 
                         roomActorUpdate = new RoomActorUpdate()
                         {
@@ -691,6 +692,7 @@ public class SingleRoom
     /// <param name="uniqueID">除该用户以外都广播</param>
     private void BoardcastMessage(MessageConvention convention, byte[] message, int uniqueID = -1, byte xieyiSecond = 0)
     {
+        MessageXieYi msgXY = new MessageXieYi((byte)convention, xieyiSecond, message);
         for (int i = 0; i < RoomInfo.ActorList.Count; i++)//逐个玩家遍历发送消息
         {
             if (RoomInfo.ActorList[i].Register == null)
@@ -703,7 +705,7 @@ public class SingleRoom
             }
             if (RoomInfo.ActorList[i].UniqueID != uniqueID)
             {
-                AsyncIOCPServer.instance.SendSave(RoomInfo.ActorList[i].Register.userID, message, (byte)convention, xieyiSecond);
+                AsyncIOCPServer.instance.SendSave(UserTokenInfo[RoomInfo.ActorList[i].UniqueID], msgXY.ToBytes());
             }
         }
     }
@@ -849,84 +851,53 @@ public class SingleRoom
             {
                 actor = allRA[i];
                 userToken.userInfo = actor;
+                userToken.userInfo.CurState = RoomActorState.Online;
+                lock (UserTokenInfo)
+                {
+                    UserTokenInfo[userToken.userInfo.UniqueID] = userToken;
+                }
                 break;
             }
         }
-
-        if (actor != null)
-        {
-            //Log4Debug("----------ReConnect--------" + userToken.ConnectSocket.RemoteEndPoint);
-            //给自己发送重连消息，因为没有先初始化房间
-            int curFrame = RoomInfo.FrameIndex;
-            MessageXieYi xieyi = null;
-            xieyi = new MessageXieYi((byte)MessageConvention.reConnect, 0, SerializeHelper.ConvertToByte("" + curFrame));
-            AsyncIOCPServer.instance.SendSave(userToken, xieyi.ToBytes());
-            //
-            switch (RoomInfo.CurState)
-            {
-                case RoomActorState.WaitForStart:
-                case RoomActorState.Gaming:
-                    Log4Debug("重连----------");
-                    byte[] message = null;
-                    //
-                    message = SerializeHelper.Serialize<RoomInfo>(RoomInfo);
-                    xieyi = new MessageXieYi((byte)MessageConvention.joinRoom, 0, message);
-                    Log4Debug("数据长度：" + xieyi.ToBytes().Length);
-                    AsyncIOCPServer.instance.SendSave(userToken, xieyi.ToBytes());
-                    //
-                    message = SerializeHelper.Serialize<List<RoomActor>>(new List<RoomActor>(RoomInfo.ActorList.Values));
-                    xieyi = new MessageXieYi((byte)MessageConvention.getRoommateInfo, 0, message);
-                    AsyncIOCPServer.instance.SendSave(userToken, xieyi.ToBytes());
-                    //给房间其他玩家发送更新重连状态
-                    RoomActorUpdate roomActorUpdate = new RoomActorUpdate()
-                    {
-                        userIndex = actor.UniqueID,
-                        update = (int)RoomActorState.ReConnect + ""
-                    };
-                    UpdateState(roomActorUpdate);
-
-                    ////准备模型
-                    //RoomActorUpdate roomActorUpdate = new RoomActorUpdate()
-                    //{
-                    //    userIndex = actor.UniqueID,
-                    //    update = (int)RoomActorState.PrepareModel + ""
-                    //};
-                    //UpdateState(roomActorUpdate);
-
-                    //帧数据
-                    int limetNum = 50;
-                    Log4Debug("重连截止帧：" + curFrame);
-                    int count = curFrame / limetNum;
-                    count += 1;
-                    for (int i = 0; i < count; i++)
-                    {
-                        int min = i * limetNum;
-                        int max = (i + 1) * limetNum;
-                        if (max > curFrame)
-                        {
-                            max = curFrame;
-                        }
-                        message = GetBoardFrame(min, max);
-
-                        xieyi = new MessageXieYi((byte)MessageConvention.frameData, 0, message);
-                        byte[] xieyiBytes = xieyi.ToBytes();
-                        string info = "m:";
-                        for (int m = 0; m < xieyiBytes.Length; m++)
-                        {
-                            info += xieyiBytes[m] + ",";
-                        }
-                        //Log4Debug("从：" + min + "到：" + max + "/" + xieyiBytes.Length + info);
-                        AsyncIOCPServer.instance.SendSave(userToken, xieyiBytes);
-                    }
-                    break;
-                default:
-                    Log4Debug("检查房间在状态:" + RoomInfo.CurState + "时该执行什么逻辑。");
-                    break;
-            }
-        }
-
     }
+    public void GetReConnectFrameData(int unique)
+    {
+        AsyncUserToken userToken = UserTokenInfo[unique];
+        int curFrame = RoomInfo.FrameIndex;
+        byte[] message = null;
+        MessageXieYi xieyi = null;
+        ////帧数据
+        //int limetNum = 50;
+        Log4Debug("重连截止帧：" + curFrame);
+        //int count = curFrame / limetNum;
+        //count += 1;
+        //for (int i = 0; i < count; i++)
+        //{
+        //    int min = i * limetNum;
+        //    int max = (i + 1) * limetNum;
+        //    if (max > curFrame)
+        //    {
+        //        max = curFrame;
+        //    }
+        //    message = GetBoardFrame(min, max);
 
+        //    xieyi = new MessageXieYi((byte)MessageConvention.frameData, 0, message);
+        //    //string info = "m:";
+        //    //for (int m = 0; m < xieyiBytes.Length; m++)
+        //    //{
+        //    //    info += xieyiBytes[m] + ",";
+        //    //}
+        //    //Log4Debug("从：" + min + "到：" + max + "/" + xieyiBytes.Length + info);
+        //    AsyncIOCPServer.instance.SendSave(userToken, xieyi.ToBytes());
+        //}
+
+        message = GetBoardFrame(0, curFrame);
+        xieyi = new MessageXieYi((byte)MessageConvention.frameData, 0, message);
+        AsyncIOCPServer.instance.SendSave(userToken, xieyi.ToBytes());
+
+        xieyi = new MessageXieYi((byte)MessageConvention.reConnectIndex, 0, SerializeHelper.ConvertToByte(curFrame + ""));
+        AsyncIOCPServer.instance.SendSave(userToken, xieyi.ToBytes());
+    }
 
 
 

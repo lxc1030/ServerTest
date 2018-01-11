@@ -16,23 +16,26 @@ public class SocketManager : MonoBehaviour
     public static SocketManager instance;
 
     #region 参数
-    /// <summary>
-    /// 用于每个I/O Socket操作的缓冲区大小 默认1024
-    /// </summary>
-    private int bufferSize = 1024;
-
-    // Listener endpoint.
-    private IPEndPoint hostEndPoint;
 
     /// <summary>  
     /// 连接服务器的socket  
     /// </summary>  
     private Socket _clientSock;
+    /// <summary>
+    /// Listener endpoint.
+    /// </summary>
+    private IPEndPoint hostEndPoint;
+    /// <summary>
+    /// 用于每个I/O Socket操作的缓冲区大小 默认1024
+    /// </summary>
+    private int bufferSize = 1024;
+    /// <summary>
+    /// 发送与接收的MySocketEventArgs变量定义.
+    /// </summary>
+    private List<MySocketEventArgs> listArgs = new List<MySocketEventArgs>();
 
     // Signals a connection.
     private static AutoResetEvent autoConnectEvent = new AutoResetEvent(false);
-
-    private static Thread handleReceive = null;
 
 
     public DateTime startGamTime;
@@ -87,7 +90,7 @@ public class SocketManager : MonoBehaviour
 
 
 
-    #region 初始化
+    #region Init
     public void Init(Action<SocketError> callback = null)
     {
         hostEndPoint = new IPEndPoint(IPAddress.Parse(IP), portNo);
@@ -100,6 +103,28 @@ public class SocketManager : MonoBehaviour
             callback(error);
         }
     }
+
+    int tagCount = 0;
+    /// <summary>  
+    /// 初始化发送参数MySocketEventArgs  
+    /// </summary>  
+    /// <returns></returns>  
+    MySocketEventArgs initSendArgs()
+    {
+        MySocketEventArgs sendArg = new MySocketEventArgs();
+        sendArg.Completed += new EventHandler<SocketAsyncEventArgs>(OnIOCompleted);
+        sendArg.UserToken = _clientSock;
+        sendArg.RemoteEndPoint = hostEndPoint;
+        sendArg.IsUsing = false;
+        Interlocked.Increment(ref tagCount);
+        sendArg.ArgsTag = tagCount;
+        lock (listArgs)
+        {
+            listArgs.Add(sendArg);
+        }
+        return sendArg;
+    }
+
     #endregion
 
     #region 服务器特有的Accept
@@ -151,8 +176,6 @@ public class SocketManager : MonoBehaviour
 
             MyUserToken.SAEA_Receive.Completed += new EventHandler<SocketAsyncEventArgs>(OnIOCompleted);
             MyUserToken.SAEA_Receive.UserToken = MyUserToken;
-            MyUserToken.SAEA_Send.Completed += new EventHandler<SocketAsyncEventArgs>(OnIOCompleted);
-            MyUserToken.SAEA_Send.UserToken = MyUserToken;
 
             if (!MyUserToken.ConnectSocket.ReceiveAsync(MyUserToken.SAEA_Receive))
             {
@@ -186,14 +209,52 @@ public class SocketManager : MonoBehaviour
                 {
                     userToken.ReceiveBuffer.AddRange(copy);
                 }
+
                 if (!userToken.ConnectSocket.ReceiveAsync(e))
                     ProcessReceive(userToken);
 
-                if (!userToken.isDealReceive)
+                do
                 {
-                    userToken.isDealReceive = true;
-                    Handle(userToken);
-                }
+                    byte[] lenBytes = userToken.ReceiveBuffer.GetRange(0, sizeof(int)).ToArray();
+                    int packageLen = BitConverter.ToInt32(lenBytes, 0);
+                    if (packageLen <= userToken.ReceiveBuffer.Count - sizeof(int))
+                    {
+                        //包够长时,则提取出来,交给后面的程序去处理  
+                        byte[] buffer = userToken.ReceiveBuffer.GetRange(sizeof(int), packageLen).ToArray();
+                        //从数据池中移除这组数据,为什么要lock,你懂的  
+                        lock (userToken.ReceiveBuffer)
+                        {
+                            userToken.ReceiveBuffer.RemoveRange(0, packageLen + sizeof(int));
+                        }
+
+                        while (buffer.Length > 0)
+                        {
+                            MessageXieYi xieyi = MessageXieYi.FromBytes(buffer);
+                            if (xieyi == null)
+                            {
+                                Log4Debug("奇怪为什么协议为空");
+                                break;
+                            }
+                            int messageLength = xieyi.MessageContentLength + MessageXieYi.XieYiLength + 1 + 1;
+                            buffer = buffer.Skip(messageLength).ToArray();
+                            //将数据包交给前台去处理
+                            DoReceiveEvent(userToken, xieyi);
+                        }
+                    }
+                    else
+                    {   //长度不够,还得继续接收,需要跳出循环  
+                        break;
+                    }
+                } while (userToken.ReceiveBuffer.Count > sizeof(int));
+
+
+
+
+                //if (!userToken.isDealReceive)
+                //{
+                //    userToken.isDealReceive = true;
+                //    Handle(userToken);
+                //}
             }
             //catch (Exception error)
             //{
@@ -205,65 +266,64 @@ public class SocketManager : MonoBehaviour
             CloseClientSocket(userToken);
         }
     }
-    private void Handle(AsyncUserToken userToken)
-    {
-        while (userToken.ReceiveBuffer.Count > 0)
-        {
-            byte[] rece = null;
-            lock (userToken.ReceiveBuffer)
-            {
-                rece = userToken.ReceiveBuffer.ToArray();
-                userToken.ReceiveBuffer.Clear();
-            }
-            userToken.DealBuffer.AddRange(rece);
-            //
-            while (userToken.DealBuffer.Count > 0)
-            {
-                if (userToken.DealBuffer.Count < sizeof(int))
-                {
-                    break;
-                }
-                byte[] buffer = null;
 
-                byte[] lengthB = new byte[sizeof(int)];
-                lengthB = userToken.DealBuffer.Take(sizeof(int)).ToArray();
-                int length = BitConverter.ToInt32(lengthB, 0);
-                if (userToken.DealBuffer.Count < length + sizeof(int))
-                {
-                    //Log4Debug("还未收齐，继续接收");
-                    break;
-                }
-                else
-                {
-                    userToken.DealBuffer.RemoveRange(0, sizeof(int));
-                    buffer = userToken.DealBuffer.Take(length).ToArray();
-                    userToken.DealBuffer.RemoveRange(0, length);
-                }
+    //private void Handle(AsyncUserToken userToken)
+    //{
+    //    while (userToken.ReceiveBuffer.Count > 0)
+    //    {
+    //        byte[] receive = null;
+    //        lock (userToken.ReceiveBuffer)
+    //        {
+    //            receive = userToken.ReceiveBuffer.ToArray();
+    //            userToken.ReceiveBuffer.Clear();
+    //        }
+    //        userToken.DealBuffer.AddRange(receive);
+    //        //Log4Debug("长度：" + userToken.DealBuffer.Count);
+    //        //
+    //        byte[] head = userToken.DealBuffer.Take(sizeof(int)).ToArray();
+    //        int length = BitConverter.ToInt32(head, 0);
+    //        if (userToken.DealBuffer.Count < length + sizeof(int))
+    //        {
+    //            continue;
+    //        }
 
-                while (buffer.Length > 0)
-                {
-                    MessageXieYi xieyi = MessageXieYi.FromBytes(buffer);
-                    if (xieyi != null)
-                    {
-                        int messageLength = xieyi.MessageContentLength + MessageXieYi.XieYiLength + 1 + 1;
-                        buffer = buffer.Skip(messageLength).ToArray();
-                        DealReceive(xieyi, userToken);
-                    }
-                    else
-                    {
-                        string info = "数据应该直接处理完，不会到这:";
-                        for (int i = 0; i < buffer.Length; i++)
-                        {
-                            info += buffer[i] + ",";
-                        }
-                        Log4Debug(info);
-                        break;
-                    }
-                }
-            }
-        }
-        userToken.isDealReceive = false;
-    }
+    //        byte[] buffer = userToken.DealBuffer.Take(length + sizeof(int)).ToArray();
+    //        userToken.DealBuffer.RemoveRange(0, length + sizeof(int));
+    //        buffer = buffer.Skip(sizeof(int)).ToArray();
+
+    //        while (buffer.Length > 0)
+    //        {
+    //            MessageXieYi xieyi = MessageXieYi.FromBytes(buffer);
+    //            if (xieyi == null)
+    //            {
+    //                break;
+    //            }
+    //            int messageLength = xieyi.MessageContentLength + MessageXieYi.XieYiLength + 1 + 1;
+    //            buffer = buffer.Skip(messageLength).ToArray();
+    //            //将数据包交给前台去处理
+    //            DoReceiveEvent(userToken, xieyi);
+    //        }
+    //        //while (userToken.DealBuffer.Count > 0)
+    //        //{
+    //        //    byte[] head = userToken.DealBuffer.Take(MessageXieYi.XieYiLength + 1).ToArray();
+    //        //    int length = BitConverter.ToInt32(head, 3);
+    //        //    length += MessageXieYi.XieYiLength + 1 + 1;
+    //        //    byte[] take = userToken.DealBuffer.Take(length).ToArray();
+    //        //    MessageXieYi xieyi = MessageXieYi.FromBytes(take);
+    //        //    if (xieyi == null)
+    //        //    {
+    //        //        break;
+    //        //    }
+    //        //    int messageLength = xieyi.MessageContentLength + MessageXieYi.XieYiLength + 1 + 1;
+    //        //    userToken.DealBuffer.RemoveRange(0, messageLength);
+    //        //    //将数据包交给前台去处理
+    //        //    DoReceiveEvent(userToken, xieyi);
+    //        //}
+    //    }
+    //    userToken.isDealReceive = false;
+    //}
+
+
 
     #endregion
 
@@ -272,50 +332,58 @@ public class SocketManager : MonoBehaviour
     /// <summary>
     /// 异步发送操作完成后调用该方法
     /// </summary>
-    private void ProcessSend(AsyncUserToken userToken)
+    private void ProcessSend(SocketAsyncEventArgs arg)
     {
-        SocketAsyncEventArgs e = userToken.SAEA_Send;
-
+        MySocketEventArgs e = (MySocketEventArgs)arg;
+        //SocketAsyncEventArgs e = userToken.SAEA_Send;
+        e.IsUsing = false;
         if (e.SocketError == SocketError.Success)
         {
-            //TODO
-            if (userToken.SendBuffer.Count > 0)
-            {
-                Send(userToken);
-            }
-            else
-            {
-                userToken.isSending = false;
-            }
+
         }
         else
         {
-            Log4Debug("发送回调：" + e.SocketError);
+            isConnected = false;
+            Log4Debug("发送未成功，回调：" + e.SocketError);
         }
     }
-    public void Send(AsyncUserToken userToken)
+    private void Send(AsyncUserToken userToken, byte[] buffer)
     {
-        userToken.isSending = true;
-
-        byte[] buffer = null;
-        buffer = userToken.GetSendBytes();
-
-        string sClientIP = ((IPEndPoint)userToken.ConnectSocket.RemoteEndPoint).ToString();
-        string info = "";
-        for (int i = 0; i < buffer.Length; i++)
+        if (!isConnected)
         {
-            info += buffer[i] + ",";
+            Debug.LogError("未连接，不能发送");
+            return;
         }
+        //string sClientIP = ((IPEndPoint)userToken.ConnectSocket.RemoteEndPoint).ToString();
+        //string info = "";
+        //for (int i = 0; i < buffer.Length; i++)
+        //{
+        //    info += buffer[i] + ",";
+        //}
         //Log4Debug("From the " + sClientIP + " to send " + buffer.Length + " bytes of data：" + info);
 
-        userToken.SAEA_Send.SetBuffer(buffer, 0, buffer.Length);
-        Socket s = userToken.ConnectSocket;
-        SocketAsyncEventArgs e = userToken.SAEA_Send;
+        //查找有没有空闲的发送MySocketEventArgs,有就直接拿来用,没有就创建新的.So easy!  
+        MySocketEventArgs sendArgs = null;
+        lock (listArgs)
+        {
+            sendArgs = listArgs.Find(a => a.IsUsing == false);
+            if (sendArgs == null)
+            {
+                sendArgs = initSendArgs();
+            }
+            sendArgs.IsUsing = true;
+        }
 
-        if (!s.SendAsync(userToken.SAEA_Send))//投递发送请求，这个函数有可能同步发送出去，这时返回false，并且不会引发SocketAsyncEventArgs.Completed事件  
+        //Log4Debug("发送所用的套接字编号：" + sendArgs.ArgsTag);
+        //lock (sendArgs) //要锁定,不锁定让别的线程抢走了就不妙了.  
+        {
+            sendArgs.SetBuffer(buffer, 0, buffer.Length);
+        }
+        Socket s = userToken.ConnectSocket;
+        if (!s.SendAsync(sendArgs))//投递发送请求，这个函数有可能同步发送出去，这时返回false，并且不会引发SocketAsyncEventArgs.Completed事件  
         {
             // 同步发送时处理发送完成事件  
-            ProcessSend(userToken);
+            ProcessSend(sendArgs);
         }
     }
 
@@ -324,9 +392,27 @@ public class SocketManager : MonoBehaviour
 
     #region 客户端发送接收逻辑
 
-    private void DealReceive(MessageXieYi xieyi, AsyncUserToken userToken)
+    /// <summary>  
+    /// 使用新进程通知事件回调  
+    /// </summary>  
+    /// <param name="buff"></param>  
+    private void DoReceiveEvent(AsyncUserToken userToken, MessageXieYi xieyi)
     {
-        DoReceiveEvent(xieyi);
+        //object[] all = new object[] { userToken, xieyi };
+        //object obj = (object)all;
+        ////用新的线程,这样不拖延接收新数据. 
+        //Thread thread = new Thread(new ParameterizedThreadStart(ThreadDealReceive));
+        //thread.IsBackground = true;
+        //thread.Start(obj);
+        DealXieYi(xieyi, userToken);
+    }
+
+    private void ThreadDealReceive(object obj)
+    {
+        object[] all = (object[])obj;
+        AsyncUserToken userToken = (AsyncUserToken)all[0];
+        MessageXieYi xieyi = (MessageXieYi)all[1];
+        DealXieYi(xieyi, userToken);
     }
 
     /// <summary>
@@ -351,14 +437,7 @@ public class SocketManager : MonoBehaviour
 
     public void SendSave(AsyncUserToken userToken, byte[] data)
     {
-        lock (userToken.SendBuffer)
-        {
-            userToken.SendBuffer.AddRange(data);
-        }
-        if (!userToken.isSending)
-        {
-            Send(userToken);
-        }
+        Send(userToken, data);
     }
 
 
@@ -384,8 +463,8 @@ public class SocketManager : MonoBehaviour
                 ProcessReceive(userToken);
                 break;
             case SocketAsyncOperation.Send:
-                userToken = (AsyncUserToken)e.UserToken;
-                ProcessSend(userToken);
+                //userToken = (AsyncUserToken)e.UserToken;
+                ProcessSend(e);
                 break;
         }
     }
@@ -459,217 +538,207 @@ public class SocketManager : MonoBehaviour
     #endregion
 
     #region 接收数据处理
-    public string log = "";
     /// <summary>
     /// 判断并通知事件回调
     /// </summary>
     /// <param name="buff"></param>
-    private void DoReceiveEvent(System.Object obj)
+    private void DealXieYi(MessageXieYi xieyi, AsyncUserToken userToken)
     {
-        MessageXieYi xieyi = (MessageXieYi)obj;
-        log += xieyi.XieYiFirstFlag + ",";
         //Debug.LogError("处理协议：" + (MessageConvention)xieyi.XieYiFirstFlag);
         byte[] tempMessageContent = xieyi.MessageContent;
         string messageInfo = "";
         ErrorType error = ErrorType.none;
         RoomActor actor = null;
         RoomActorUpdate roomActorUpdate = new RoomActorUpdate();
-        if (tempMessageContent.Length > 200)
+        //if (tempMessageContent.Length > 200)
+        //{
+        //    Debug.Log((MessageConvention)xieyi.XieYiFirstFlag + "单次接收数据超过200/" + tempMessageContent.Length);
+        //}
+        try
         {
-            Debug.Log((MessageConvention)xieyi.XieYiFirstFlag + "单次接收数据超过200/" + tempMessageContent.Length);
-        }
-        //处理数值到DataController
-        switch ((MessageConvention)xieyi.XieYiFirstFlag)
-        {
-            case MessageConvention.error:
-                break;
-            case MessageConvention.login:
-                error = ClassGroup.CheckIsError(xieyi);
-                if (error == ErrorType.none)
-                {
+            //处理数值到DataController
+            switch ((MessageConvention)xieyi.XieYiFirstFlag)
+            {
+                case MessageConvention.error:
+                    break;
+                case MessageConvention.login:
+                    error = ClassGroup.CheckIsError(xieyi);
+                    if (error == ErrorType.none)
+                    {
+                        actor = SerializeHelper.Deserialize<RoomActor>(xieyi.MessageContent);
+                        DataController.instance.myInfo = actor;
+                    }
+                    break;
+                case MessageConvention.getHeartBeatTime:
+                    HeartbeatTime beatTime = SerializeHelper.Deserialize<HeartbeatTime>(xieyi.MessageContent);
+                    heartbeatSecondTime = beatTime.time - 1;//-1防止和服务器心跳时间一致的时候会导致偏差
+                    Debug.Log("心跳间隔：" + heartbeatSecondTime);
+                    break;
+                case MessageConvention.reConnectCheck:
+                    break;
+                case MessageConvention.reConnectIndex:
+                    int index = int.Parse(SerializeHelper.ConvertToString(xieyi.MessageContent));
+                    GameManager.instance.reConnectIndex = index;
+                    Debug.LogError("重连帧：" + index);
+                    break;
+                case MessageConvention.heartBeat:
+                    break;
+                case MessageConvention.updateName:
                     actor = SerializeHelper.Deserialize<RoomActor>(xieyi.MessageContent);
                     DataController.instance.myInfo = actor;
-                }
-                break;
-            case MessageConvention.getHeartBeatTime:
-                HeartbeatTime beatTime = SerializeHelper.Deserialize<HeartbeatTime>(xieyi.MessageContent);
-                heartbeatSecondTime = beatTime.time - 1;//-1防止和服务器心跳时间一致的时候会导致偏差
-                Debug.Log("心跳间隔：" + heartbeatSecondTime);
-                break;
-            case MessageConvention.reConnect:
-                break;
-            case MessageConvention.heartBeat:
-                break;
-            case MessageConvention.updateName:
-                actor = SerializeHelper.Deserialize<RoomActor>(xieyi.MessageContent);
-                DataController.instance.myInfo = actor;
-                break;
-            case MessageConvention.createRoom:
-            case MessageConvention.joinRoom:
-            case MessageConvention.updateRoom:
-                Debug.Log((MessageConvention)xieyi.XieYiFirstFlag + "数据长度：" + xieyi.MessageContent.Length);
-                error = ClassGroup.CheckIsError(xieyi);
-                if (error == ErrorType.none)
-                {
+                    break;
+                case MessageConvention.createRoom:
+                case MessageConvention.joinRoom:
+                case MessageConvention.updateRoom:
+                    Debug.Log((MessageConvention)xieyi.XieYiFirstFlag + "数据长度：" + xieyi.MessageContent.Length);
+                    error = ClassGroup.CheckIsError(xieyi);
+                    if (error == ErrorType.none)
+                    {
+                        DataController.instance.MyRoomInfo = SerializeHelper.Deserialize<RoomInfo>(tempMessageContent);
+                    }
+                    break;
+                case MessageConvention.getRoomInfo:
                     DataController.instance.MyRoomInfo = SerializeHelper.Deserialize<RoomInfo>(tempMessageContent);
-                }
-                break;
-            case MessageConvention.quitRoom:
-                break;
-            case MessageConvention.getRoommateInfo:
-                error = ClassGroup.CheckIsError(xieyi);
-                if (error != ErrorType.none)
-                {
-                    Debug.LogError(error);
-                }
-                else
-                {
-                    List<RoomActor> rActors = SerializeHelper.Deserialize<List<RoomActor>>(tempMessageContent);
-                    for (int i = 0; i < rActors.Count; i++)
+                    break;
+                case MessageConvention.quitRoom:
+                    break;
+                case MessageConvention.getRoommateInfo:
+                    error = ClassGroup.CheckIsError(xieyi);
+                    if (error != ErrorType.none)
                     {
-                        if (DataController.instance.MyRoomInfo.ActorList == null)
-                        {
-                            DataController.instance.MyRoomInfo.ActorList = new Dictionary<int, RoomActor>();
-                        }
-                        if (!DataController.instance.MyRoomInfo.ActorList.ContainsKey(rActors[i].UniqueID))
-                        {
-                            DataController.instance.MyRoomInfo.ActorList.Add(rActors[i].UniqueID, null);
-                        }
-                        DataController.instance.MyRoomInfo.ActorList[rActors[i].UniqueID] = rActors[i];
-                    }
-                }
-                break;
-            case MessageConvention.rotateDirection:
-
-                break;
-            case MessageConvention.updateActorAnimation:
-                messageInfo = SerializeHelper.ConvertToString(xieyi.MessageContent);
-                ActorNetAnimation getNetAnimation = new ActorNetAnimation();
-                getNetAnimation.SetSendInfo(messageInfo);
-                if (GameManager.instance.memberGroup.ContainsKey(getNetAnimation.userIndex))
-                {
-                    if (GameManager.instance.memberGroup[getNetAnimation.userIndex] != null)
-                    {
-                        //此处需要修改
-                        //GameManager.instance.memberGroup[getNetAnimation.userIndex].NetAnimation = getNetAnimation;
-                    }
-                    //else if (getNetAnimation.userIndex == DataController.instance.myRoomInfo.MyLocateIndex)//服务器给我设置了
-                    //{
-                    //    MyController.instance.InitNetSaveInfo(null, null, getNetAnimation);
-                    //}
-                }
-                break;
-            case MessageConvention.updateActorState:
-                messageInfo = SerializeHelper.ConvertToString(tempMessageContent);
-                roomActorUpdate.SetSendInfo(messageInfo);
-                Debug.Log("更新用户->" + roomActorUpdate.userIndex + " 状态为:" + (RoomActorState)int.Parse(roomActorUpdate.update));
-                DataController.instance.MyRoomInfo.ActorList[roomActorUpdate.userIndex].CurState = (RoomActorState)int.Parse(roomActorUpdate.update);
-                break;
-            case MessageConvention.prepareLocalModel:
-                //int waitSecond = int.Parse(SerializeHelper.ConvertToString(tempMessageContent));
-                //DataController.instance.myRoomInfo.CountDownTime = waitSecond / 1000;
-                messageInfo = SerializeHelper.ConvertToString(tempMessageContent);
-                roomActorUpdate.SetSendInfo(messageInfo);
-                Debug.Log("用户站位：" + roomActorUpdate.userIndex + "准备进度：" + roomActorUpdate.update + "%");
-                break;
-            case MessageConvention.updateModelInfo:
-
-                break;
-            case MessageConvention.getPreGameData:
-                Debug.LogError("getPreGameData已收到。");
-                break;
-            case MessageConvention.startGaming:
-                string time = SerializeHelper.ConvertToString(tempMessageContent);
-                Debug.LogError("开始游戏时间：" + time);
-                startGamTime = DateTime.Parse(time);
-                DataController.instance.MyRoomInfo.CurState = RoomActorState.Gaming;
-                break;
-            case MessageConvention.gamingTime:
-                messageInfo = SerializeHelper.ConvertToString(tempMessageContent);
-                DataController.instance.MyRoomInfo.GameTime = int.Parse(messageInfo) / 1000;
-                //Debug.LogError("游戏时间：" + DataController.instance.myRoomInfo.GameTime);
-                break;
-            case MessageConvention.shootBullet:
-                break;
-            case MessageConvention.bulletInfo:
-                break;
-            case MessageConvention.endGaming:
-                messageInfo = SerializeHelper.ConvertToString(tempMessageContent);
-                Debug.Log("胜利队伍是：" + (TeamType)int.Parse(messageInfo));
-                break;
-            case MessageConvention.moveDirection://GameManager中处理帧同步相应协议
-
-                break;
-            case MessageConvention.frameData:
-                //FrameInfo fInfo = SerializeHelper.Deserialize<FrameInfo>(tempMessageContent);
-                //if (DataController.instance.myRoomInfo.FrameIndex < fInfo.frameIndex)
-                //{
-                //    DataController.instance.myRoomInfo.FrameIndex = fInfo.frameIndex;
-                //    if (fInfo.frameData != null)
-                //    {
-                //        Debug.LogError("frameDataCount:" + fInfo.frameData.Count);
-                //        for (int i = 0; i < fInfo.frameData.Count; i++)
-                //        {
-                //            MessageXieYi frameXY = MessageXieYi.FromBytes(fInfo.frameData[i], true);
-                //            DoReceiveEvent(frameXY);
-                //        }
-                //    }
-                //}
-                //else
-                //{
-                //    //Debug.LogError("已重复请求同一帧域。");
-                //}
-                List<FrameInfo> fInfos = null;
-                try
-                {
-                    fInfos = SerializeHelper.Deserialize<List<FrameInfo>>(tempMessageContent);
-                }
-                catch (Exception e)
-                {
-                    Debug.LogError("帧出错：" + e.Message);
-                }
-                if (fInfos == null)
-                {
-                    Debug.LogError("请检查，该逻辑不能为空。" + DataController.instance.MyRoomInfo.FrameIndex);
-                }
-                for (int i = 0; i < fInfos.Count; i++)
-                {
-                    FrameInfo fInfo = fInfos[i];
-                    if (fInfos == null)
-                    {
-                        Debug.LogError("解析后的数据有空值：" + fInfo.frameIndex);
-                    }
-                    if (!GameManager.instance.FrameInfos.ContainsKey(fInfo.frameIndex))
-                    {
-                        lock (GameManager.instance.FrameInfos)
-                        {
-                            GameManager.instance.FrameInfos.Add(fInfo.frameIndex, null);
-                        }
+                        Debug.LogError(error);
                     }
                     else
                     {
-                        Debug.Log("重复保存帧数据：" + fInfo.frameIndex);
+                        List<RoomActor> rActors = SerializeHelper.Deserialize<List<RoomActor>>(tempMessageContent);
+                        for (int i = 0; i < rActors.Count; i++)
+                        {
+                            if (DataController.instance.MyRoomInfo.ActorList == null)
+                            {
+                                DataController.instance.MyRoomInfo.ActorList = new Dictionary<int, RoomActor>();
+                            }
+                            if (!DataController.instance.MyRoomInfo.ActorList.ContainsKey(rActors[i].UniqueID))
+                            {
+                                DataController.instance.MyRoomInfo.ActorList.Add(rActors[i].UniqueID, null);
+                            }
+                            DataController.instance.MyRoomInfo.ActorList[rActors[i].UniqueID] = rActors[i];
+                        }
                     }
-                    lock (GameManager.instance.FrameInfos)
-                    {
-                        GameManager.instance.FrameInfos[fInfo.frameIndex] = fInfo;
-                        //Debug.Log("成功保存帧：" + fInfo.frameIndex);
-                    }
-                    if (fInfo.frameIndex > DataController.instance.MyRoomInfo.FrameIndex)
-                    {
-                        DataController.instance.MyRoomInfo.FrameIndex = fInfo.frameIndex;
-                    }
-                }
-                break;
-            default:
-                Debug.LogError("没有协议：" + xieyi.XieYiFirstFlag + "/MesageLength:" + xieyi.MessageContentLength);
-                break;
-        }
+                    break;
+                case MessageConvention.rotateDirection:
 
-        //在数据处理后再执行委托响应脚本
-        if (allHandle.ContainsKey((MessageConvention)xieyi.XieYiFirstFlag))
+                    break;
+                case MessageConvention.updateActorAnimation:
+                    messageInfo = SerializeHelper.ConvertToString(xieyi.MessageContent);
+                    ActorNetAnimation getNetAnimation = new ActorNetAnimation();
+                    getNetAnimation.SetSendInfo(messageInfo);
+                    if (GameManager.instance.memberGroup.ContainsKey(getNetAnimation.userIndex))
+                    {
+                        if (GameManager.instance.memberGroup[getNetAnimation.userIndex] != null)
+                        {
+                            //此处需要修改
+                            //GameManager.instance.memberGroup[getNetAnimation.userIndex].NetAnimation = getNetAnimation;
+                        }
+                        //else if (getNetAnimation.userIndex == DataController.instance.myRoomInfo.MyLocateIndex)//服务器给我设置了
+                        //{
+                        //    MyController.instance.InitNetSaveInfo(null, null, getNetAnimation);
+                        //}
+                    }
+                    break;
+                case MessageConvention.updateActorState:
+                    messageInfo = SerializeHelper.ConvertToString(tempMessageContent);
+                    roomActorUpdate.SetSendInfo(messageInfo);
+                    Debug.Log("更新用户->" + roomActorUpdate.userIndex + " 状态为:" + (RoomActorState)int.Parse(roomActorUpdate.update));
+                    DataController.instance.MyRoomInfo.ActorList[roomActorUpdate.userIndex].CurState = (RoomActorState)int.Parse(roomActorUpdate.update);
+                    break;
+                case MessageConvention.prepareLocalModel:
+                    //int waitSecond = int.Parse(SerializeHelper.ConvertToString(tempMessageContent));
+                    //DataController.instance.myRoomInfo.CountDownTime = waitSecond / 1000;
+                    messageInfo = SerializeHelper.ConvertToString(tempMessageContent);
+                    roomActorUpdate.SetSendInfo(messageInfo);
+                    Debug.Log("用户站位：" + roomActorUpdate.userIndex + "准备进度：" + roomActorUpdate.update + "%");
+                    break;
+                case MessageConvention.updateModelInfo:
+
+                    break;
+                case MessageConvention.getPreGameData:
+                    Debug.LogError("getPreGameData已收到。");
+                    break;
+                case MessageConvention.startGaming:
+                    string time = SerializeHelper.ConvertToString(tempMessageContent);
+                    Debug.LogError("开始游戏时间：" + time);
+                    startGamTime = DateTime.Parse(time);
+                    DataController.instance.MyRoomInfo.CurState = RoomActorState.Gaming;
+                    break;
+                case MessageConvention.gamingTime:
+                    messageInfo = SerializeHelper.ConvertToString(tempMessageContent);
+                    DataController.instance.MyRoomInfo.GameTime = int.Parse(messageInfo) / 1000;
+                    //Debug.LogError("游戏时间：" + DataController.instance.myRoomInfo.GameTime);
+                    break;
+                case MessageConvention.shootBullet:
+                    break;
+                case MessageConvention.bulletInfo:
+                    break;
+                case MessageConvention.endGaming:
+                    messageInfo = SerializeHelper.ConvertToString(tempMessageContent);
+                    Debug.Log("胜利队伍是：" + (TeamType)int.Parse(messageInfo));
+                    break;
+                case MessageConvention.moveDirection://GameManager中处理帧同步相应协议
+
+                    break;
+                case MessageConvention.frameData:
+                    List<FrameInfo> fInfos = null;
+                    try
+                    {
+                        fInfos = SerializeHelper.Deserialize<List<FrameInfo>>(tempMessageContent);
+                    }
+                    catch (Exception e)
+                    {
+                        Debug.LogError("帧出错：" + e.Message);
+                    }
+                    if (fInfos == null)
+                    {
+                        Debug.LogError("请检查，该逻辑不能为空。");
+                    }
+                    for (int i = 0; i < fInfos.Count; i++)
+                    {
+                        FrameInfo fInfo = fInfos[i];
+                        if (fInfos == null)
+                        {
+                            Debug.LogError("解析后的数据有空值：" + fInfo.frameIndex);
+                        }
+                        lock (GameManager.instance.FrameInfos)
+                        {
+                            if (!GameManager.instance.FrameInfos.ContainsKey(fInfo.frameIndex))
+                            {
+                                GameManager.instance.FrameInfos.Add(fInfo.frameIndex, fInfo);
+                                //Debug.Log("成功保存帧：" + fInfo.frameIndex);
+                                while (GameManager.instance.FrameInfos.ContainsKey(DataController.instance.FrameCanIndex + 1))
+                                {
+                                    DataController.instance.FrameCanIndex++;
+                                }
+                            }
+                            else
+                            {
+                                //Debug.Log("重复保存帧数据：" + fInfo.frameIndex);
+                            }
+                        }
+                    }
+                    break;
+                default:
+                    Debug.LogError("没有协议：" + xieyi.XieYiFirstFlag + "/MesageLength:" + xieyi.MessageContentLength);
+                    break;
+            }
+
+            //在数据处理后再执行委托响应脚本
+            if (allHandle.ContainsKey((MessageConvention)xieyi.XieYiFirstFlag))
+            {
+                allHandle[(MessageConvention)xieyi.XieYiFirstFlag](xieyi);
+            }
+        }
+        catch (Exception e)
         {
-            allHandle[(MessageConvention)xieyi.XieYiFirstFlag](xieyi);
+            Debug.LogError("处理协议错误：" + e.Message + "/协议：" + (MessageConvention)xieyi.XieYiFirstFlag);
         }
     }
 
@@ -754,10 +823,6 @@ public class SocketManager : MonoBehaviour
     // Disposes the instance of SocketClient.
     public void Dispose()
     {
-        if (handleReceive != null)
-        {
-            handleReceive.Abort();
-        }
         autoConnectEvent.Close();
         if (MyUserToken.ConnectSocket.Connected)
         {

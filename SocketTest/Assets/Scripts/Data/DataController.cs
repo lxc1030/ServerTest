@@ -66,6 +66,7 @@ public class DataController : MonoBehaviour
             myRoomInfo = value;
         }
     }
+    public int FrameCanIndex = 0;
 
 
     public const int bulletAutoDestory = 100;

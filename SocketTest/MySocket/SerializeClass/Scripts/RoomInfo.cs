@@ -19,6 +19,8 @@ public class RoomInfo
     public RoomActorState CurState { get; set; }// 房间当前状态
     [ProtoBuf.ProtoMember(7)]
     public int MyLocateIndex { get; set; }//这个值的是在数组中的序号，发送给用户，用户所在的位置
+    [ProtoBuf.ProtoMember(8)]
+    public int FrameDelay { get; set; }
 
     public RoomInfo()
     {
@@ -39,6 +41,8 @@ public class RoomInfo
         switch (RoomType)
         {
             case GameModel.组队模式:
+                frameInterval = 8;
+                FrameDelay = 10;
                 GameTime = 2 * 60 * 1000;//分钟
                 //GameTime = 1 * 30 * 1000;
                 break;
@@ -56,7 +60,7 @@ public class RoomInfo
     /// <summary>
     /// 用户操作数据存储后，间隔该帧返回
     /// </summary>
-    public static int frameInterval = 10;
+    public int frameInterval;
     /// <summary>
     /// 一帧对应的时间
     /// </summary>

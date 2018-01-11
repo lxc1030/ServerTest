@@ -61,12 +61,14 @@ public enum MessageConvention
     error = -1,
     login,
     getHeartBeatTime,
-    reConnect,//重连
+    reConnectCheck,//检查是否重连
+    reConnectIndex,//重连客户端Loading帧编号
     heartBeat,
     updateName,//更新用户昵称
     createRoom,
     joinRoom,
     updateRoom,
+    getRoomInfo,
     quitRoom,
     getRoommateInfo,
     updateActorAnimation,

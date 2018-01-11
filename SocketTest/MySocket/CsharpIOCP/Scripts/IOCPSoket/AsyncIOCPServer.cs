@@ -13,12 +13,21 @@ public class AsyncIOCPServer
     /// Socket-Server
     /// </summary>
     Socket s_Server;
+    /// <summary>
+    /// Listener endpoint.
+    /// </summary>
+    private IPEndPoint hostEndPoint;
 
     /// <summary>
     /// 对象池
     /// </summary>
     AsyncUserTokenPool userTokenPool;
+    /// <summary>
+    /// 发送与接收的MySocketEventArgs变量定义.
+    /// </summary>
+    private List<MySocketEventArgs> listArgs = new List<MySocketEventArgs>();
 
+    int maxClient;
     /// <summary>
     /// 每个Socket套接字缓冲区大小
     /// </summary>
@@ -31,27 +40,18 @@ public class AsyncIOCPServer
     /// <summary>
     /// 侦听客户端
     /// </summary>
-    public AsyncIOCPServer(string IP, int portNo, int maxClient)
+    public AsyncIOCPServer(string IP, int portNo, int _maxClient)
     {
         instance = this;
         try
         {
-            IPAddress ipAddress = IPAddress.Parse(IP);
+            maxClient = _maxClient;
             s_Server = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            s_Server.Bind(new IPEndPoint(ipAddress, portNo));
+            hostEndPoint = new IPEndPoint(IPAddress.Parse(IP), portNo);
+            s_Server.Bind(hostEndPoint);
             s_Server.Listen(maxClient);
 
-            userTokenPool = new AsyncUserTokenPool(maxClient);
-            for (int i = 0; i < maxClient; i++) //填充SocketAsyncEventArgs池
-            {
-                AsyncUserToken userToken = new AsyncUserToken(bufferSize);
-                userToken.SAEA_Receive.UserToken = userToken;
-                userToken.SAEA_Send.UserToken = userToken;
-                userToken.SAEA_Receive.Completed += new EventHandler<SocketAsyncEventArgs>(OnIOCompleted);
-                userToken.SAEA_Send.Completed += new EventHandler<SocketAsyncEventArgs>(OnIOCompleted);
-
-                userTokenPool.Push(userToken);
-            }
+            Init();
 
             Thread tCheckClientHeartbeat = new Thread(CheckClientHeartbeat);
             tCheckClientHeartbeat.IsBackground = true;
@@ -65,6 +65,49 @@ public class AsyncIOCPServer
             Log4Debug(error.Message);
         }
     }
+
+    #region Init
+
+    private void Init()
+    {
+        userTokenPool = new AsyncUserTokenPool(maxClient);
+        for (int i = 0; i < maxClient; i++) //填充SocketAsyncEventArgs池
+        {
+            AsyncUserToken userToken = new AsyncUserToken(bufferSize);
+            userToken.SAEA_Receive.UserToken = userToken;
+            userToken.SAEA_Receive.Completed += new EventHandler<SocketAsyncEventArgs>(OnIOCompleted);
+
+            userTokenPool.Push(userToken);
+        }
+    }
+
+
+    int tagCount = 0;
+    /// <summary>  
+    /// 初始化发送参数MySocketEventArgs  
+    /// </summary>  
+    /// <returns></returns>  
+    MySocketEventArgs initSendArgs()
+    {
+        MySocketEventArgs sendArg = new MySocketEventArgs();
+        sendArg.Completed += new EventHandler<SocketAsyncEventArgs>(OnIOCompleted);
+        sendArg.UserToken = s_Server;
+        sendArg.RemoteEndPoint = hostEndPoint;
+        sendArg.IsUsing = false;
+        Interlocked.Increment(ref tagCount);
+        sendArg.ArgsTag = tagCount;
+        lock (listArgs)
+        {
+            listArgs.Add(sendArg);
+        }
+        return sendArg;
+    }
+
+    #endregion
+
+
+
+
 
     #region 服务器特有的Accept
 
@@ -184,107 +227,22 @@ public class AsyncIOCPServer
     {
         while (userToken.ReceiveBuffer.Count > 0)
         {
-            byte[] rece = null;
+            byte[] receive = null;
             lock (userToken.ReceiveBuffer)
             {
-                rece = userToken.ReceiveBuffer.ToArray();
+                receive = userToken.ReceiveBuffer.ToArray();
                 userToken.ReceiveBuffer.Clear();
             }
-            userToken.DealBuffer.AddRange(rece);
+            userToken.DealBuffer.AddRange(receive);
             //
-           
             while (userToken.DealBuffer.Count > 0)
             {
-                if (userToken.DealBuffer.Count < sizeof(int))
-                {
-                    break;
-                }
-                byte[] buffer = null;
-
-                byte[] lengthB = new byte[sizeof(int)];
-                lengthB = userToken.DealBuffer.Take(sizeof(int)).ToArray();
-                int length = BitConverter.ToInt32(lengthB, 0);
-                if (userToken.DealBuffer.Count < length + sizeof(int))
-                {
-                    //Log4Debug("还未收齐，继续接收");
-                    break;
-                }
-                else
-                {
-                    userToken.DealBuffer.RemoveRange(0, sizeof(int));
-                    buffer = userToken.DealBuffer.Take(length).ToArray();
-                    userToken.DealBuffer.RemoveRange(0, length);
-                }
-
-                do
-                {
-                    MessageXieYi xieyi = MessageXieYi.FromBytes(buffer);
-                    if (xieyi != null)
-                    {
-                        int messageLength = xieyi.MessageContentLength + MessageXieYi.XieYiLength + 1 + 1;
-                        buffer = buffer.Skip(messageLength).ToArray();
-                        DealReceive(xieyi, userToken);
-                    }
-                    else
-                    {
-                        string info = "数据应该直接处理完，不会到这:";
-                        for (int i = 0; i < buffer.Length; i++)
-                        {
-                            info += buffer[i] + ",";
-                        }
-                        Log4Debug(info);
-                        break;
-                    }
-                } while (buffer.Length > 0);
+                MessageXieYi xieyi = MessageXieYi.FromBytes(userToken.DealBuffer.ToArray());
+                int messageLength = xieyi.MessageContentLength + MessageXieYi.XieYiLength + 1 + 1;
+                userToken.DealBuffer.RemoveRange(0, messageLength);
+                //将数据包交给前台去处理
+                DoReceiveEvent(userToken, xieyi);
             }
-
-
-
-
-
-            //if (userToken.ReceiveBuffer.Count < sizeof(int))
-            //{
-            //    break;
-            //}
-            //byte[] buffer = null;
-            //lock (userToken.ReceiveBuffer)
-            //{
-            //    byte[] lengthB = new byte[sizeof(int)];
-            //    lengthB = userToken.ReceiveBuffer.Take(sizeof(int)).ToArray();
-            //    int length = BitConverter.ToInt32(lengthB, 0);
-
-            //    if (userToken.ReceiveBuffer.Count < length + sizeof(int))
-            //    {
-            //        //Log4Debug("还未收齐，继续接收");
-            //        break;
-            //    }
-            //    else
-            //    {
-            //        userToken.ReceiveBuffer.RemoveRange(0, sizeof(int));
-            //        buffer = userToken.ReceiveBuffer.Take(length).ToArray();
-            //        userToken.ReceiveBuffer.RemoveRange(0, length);
-            //    }
-            //}
-            //do
-            //{
-            //    MessageXieYi xieyi = MessageXieYi.FromBytes(buffer);
-            //    if (xieyi != null)
-            //    {
-            //        int messageLength = xieyi.MessageContentLength + MessageXieYi.XieYiLength + 1 + 1;
-            //        buffer = buffer.Skip(messageLength).ToArray();
-            //        DealReceive(xieyi, userToken);
-            //    }
-            //    else
-            //    {
-            //        string info = "数据应该直接处理完，不会到这:";
-            //        for (int i = 0; i < buffer.Length; i++)
-            //        {
-            //            info += buffer[i] + ",";
-            //        }
-            //        Log4Debug(info);
-            //        break;
-            //    }
-            //} while (buffer.Length > 0);
         }
         userToken.isDealReceive = false;
     }
@@ -296,34 +254,24 @@ public class AsyncIOCPServer
     /// <summary>
     /// 异步发送操作完成后调用该方法
     /// </summary>
-    private void ProcessSend(AsyncUserToken userToken)
+    private void ProcessSend(SocketAsyncEventArgs arg)
     {
-        SocketAsyncEventArgs e = userToken.SAEA_Send;
+        MySocketEventArgs e = (MySocketEventArgs)arg;
+        //SocketAsyncEventArgs e = userToken.SAEA_Send;
+        e.IsUsing = false;
         if (e.SocketError == SocketError.Success)
         {
-            //TODO
-            if (userToken.SendBuffer.Count > 0)
-            {
-                Send(userToken);
-            }
-            else
-            {
-                userToken.isSending = false;
-            }
+            
         }
         else
         {
             Log4Debug("发送未成功，回调：" + e.SocketError);
         }
     }
-    public void Send(AsyncUserToken userToken)
+    private void Send(AsyncUserToken userToken, byte[] send)
     {
-        userToken.isSending = true;
-
-        byte[] buffer = null;
-        buffer = userToken.GetSendBytes();
-
-        //string sClientIP = ((IPEndPoint)userToken.ConnectSocket.RemoteEndPoint).ToString();
+        byte[] buffer = AsyncUserToken.GetSendBytes(send);
+        string sClientIP = ((IPEndPoint)userToken.ConnectSocket.RemoteEndPoint).ToString();
         //string info = "";
         //for (int i = 0; i < buffer.Length; i++)
         //{
@@ -331,14 +279,28 @@ public class AsyncIOCPServer
         //}
         //Log4Debug("From the " + sClientIP + " to send " + buffer.Length + " bytes of data：" + info);
 
-        userToken.SAEA_Send.SetBuffer(buffer, 0, buffer.Length);
-        Socket s = userToken.ConnectSocket;
-        SocketAsyncEventArgs e = userToken.SAEA_Send;
+        //查找有没有空闲的发送MySocketEventArgs,有就直接拿来用,没有就创建新的.So easy!  
+        MySocketEventArgs sendArgs = null;
+        lock (listArgs)
+        {
+            sendArgs = listArgs.Find(a => a.IsUsing == false);
+            if (sendArgs == null)
+            {
+                sendArgs = initSendArgs();
+            }
+            sendArgs.IsUsing = true;
+        }
 
-        if (!s.SendAsync(e))//投递发送请求，这个函数有可能同步发送出去，这时返回false，并且不会引发SocketAsyncEventArgs.Completed事件  
+        //Log4Debug("发送所用的套接字编号：" + sendArgs.ArgsTag);
+        //lock (sendArgs) //要锁定,不锁定让别的线程抢走了就不妙了.  
+        {
+            sendArgs.SetBuffer(buffer, 0, buffer.Length);
+        }
+        Socket s = userToken.ConnectSocket;
+        if (!s.SendAsync(sendArgs))//投递发送请求，这个函数有可能同步发送出去，这时返回false，并且不会引发SocketAsyncEventArgs.Completed事件  
         {
             // 同步发送时处理发送完成事件  
-            ProcessSend(userToken);
+            ProcessSend(sendArgs);
         }
     }
 
@@ -346,7 +308,28 @@ public class AsyncIOCPServer
 
     #region 服务器发送接收逻辑
 
-    private void DealReceive(MessageXieYi xieyi, AsyncUserToken userToken)
+    /// <summary>  
+    /// 使用新进程通知事件回调  
+    /// </summary>  
+    /// <param name="buff"></param>  
+    private void DoReceiveEvent(AsyncUserToken userToken, MessageXieYi xieyi)
+    {
+        object[] all = new object[] { userToken, xieyi };
+        object obj = (object)all;
+        //用新的线程,这样不拖延接收新数据. 
+        Thread thread = new Thread(new ParameterizedThreadStart(ThreadDealReceive));
+        thread.IsBackground = true;
+        thread.Start(obj);
+    }
+    private void ThreadDealReceive(object obj)
+    {
+        object[] all = (object[])obj;
+        AsyncUserToken userToken = (AsyncUserToken)all[0];
+        MessageXieYi xieyi = (MessageXieYi)all[1];
+        DealXieYi(xieyi, userToken);
+    }
+
+    private void DealXieYi(MessageXieYi xieyi, AsyncUserToken userToken)
     {
         byte[] backInfo = ServerDataManager.instance.SelectMessage(xieyi, userToken); //判断逻辑
 
@@ -361,14 +344,7 @@ public class AsyncIOCPServer
 
     public void SendSave(AsyncUserToken userToken, byte[] data)
     {
-        lock (userToken.SendBuffer)
-        {
-            userToken.SendBuffer.AddRange(data);
-        }
-        if (!userToken.isSending)
-        {
-            Send(userToken);
-        }
+        Send(userToken, data);
     }
 
     public void SendSave(string userID, byte[] message, byte xieyiFirst, byte xieyiSecond)
@@ -403,8 +379,8 @@ public class AsyncIOCPServer
                 ProcessReceive(userToken);
                 break;
             case SocketAsyncOperation.Send:
-                userToken = (AsyncUserToken)e.UserToken;
-                ProcessSend(userToken);
+                //userToken = (AsyncUserToken)e.UserToken;
+                ProcessSend(e);
                 break;
         }
     }

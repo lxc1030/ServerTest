@@ -52,7 +52,6 @@ public class RoomCollection
         }
 
         int roomID = roomList.Count;
-        int limetCount = BackRoomLimetByModel(roomType);
         Log4Debug("当前房间数:" + roomList.Values.Count);
         foreach (KeyValuePair<int, SingleRoom> item in roomList)
         {
@@ -70,7 +69,7 @@ public class RoomCollection
         {
             roomList.Add(roomID, null);
         }
-        roomList[roomID] = new SingleRoom(roomID, (string)roomName, roomType, limetCount);
+        roomList[roomID] = new SingleRoom(roomID, (string)roomName, roomType);
         int localIndex = -1;
         if (roomList[roomID].Join(userToken, out localIndex))
         {
@@ -172,13 +171,13 @@ public class RoomCollection
 
 
 
-    public int BackRoomLimetByModel(GameModel type)
+    public static int BackRoomLimetByModel(GameModel type)
     {
         int limet = 1;
         switch (type)
         {
             case GameModel.组队模式:
-                limet = 4;
+                limet = 2;
                 break;
         }
         return limet;
