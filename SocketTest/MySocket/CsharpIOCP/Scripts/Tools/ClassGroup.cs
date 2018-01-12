@@ -84,6 +84,7 @@ public enum MessageConvention
     moveDirection,
     rotateDirection,
     frameData,
+    testConnect,
 }
 
 #endregion

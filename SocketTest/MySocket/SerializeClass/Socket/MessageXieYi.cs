@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using UnityEngine;
+//using UnityEngine;
 /// <summary>
 /// 【消息协议】=【协议一级标志】+【协议二级标志】+【实际消息长度】+【实际消息内容】+【多于消息内容】
 /// http://www.cnblogs.com/sungong1987/p/5267011.html
@@ -156,7 +156,7 @@ public class MessageXieYi
             {
                 string info = "开头：" + start;
                 Console.WriteLine(info);
-                Debug.LogError(info);
+                //Debug.LogError(info);
                 return null;
             }
 
@@ -181,7 +181,7 @@ public class MessageXieYi
             {
                 string info = "数据接收不齐：" + (bufferLength - 6) + "/" + messageXieYi.messageContentLength;
                 Console.WriteLine(info);
-                Debug.LogError(info);
+                //Debug.LogError(info);
                     
                 return null;
             }
@@ -191,7 +191,7 @@ public class MessageXieYi
             {
                 string info = "结尾：" + end + "消息长度：" + messageXieYi.messageContentLength;
                 Console.WriteLine(info);
-                Debug.LogError(info);
+                //Debug.LogError(info);
                 return null;
             }
 

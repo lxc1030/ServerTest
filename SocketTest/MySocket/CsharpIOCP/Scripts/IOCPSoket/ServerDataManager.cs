@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
-
+using System.Threading;
 
 public class ServerDataManager
 {
@@ -16,6 +16,16 @@ public class ServerDataManager
     }
     public ServerDataManager()
     {
+        receiveDealPool = new Queue<AsyncUserToken>();
+        //for (int i = 0; i < 8; i++)
+        //{
+        //    Thread th = new Thread();
+        //    th.IsBackground = true;
+        //    dealThreadPool.Enqueue(th);
+        //}
+
+
+
         //房间初始化
         allRoom = new RoomCollection();
         OffLineRooms = new Dictionary<string, int>();
@@ -23,13 +33,36 @@ public class ServerDataManager
         Log4Debug("数据处理准备就绪。");
     }
 
-    ///// <summary>
-    ///// 强制退出房间
-    ///// </summary>
-    //public void ForceQuit(RoomActor userInfo)
+    public Queue<AsyncUserToken> receiveDealPool;
+    public Stack<Thread> dealThreadPool;
+
+
+    //public void CheckReceiveUserToken()
     //{
-    //    allRoom.QuitRoom(userInfo);
+    //    while (dealThreadPool.Count > 0)
+    //    {
+    //        if (receiveDealPool.Count > 0)
+    //        {
+    //            AsyncUserToken userToken = null;
+    //            lock (receiveDealPool)
+    //            {
+    //                userToken = receiveDealPool.Dequeue();
+    //            }
+    //            lock (dealThreadPool)
+    //            {
+    //                Thread th = dealThreadPool.Pop();
+    //                th.Start(userToken);
+    //                ThreadPool.QueueUserWorkItem(new WaitCallback(), userToken);
+    //            }
+    //        }
+    //        else
+    //        {
+    //            Thread.Sleep(1000);
+    //            continue;
+    //        }
+    //    }
     //}
+
 
 
     #region 处理接收来的协议拆分和判断
@@ -215,6 +248,15 @@ public class ServerDataManager
                     FrameInfo frame = SerializeHelper.Deserialize<FrameInfo>(tempMessageContent);
                     newBuffer = room.GetBoardFrame(frame.frameIndex);
                     Log4Debug("用户" + userToken.userInfo.Register.userID + "/请求帧数据：" + frame.frameIndex + "/" + room.RoomInfo.FrameIndex + "数据总长：" + newBuffer.Length);
+                    break;
+                case MessageConvention.testConnect:
+                    tempMessageContent = xieyi.MessageContent;
+                    string con = "接收测试到：";
+                    //for (int i = 0; i < tempMessageContent.Length; i++)
+                    //{
+                    //    con += tempMessageContent[i] + ",";
+                    //}
+                    Log4Debug(con);
                     break;
                 default:
                     Log4Debug("该协议是否需要判断：" + xieyi.XieYiFirstFlag);

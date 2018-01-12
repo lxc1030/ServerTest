@@ -16,23 +16,37 @@ public class SocketManager : MonoBehaviour
     public static SocketManager instance;
 
     #region 参数
-
-    /// <summary>  
-    /// 连接服务器的socket  
-    /// </summary>  
-    private Socket _clientSock;
     /// <summary>
     /// Listener endpoint.
     /// </summary>
     private IPEndPoint hostEndPoint;
     /// <summary>
-    /// 用于每个I/O Socket操作的缓冲区大小 默认1024
-    /// </summary>
-    private int bufferSize = 1024;
-    /// <summary>
     /// 发送与接收的MySocketEventArgs变量定义.
     /// </summary>
     private List<MySocketEventArgs> listArgs = new List<MySocketEventArgs>();
+    /// <summary>
+    /// 用于每个I/O Socket操作的缓冲区大小 默认1024
+    /// </summary>
+    int bufferSize = 1024;
+    /// <summary>
+    /// 处理线程通过这个队列知道有数据需要处理
+    /// </summary>
+    /// <typeparam name="ConnCache"></typeparam>
+    /// <param name=""></param>
+    /// <returns></returns>
+    Queue<ConnCache> tokenQueue;
+    /// <summary>
+    /// 接收到数据后，同时通知处理线程处理数据
+    /// </summary>
+    ManualResetEvent tokenEvent;
+
+
+
+
+    /// <summary>  
+    /// 连接服务器的socket  
+    /// </summary>  
+    private Socket _Socket;
 
     // Signals a connection.
     private static AutoResetEvent autoConnectEvent = new AutoResetEvent(false);
@@ -47,6 +61,10 @@ public class SocketManager : MonoBehaviour
 
     // Flag for connected socket.
     public bool isConnected = false;
+
+
+
+
 
     #endregion
 
@@ -89,12 +107,11 @@ public class SocketManager : MonoBehaviour
     }
 
 
-
-    #region Init
+    
     public void Init(Action<SocketError> callback = null)
     {
         hostEndPoint = new IPEndPoint(IPAddress.Parse(IP), portNo);
-        _clientSock = new Socket(hostEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+        _Socket = new Socket(hostEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 
         //SocketError error = Connect(Login);
         SocketError error = Connect();
@@ -102,8 +119,52 @@ public class SocketManager : MonoBehaviour
         {
             callback(error);
         }
+
+        tokenQueue = new Queue<ConnCache>();
+        tokenEvent = new ManualResetEvent(false);
+        //处理线程
+        ThreadPool.QueueUserWorkItem(new WaitCallback(AnalyzeThrd), null);
+
     }
 
+    #region Init
+    /// <summary>
+    /// 线程处理接收事件
+    /// </summary>
+    /// <param name="state"></param>
+    private void AnalyzeThrd(object state)
+    {
+        //AsyncUserToken userToken;
+        ConnCache connCache;
+
+        while (true)
+        {
+            Monitor.Enter(((ICollection)tokenQueue).SyncRoot);
+            if (tokenQueue.Count > 0)
+            {
+                //userToken = tokenQueue.Dequeue();
+                connCache = tokenQueue.Dequeue();
+                Monitor.Exit(((ICollection)tokenQueue).SyncRoot);
+            }
+            else
+            {
+                Monitor.Exit(((ICollection)tokenQueue).SyncRoot);
+                //如果没有需要处理的数据，等待x毫秒后再运行
+                tokenEvent.WaitOne();
+                continue;
+            }
+
+            AsyncUserToken userToken = connCache.UserToken;
+            lock (userToken.AnalyzeLock)
+            {
+                lock (userToken.ReceiveBuffer)
+                {
+                    userToken.ReceiveBuffer.AddRange(connCache.RecvBuffer);
+                }
+                Handle(userToken);
+            }
+        }
+    }
     int tagCount = 0;
     /// <summary>  
     /// 初始化发送参数MySocketEventArgs  
@@ -113,7 +174,7 @@ public class SocketManager : MonoBehaviour
     {
         MySocketEventArgs sendArg = new MySocketEventArgs();
         sendArg.Completed += new EventHandler<SocketAsyncEventArgs>(OnIOCompleted);
-        sendArg.UserToken = _clientSock;
+        sendArg.UserToken = _Socket;
         sendArg.RemoteEndPoint = hostEndPoint;
         sendArg.IsUsing = false;
         Interlocked.Increment(ref tagCount);
@@ -124,7 +185,6 @@ public class SocketManager : MonoBehaviour
         }
         return sendArg;
     }
-
     #endregion
 
     #region 服务器特有的Accept
@@ -151,7 +211,7 @@ public class SocketManager : MonoBehaviour
         //{
         //    OnConnect(callback, connectArgs);
         //};
-        if (!_clientSock.ConnectAsync(connectArgs))
+        if (!_Socket.ConnectAsync(connectArgs))
         {
             ProcessConnected(connectArgs);
         }
@@ -172,7 +232,7 @@ public class SocketManager : MonoBehaviour
             Debug.Log("Socket连接成功");
 
             MyUserToken = new AsyncUserToken(bufferSize);
-            MyUserToken.ConnectSocket = _clientSock;
+            MyUserToken.ConnectSocket = _Socket;
 
             MyUserToken.SAEA_Receive.Completed += new EventHandler<SocketAsyncEventArgs>(OnIOCompleted);
             MyUserToken.SAEA_Receive.UserToken = MyUserToken;
@@ -192,6 +252,7 @@ public class SocketManager : MonoBehaviour
     #region Receive
     private void ProcessReceive(AsyncUserToken userToken)
     {
+        tokenEvent.Set();
         SocketAsyncEventArgs e = userToken.SAEA_Receive;
         if (e.BytesTransferred > 0 && e.SocketError == SocketError.Success)
         {
@@ -204,57 +265,14 @@ public class SocketManager : MonoBehaviour
             {
                 byte[] copy = new byte[e.BytesTransferred];
                 Array.Copy(e.Buffer, e.Offset, copy, 0, e.BytesTransferred);
-                //
-                lock (userToken.ReceiveBuffer)
-                {
-                    userToken.ReceiveBuffer.AddRange(copy);
-                }
+
+                ConnCache cache = new ConnCache(copy, userToken);
+                Monitor.Enter(((ICollection)tokenQueue).SyncRoot);
+                tokenQueue.Enqueue(cache);
+                Monitor.Exit(((ICollection)tokenQueue).SyncRoot);
 
                 if (!userToken.ConnectSocket.ReceiveAsync(e))
                     ProcessReceive(userToken);
-
-                do
-                {
-                    byte[] lenBytes = userToken.ReceiveBuffer.GetRange(0, sizeof(int)).ToArray();
-                    int packageLen = BitConverter.ToInt32(lenBytes, 0);
-                    if (packageLen <= userToken.ReceiveBuffer.Count - sizeof(int))
-                    {
-                        //包够长时,则提取出来,交给后面的程序去处理  
-                        byte[] buffer = userToken.ReceiveBuffer.GetRange(sizeof(int), packageLen).ToArray();
-                        //从数据池中移除这组数据,为什么要lock,你懂的  
-                        lock (userToken.ReceiveBuffer)
-                        {
-                            userToken.ReceiveBuffer.RemoveRange(0, packageLen + sizeof(int));
-                        }
-
-                        while (buffer.Length > 0)
-                        {
-                            MessageXieYi xieyi = MessageXieYi.FromBytes(buffer);
-                            if (xieyi == null)
-                            {
-                                Log4Debug("奇怪为什么协议为空");
-                                break;
-                            }
-                            int messageLength = xieyi.MessageContentLength + MessageXieYi.XieYiLength + 1 + 1;
-                            buffer = buffer.Skip(messageLength).ToArray();
-                            //将数据包交给前台去处理
-                            DoReceiveEvent(userToken, xieyi);
-                        }
-                    }
-                    else
-                    {   //长度不够,还得继续接收,需要跳出循环  
-                        break;
-                    }
-                } while (userToken.ReceiveBuffer.Count > sizeof(int));
-
-
-
-
-                //if (!userToken.isDealReceive)
-                //{
-                //    userToken.isDealReceive = true;
-                //    Handle(userToken);
-                //}
             }
             //catch (Exception error)
             //{
@@ -266,64 +284,42 @@ public class SocketManager : MonoBehaviour
             CloseClientSocket(userToken);
         }
     }
+    private void Handle(AsyncUserToken userToken)
+    {
+        do
+        {
+            byte[] lenBytes = userToken.ReceiveBuffer.GetRange(0, sizeof(int)).ToArray();
+            int packageLen = BitConverter.ToInt32(lenBytes, 0);
+            if (packageLen <= userToken.ReceiveBuffer.Count - sizeof(int))
+            {
+                //包够长时,则提取出来,交给后面的程序去处理  
+                byte[] buffer = userToken.ReceiveBuffer.GetRange(sizeof(int), packageLen).ToArray();
+                //从数据池中移除这组数据,为什么要lock,你懂的  
+                lock (userToken.ReceiveBuffer)
+                {
+                    userToken.ReceiveBuffer.RemoveRange(0, packageLen + sizeof(int));
+                }
 
-    //private void Handle(AsyncUserToken userToken)
-    //{
-    //    while (userToken.ReceiveBuffer.Count > 0)
-    //    {
-    //        byte[] receive = null;
-    //        lock (userToken.ReceiveBuffer)
-    //        {
-    //            receive = userToken.ReceiveBuffer.ToArray();
-    //            userToken.ReceiveBuffer.Clear();
-    //        }
-    //        userToken.DealBuffer.AddRange(receive);
-    //        //Log4Debug("长度：" + userToken.DealBuffer.Count);
-    //        //
-    //        byte[] head = userToken.DealBuffer.Take(sizeof(int)).ToArray();
-    //        int length = BitConverter.ToInt32(head, 0);
-    //        if (userToken.DealBuffer.Count < length + sizeof(int))
-    //        {
-    //            continue;
-    //        }
-
-    //        byte[] buffer = userToken.DealBuffer.Take(length + sizeof(int)).ToArray();
-    //        userToken.DealBuffer.RemoveRange(0, length + sizeof(int));
-    //        buffer = buffer.Skip(sizeof(int)).ToArray();
-
-    //        while (buffer.Length > 0)
-    //        {
-    //            MessageXieYi xieyi = MessageXieYi.FromBytes(buffer);
-    //            if (xieyi == null)
-    //            {
-    //                break;
-    //            }
-    //            int messageLength = xieyi.MessageContentLength + MessageXieYi.XieYiLength + 1 + 1;
-    //            buffer = buffer.Skip(messageLength).ToArray();
-    //            //将数据包交给前台去处理
-    //            DoReceiveEvent(userToken, xieyi);
-    //        }
-    //        //while (userToken.DealBuffer.Count > 0)
-    //        //{
-    //        //    byte[] head = userToken.DealBuffer.Take(MessageXieYi.XieYiLength + 1).ToArray();
-    //        //    int length = BitConverter.ToInt32(head, 3);
-    //        //    length += MessageXieYi.XieYiLength + 1 + 1;
-    //        //    byte[] take = userToken.DealBuffer.Take(length).ToArray();
-    //        //    MessageXieYi xieyi = MessageXieYi.FromBytes(take);
-    //        //    if (xieyi == null)
-    //        //    {
-    //        //        break;
-    //        //    }
-    //        //    int messageLength = xieyi.MessageContentLength + MessageXieYi.XieYiLength + 1 + 1;
-    //        //    userToken.DealBuffer.RemoveRange(0, messageLength);
-    //        //    //将数据包交给前台去处理
-    //        //    DoReceiveEvent(userToken, xieyi);
-    //        //}
-    //    }
-    //    userToken.isDealReceive = false;
-    //}
-
-
+                while (buffer.Length > 0)
+                {
+                    MessageXieYi xieyi = MessageXieYi.FromBytes(buffer);
+                    if (xieyi == null)
+                    {
+                        Log4Debug("奇怪为什么协议为空");
+                        break;
+                    }
+                    int messageLength = xieyi.MessageContentLength + MessageXieYi.XieYiLength + 1 + 1;
+                    buffer = buffer.Skip(messageLength).ToArray();
+                    //将数据包交给前台去处理
+                    DoReceiveEvent(userToken, xieyi);
+                }
+            }
+            else
+            {   //长度不够,还得继续接收,需要跳出循环  
+                break;
+            }
+        } while (userToken.ReceiveBuffer.Count > sizeof(int));
+    }
 
     #endregion
 
@@ -347,13 +343,9 @@ public class SocketManager : MonoBehaviour
             Log4Debug("发送未成功，回调：" + e.SocketError);
         }
     }
-    private void Send(AsyncUserToken userToken, byte[] buffer)
+    private void Send(AsyncUserToken userToken, byte[] send)
     {
-        if (!isConnected)
-        {
-            Debug.LogError("未连接，不能发送");
-            return;
-        }
+        byte[] buffer = AsyncUserToken.GetSendBytes(send);
         //string sClientIP = ((IPEndPoint)userToken.ConnectSocket.RemoteEndPoint).ToString();
         //string info = "";
         //for (int i = 0; i < buffer.Length; i++)
@@ -386,7 +378,6 @@ public class SocketManager : MonoBehaviour
             ProcessSend(sendArgs);
         }
     }
-
 
     #endregion
 

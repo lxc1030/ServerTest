@@ -11,7 +11,7 @@ class Program
         LogManager.Init();//清除Log文件夹
         SqlManager.Init();
         ServerDataManager.Init();
-        new AsyncIOCPServer(IP, portNo, 20);
+        new AsyncIOCPServer(IP, portNo, 30000);
         Console.ReadLine();
     }
 }
