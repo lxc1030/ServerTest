@@ -17,7 +17,7 @@ public class Bullet : MonoBehaviour
         //{
         //    BulletInfo bullet = new BulletInfo()
         //    {
-        //        userIndex = DataController.instance.myRoomInfo.MyLocateIndex,
+        //        userIndex = DataController.instance.MyLocateIndex,
         //        pos = orgPos
         //    };
         //    string info = bullet.GetSendInfo();

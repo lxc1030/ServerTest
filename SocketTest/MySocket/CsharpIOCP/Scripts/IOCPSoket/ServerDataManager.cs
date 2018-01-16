@@ -168,7 +168,7 @@ public class ServerDataManager
                     roomActorUpdate = new RoomActorUpdate();
                     roomActorUpdate.SetSendInfo(SerializeHelper.ConvertToString(tempMessageContent));
                     //
-                    newBuffer = SerializeHelper.Serialize<List<RoomActor>>(new List<RoomActor>(room.RoomInfo.ActorList.Values));
+                    newBuffer = SerializeHelper.Serialize<List<RoomActor>>(new List<RoomActor>(room.ActorList.Values));
                     break;
                 case MessageConvention.updateActorAnimation:
                     tempMessageContent = xieyi.MessageContent;
@@ -220,7 +220,7 @@ public class ServerDataManager
                 case MessageConvention.moveDirection:
                     tempMessageContent = xieyi.MessageContent;
                     moveDirection = SerializeHelper.Deserialize<ActorMoveDirection>(tempMessageContent);
-                    if (room.RoomInfo.ActorList[moveDirection.userIndex].CurState != RoomActorState.Dead)
+                    if (room.ActorList[moveDirection.userIndex].CurState != RoomActorState.Dead)
                     {
                         room.SetRecondFrame(xieyi.ToBytes());
                         //Log4Debug("站位：" + moveDirection.userIndex + " 更新了方向：" + SerializeHelper.BackVector(moveDirection.direction) + "/速度:" + moveDirection.speed);
@@ -233,7 +233,7 @@ public class ServerDataManager
                 case MessageConvention.rotateDirection:
                     tempMessageContent = xieyi.MessageContent;
                     ActorRotateDirection netRotation = SerializeHelper.Deserialize<ActorRotateDirection>(tempMessageContent);
-                    if (room.RoomInfo.ActorList[netRotation.userIndex].CurState != RoomActorState.Dead)
+                    if (room.ActorList[netRotation.userIndex].CurState != RoomActorState.Dead)
                     {
                         room.SetRecondFrame(xieyi.ToBytes());
                         Log4Debug("站位：" + netRotation.userIndex + " 更新了旋转：" + netRotation.rotateY);
@@ -251,8 +251,8 @@ public class ServerDataManager
                     break;
                 case MessageConvention.testConnect:
                     tempMessageContent = xieyi.MessageContent;
-                    string con = "接收测试到：";
-                    //for (int i = 0; i < tempMessageContent.Length; i++)
+                    string con = "-";
+                    //for (int i = 1; i < tempMessageContent.Length; i++)
                     //{
                     //    con += tempMessageContent[i] + ",";
                     //}

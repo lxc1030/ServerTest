@@ -32,7 +32,9 @@ public class GameManager : MonoBehaviour
     public float frameIndexTime;//运行到这帧时的时间
 
     public bool isReconnect = false;
-    public int reConnectIndex = 0;//重连时需要复现到的帧编号
+    public int reConnectIndex = 0;//重连时需要复现到的帧编号----//重连不需要则为-1
+
+
 
     public Dictionary<int, FrameInfo> FrameInfos = new Dictionary<int, FrameInfo>();
 
@@ -195,7 +197,7 @@ public class GameManager : MonoBehaviour
     {
         RoomActorUpdate roommateInfo = new RoomActorUpdate()
         {
-            userIndex = DataController.instance.MyRoomInfo.MyLocateIndex,
+            userIndex = DataController.instance.MyLocateIndex,
             update = DataController.instance.MyRoomInfo.RoomID.ToString()
         };
         byte[] message = SerializeHelper.ConvertToByte(roommateInfo.GetSendInfo());
@@ -217,13 +219,19 @@ public class GameManager : MonoBehaviour
     {
         RoomActorUpdate netUpdate = new RoomActorUpdate()
         {
-            userIndex = DataController.instance.MyRoomInfo.MyLocateIndex,
+            userIndex = DataController.instance.MyLocateIndex,
             update = (int)state + ""
         };
         string info = netUpdate.GetSendInfo();
         byte[] message = SerializeHelper.ConvertToByte(info);
         SocketManager.instance.SendSave((byte)MessageConvention.updateActorState, message, false);
     }
+
+    public static void GetRoomInfo()
+    {
+        SocketManager.instance.SendSave((byte)MessageConvention.getRoomInfo, new byte[] { }, false);
+    }
+
     public static void GetReconnectIndex()
     {
         SocketManager.instance.SendSave((byte)MessageConvention.reConnectIndex, new byte[] { }, false);
@@ -235,7 +243,7 @@ public class GameManager : MonoBehaviour
     private void SetPrepareData(GameModelData info)
     {
         CharacterCommon member = null;
-        if (info.userIndex == DataController.instance.MyRoomInfo.MyLocateIndex)
+        if (info.userIndex == DataController.instance.MyLocateIndex)
         {
             member = MyController.instance;
         }
@@ -253,7 +261,7 @@ public class GameManager : MonoBehaviour
         string messageInfo = SerializeHelper.ConvertToString(xieyi.MessageContent);
         RoomActorUpdate roomActorUpdate = new RoomActorUpdate();
         roomActorUpdate.SetSendInfo(messageInfo);
-        if (roomActorUpdate.userIndex == DataController.instance.MyRoomInfo.MyLocateIndex)
+        if (roomActorUpdate.userIndex == DataController.instance.MyLocateIndex)
         {
             RoomActorState state = (RoomActorState)int.Parse(roomActorUpdate.update);
             Debug.Log("我的状态：" + state);
@@ -266,8 +274,8 @@ public class GameManager : MonoBehaviour
                     break;
                 case RoomActorState.ModelPrepared:
                     break;
-                case RoomActorState.Gaming:
-                    //MyJoystickManager.instance.ReLife();
+                case RoomActorState.Invincible:
+                    MyJoystickManager.instance.Open();
                     break;
             }
         }
@@ -295,7 +303,7 @@ public class GameManager : MonoBehaviour
         //发送准备进度命令
         RoomActorUpdate netUpdate = new RoomActorUpdate()
         {
-            userIndex = DataController.instance.MyRoomInfo.MyLocateIndex,
+            userIndex = DataController.instance.MyLocateIndex,
             update = index + ""
         };
         string info = netUpdate.GetSendInfo();
@@ -304,7 +312,7 @@ public class GameManager : MonoBehaviour
     }
     private void ShowModelUIName()
     {
-        foreach (var item in DataController.instance.MyRoomInfo.ActorList)
+        foreach (var item in DataController.instance.ActorList)
         {
             memberGroup[item.Value.UniqueID].ShowMyName(item.Value.Register.name);
         }
@@ -316,11 +324,11 @@ public class GameManager : MonoBehaviour
     private void UpdateRoomActor()
     {
         GameObject obj = null;
-        int myIndex = DataController.instance.MyRoomInfo.MyLocateIndex;
+        int myIndex = DataController.instance.MyLocateIndex;
 
         for (int i = 0; i < DataController.instance.MyRoomInfo.Limit; i++)
         {
-            RoomActor info = DataController.instance.MyRoomInfo.ActorList[i];
+            RoomActor info = DataController.instance.ActorList[i];
 
             if (!memberGroup.ContainsKey(i))
             {
@@ -350,7 +358,7 @@ public class GameManager : MonoBehaviour
                     mControl = obj.GetComponent<CharacterCommon>();
                     memberGroup[i] = mControl;
                 }
-                if (DataController.instance.MyRoomInfo.ActorList[i] == null)//该位置玩家退出或不存在
+                if (DataController.instance.ActorList[i] == null)//该位置玩家退出或不存在
                 {
                     mControl.gameObject.SetActive(false);
                 }
@@ -358,7 +366,7 @@ public class GameManager : MonoBehaviour
                 {
                     mControl.gameObject.SetActive(true);
                     mControl.Init(info.UniqueID);
-                    mControl.ShowTeam(DataController.instance.MyRoomInfo.ActorList[i].MyTeam);
+                    mControl.ShowTeam(DataController.instance.ActorList[i].MyTeam);
                 }
             }
         }
@@ -379,6 +387,7 @@ public class GameManager : MonoBehaviour
     private void EndGaming(MessageXieYi xieyi)
     {
         isOnFrame = false;
+        frameIndex = 0;
         reConnectIndex = 0;//游戏结束的时候未完成复现，怎清除重连记录帧
         MyJoystickManager.instance.Close();
         Debug.LogError("结束游戏");
@@ -420,7 +429,7 @@ public class GameManager : MonoBehaviour
         SocketManager.instance.SendSave((byte)MessageConvention.frameData, message, false);
     }
 
-    //string guiInfo = "0000/0000";
+    string guiInfo = "0000/0000";
     //public void OnGUI()
     //{
     //    if (DataController.instance.MyRoomInfo != null && DataController.instance.MyRoomInfo.ActorList != null)
@@ -428,6 +437,18 @@ public class GameManager : MonoBehaviour
     //        guiInfo = frameIndex + "/" + DataController.instance.MyRoomInfo.FrameIndex;
     //        int length = (DataController.instance.MyRoomInfo.FrameIndex - frameIndex);
     //        guiInfo = guiInfo + " = " + length;
+    //        GUIStyle bb = new GUIStyle();
+    //        bb.normal.background = null;    //这是设置背景填充的
+    //        bb.normal.textColor = Color.blue;   //设置字体颜色的
+    //        bb.fontSize = 40;       //当然，这是字体大小
+    //        GUI.Label(new Rect(0, 0, 200, 200), guiInfo, bb);
+    //    }
+    //}
+    //public void OnGUI()
+    //{
+    //    if (DataController.instance.MyRoomInfo != null && DataController.instance.MyRoomInfo.ActorList != null)
+    //    {
+    //        guiInfo ="站位：" + DataController.instance.MyLocateIndex;
     //        GUIStyle bb = new GUIStyle();
     //        bb.normal.background = null;    //这是设置背景填充的
     //        bb.normal.textColor = Color.blue;   //设置字体颜色的
@@ -481,10 +502,11 @@ public class GameManager : MonoBehaviour
             Debug.Log("该执行帧不存在：" + frameIndex);
             return;
         }
+        frameIndexTime = Time.realtimeSinceStartup;
+
         FrameInfo info = FrameInfos[frameIndex];
         if (info.frameData != null)//有更新操作，更新数据
         {
-            frameIndexTime = Time.realtimeSinceStartup;
             if (info.frameData.Count == 0)
             {
                 Debug.LogError("检查长度为0的情况。");
@@ -546,7 +568,7 @@ public class GameManager : MonoBehaviour
                 break;
             case MessageConvention.shootBullet:
                 int shootIndex = int.Parse(SerializeHelper.ConvertToString(tempMessageContent));
-                if (shootIndex == DataController.instance.MyRoomInfo.MyLocateIndex)
+                if (shootIndex == DataController.instance.MyLocateIndex)
                 {
                     MyController.instance.ShowBullet(true);
                 }
@@ -602,18 +624,17 @@ public class GameManager : MonoBehaviour
         BulletInfo bulletInfo = SerializeHelper.Deserialize<BulletInfo>(xieyi.MessageContent);
         int bulletMaster = bulletInfo.userIndex;
         int shootedIndex = int.Parse(bulletInfo.shootInfo);
-        RoomInfo roomInfo = DataController.instance.MyRoomInfo;
         //同队不杀
-        if (roomInfo.ActorList[shootedIndex].MyTeam == roomInfo.ActorList[bulletMaster].MyTeam)
+        if (DataController.instance.ActorList[shootedIndex].MyTeam == DataController.instance.ActorList[bulletMaster].MyTeam)
         {
             return;
         }
         //
-        if (shootedIndex != DataController.instance.MyRoomInfo.MyLocateIndex)
+        if (shootedIndex != DataController.instance.MyLocateIndex)
         {
             //此处需要修改
             memberGroup[shootedIndex].BeShoot();
-            UIManager.instance.ShowAlertTip("玩家：" + DataController.instance.MyRoomInfo.ActorList[shootedIndex].Register.name + " 被射中。");
+            UIManager.instance.ShowAlertTip("玩家：" + DataController.instance.ActorList[shootedIndex].Register.name + " 被射中。");
         }
         else
         {
@@ -621,7 +642,7 @@ public class GameManager : MonoBehaviour
             MyController.instance.BeShoot();
             UIManager.instance.ShowAlertTip("我被射中。");
         }
-        memberGroup[bulletMaster].ShowKill(DataController.instance.MyRoomInfo.ActorList[bulletMaster].KillCount);
+        memberGroup[bulletMaster].ShowKill(DataController.instance.ActorList[bulletMaster].KillCount);
     }
 
     #endregion
@@ -663,8 +684,9 @@ public class GameManager : MonoBehaviour
                     FrameMainLogic();
                 }
             }
-            if (reConnectIndex == 0)
+            if (isReconnect || reConnectIndex == 0)
             {
+                isReconnect = false;
                 frameIndexTime = Time.realtimeSinceStartup;
                 reConnectIndex = -1;
                 GameLoadingUI.Close();
@@ -682,10 +704,6 @@ public class GameManager : MonoBehaviour
         if (serverEvent.Count > 0)
         {
             MessageXieYi xieyi = serverEvent.Dequeue();
-            if (xieyi == null)
-            {
-                Debug.LogError("协议居然还能为null");
-            }
             if (xieyi.XieYiFirstFlag == (byte)MessageConvention.login)
             {
                 ErrorType error = ClassGroup.CheckIsError(xieyi);

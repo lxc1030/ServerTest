@@ -187,14 +187,14 @@ public class CharacterCommon : MonoBehaviour
     /// </summary>
     public void DoFrameLogic()
     {
-        if (DataController.instance.MyRoomInfo.ActorList[myIndex].CurState == RoomActorState.Dead)
+        if (DataController.instance.ActorList[myIndex].CurState == RoomActorState.Dead)
         {
             BeStop();
             return;
         }
         Vector3 fixG = SerializeHelper.BackVector(lastMoveDirection.direction) * lastMoveDirection.speed * Time.fixedDeltaTime;
         fixG = new Vector3(fixG.x, 0, fixG.z);
-        if (DataController.instance.MyRoomInfo.ActorList[myIndex].CurState != RoomActorState.Dead)
+        if (DataController.instance.ActorList[myIndex].CurState != RoomActorState.Dead)
         {
             fixG.y = -GameManager.gravity;
         }

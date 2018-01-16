@@ -57,9 +57,9 @@
   <ItemGroup>
     <Compile Include="Scripts\IOCPSoket\AsyncIOCPServer.cs" />
     <Compile Include="Scripts\IOCPSoket\AsyncUserTokenPool.cs" />
+    <Compile Include="Scripts\IOCPSoket\BufferManager.cs" />
     <Compile Include="Scripts\Room\SingleRoom.cs" />
     <Compile Include="Scripts\Test\IoContextPool.cs" />
-    <Compile Include="Scripts\IOCPSoket\DynamicBufferManager.cs" />
     <Compile Include="Scripts\IOCPSoket\Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Scripts\Test\IoServer.cs" />

@@ -18,8 +18,6 @@ public class RoomInfo
     [ProtoBuf.ProtoMember(6)]
     public RoomActorState CurState { get; set; }// 房间当前状态
     [ProtoBuf.ProtoMember(7)]
-    public int MyLocateIndex { get; set; }//这个值的是在数组中的序号，发送给用户，用户所在的位置
-    [ProtoBuf.ProtoMember(8)]
     public int FrameDelay { get; set; }
 
     public RoomInfo()
@@ -28,11 +26,6 @@ public class RoomInfo
     }
     public RoomInfo(int roomID, string roomName, GameModel roomType, int limit)
     {
-        ActorList = new Dictionary<int, RoomActor>() { };
-        for (int i = 0; i < limit; i++)
-        {
-            InitRoomActorByIndex(i);
-        }
 
         RoomID = roomID;
         RoomName = roomName;
@@ -43,18 +36,15 @@ public class RoomInfo
             case GameModel.组队模式:
                 frameInterval = 8;
                 FrameDelay = 10;
-                GameTime = 2 * 60 * 1000;//分钟
-                //GameTime = 1 * 30 * 1000;
+                //GameTime = 2 * 60 * 1000;//分钟
+                GameTime = 1 * 30 * 1000;
                 break;
         }
         //
         CurState = RoomActorState.NoReady;
     }
 
-    /// <summary>
-    /// 房間中的會員列表
-    /// </summary>
-    public Dictionary<int, RoomActor> ActorList { get; set; }
+
 
     public int FrameIndex { get; set; }
     /// <summary>
@@ -66,15 +56,6 @@ public class RoomInfo
     /// </summary>
     public static int frameTime = 15;//是毫秒，检测间隔0.015s
 
-
-    public void InitRoomActorByIndex(int unique)
-    {
-        if (!ActorList.ContainsKey(unique))
-        {
-            ActorList.Add(unique, null);
-        }
-        ActorList[unique] = new RoomActor(RoomID, unique, null, TeamType.Both);
-    }
 
 
 

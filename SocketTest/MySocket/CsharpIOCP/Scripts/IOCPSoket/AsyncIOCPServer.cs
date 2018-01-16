@@ -23,17 +23,6 @@ public class AsyncIOCPServer
     /// 每个Socket套接字缓冲区大小
     /// </summary>
     int bufferSize = 1024;
-    /// <summary>
-    /// 处理线程通过这个队列知道有数据需要处理
-    /// </summary>
-    /// <typeparam name="ConnCache"></typeparam>
-    /// <param name=""></param>
-    /// <returns></returns>
-    Queue<ConnCache> tokenQueue;
-    /// <summary>
-    /// 接收到数据后，同时通知处理线程处理数据
-    /// </summary>
-    ManualResetEvent tokenEvent;
 
 
 
@@ -46,6 +35,10 @@ public class AsyncIOCPServer
     /// 对象池
     /// </summary>
     AsyncUserTokenPool userTokenPool;
+    /// <summary>
+    /// SocketEventArgs 用到的缓冲区管理类
+    /// </summary>
+    BufferManager bufferManager;
 
     int maxClient;
 
@@ -83,62 +76,22 @@ public class AsyncIOCPServer
             Log4Debug(error.Message);
         }
     }
-
     private void Init()
     {
+        bufferManager = new BufferManager(maxClient * 4 * bufferSize, bufferSize);
         userTokenPool = new AsyncUserTokenPool(maxClient);
         for (int i = 0; i < maxClient; i++) //填充SocketAsyncEventArgs池
         {
             AsyncUserToken userToken = new AsyncUserToken(bufferSize);
             userToken.SAEA_Receive.UserToken = userToken;
             userToken.SAEA_Receive.Completed += new EventHandler<SocketAsyncEventArgs>(OnIOCompleted);
+            bufferManager.SetBuffer(userToken.SAEA_Receive);
 
             userTokenPool.Push(userToken);
         }
-        tokenQueue = new Queue<ConnCache>();
-        tokenEvent = new ManualResetEvent(false);
-        //处理线程
-        ThreadPool.QueueUserWorkItem(new WaitCallback(AnalyzeThrd), null);
     }
 
     #region Init
-    /// <summary>
-    /// 线程处理接收事件
-    /// </summary>
-    /// <param name="state"></param>
-    private void AnalyzeThrd(object state)
-    {
-        //AsyncUserToken userToken;
-        ConnCache connCache;
-
-        while (true)
-        {
-            Monitor.Enter(((ICollection)tokenQueue).SyncRoot);
-            if (tokenQueue.Count > 0)
-            {
-                //userToken = tokenQueue.Dequeue();
-                connCache = tokenQueue.Dequeue();
-                Monitor.Exit(((ICollection)tokenQueue).SyncRoot);
-            }
-            else
-            {
-                Monitor.Exit(((ICollection)tokenQueue).SyncRoot);
-                //如果没有需要处理的数据，等待x毫秒后再运行
-                tokenEvent.WaitOne();
-                continue;
-            }
-
-            AsyncUserToken userToken = connCache.UserToken;
-            lock (userToken.AnalyzeLock)
-            {
-                lock (userToken.ReceiveBuffer)
-                {
-                    userToken.ReceiveBuffer.AddRange(connCache.RecvBuffer);
-                }
-                Handle(userToken);
-            }
-        }
-    }
     int tagCount = 0;
     /// <summary>  
     /// 初始化发送参数MySocketEventArgs  
@@ -242,7 +195,6 @@ public class AsyncIOCPServer
     #region Receive
     private void ProcessReceive(AsyncUserToken userToken)
     {
-        tokenEvent.Set();
         SocketAsyncEventArgs e = userToken.SAEA_Receive;
         if (e.BytesTransferred > 0 && e.SocketError == SocketError.Success)
         {
@@ -256,13 +208,15 @@ public class AsyncIOCPServer
                 byte[] copy = new byte[e.BytesTransferred];
                 Array.Copy(e.Buffer, e.Offset, copy, 0, e.BytesTransferred);
 
-                ConnCache cache = new ConnCache(copy, userToken);
-                Monitor.Enter(((ICollection)tokenQueue).SyncRoot);
-                tokenQueue.Enqueue(cache);
-                Monitor.Exit(((ICollection)tokenQueue).SyncRoot);
+            
+                ConnCache connCache = new ConnCache(copy, userToken);
+                //ConnCache connCache = new ConnCache(e.Buffer, userToken);
+                //处理线程
+                ThreadPool.QueueUserWorkItem(new WaitCallback(AnalyzeThrd), connCache);
 
                 if (!userToken.ConnectSocket.ReceiveAsync(e))
                     ProcessReceive(userToken);
+
             }
             //catch (Exception error)
             //{
@@ -274,6 +228,26 @@ public class AsyncIOCPServer
             CloseClientSocket(userToken);
         }
     }
+
+    /// <summary>
+    /// 线程处理接收事件
+    /// </summary>
+    /// <param name="state"></param>
+    private void AnalyzeThrd(object state)
+    {
+        ConnCache connCache = (ConnCache)state;
+        AsyncUserToken userToken = connCache.UserToken;
+        lock (userToken.AnalyzeLock)
+        {
+            lock (userToken.ReceiveBuffer)
+            {
+                userToken.ReceiveBuffer.AddRange(connCache.RecvBuffer);
+            }
+            Handle(userToken);
+        }
+    }
+
+
     private void Handle(AsyncUserToken userToken)
     {
         do
@@ -292,6 +266,10 @@ public class AsyncIOCPServer
 
                 while (buffer.Length > 0)
                 {
+                    if (buffer[0] != MessageXieYi.markStart)
+                    {
+                        break;
+                    }
                     MessageXieYi xieyi = MessageXieYi.FromBytes(buffer);
                     if (xieyi == null)
                     {
@@ -301,7 +279,7 @@ public class AsyncIOCPServer
                     int messageLength = xieyi.MessageContentLength + MessageXieYi.XieYiLength + 1 + 1;
                     buffer = buffer.Skip(messageLength).ToArray();
                     //将数据包交给前台去处理
-                    DoReceiveEvent(userToken, xieyi);
+                    DealXieYi(xieyi, userToken);
                 }
             }
             else
@@ -334,66 +312,46 @@ public class AsyncIOCPServer
     }
     private void Send(AsyncUserToken userToken, byte[] send)
     {
-        byte[] buffer = AsyncUserToken.GetSendBytes(send);
-        //string sClientIP = ((IPEndPoint)userToken.ConnectSocket.RemoteEndPoint).ToString();
-        //string info = "";
-        //for (int i = 0; i < buffer.Length; i++)
-        //{
-        //    info += buffer[i] + ",";
-        //}
-        //Log4Debug("From the " + sClientIP + " to send " + buffer.Length + " bytes of data：" + info);
-
-        //查找有没有空闲的发送MySocketEventArgs,有就直接拿来用,没有就创建新的.So easy!  
-        MySocketEventArgs sendArgs = null;
-        lock (listArgs)
+        try
         {
-            sendArgs = listArgs.Find(a => a.IsUsing == false);
-            if (sendArgs == null)
+            byte[] buffer = AsyncUserToken.GetSendBytes(send);
+            //string sClientIP = ((IPEndPoint)userToken.ConnectSocket.RemoteEndPoint).ToString();
+            //string info = "";
+            //for (int i = 0; i < buffer.Length; i++)
+            //{
+            //    info += buffer[i] + ",";
+            //}
+            //Log4Debug("From the " + sClientIP + " to send " + buffer.Length + " bytes of data：" + info);
+
+            //查找有没有空闲的发送MySocketEventArgs,有就直接拿来用,没有就创建新的.So easy!  
+            MySocketEventArgs sendArgs = null;
+            lock (listArgs)//要锁定,不锁定让别的线程抢走了就不妙了.  
             {
-                sendArgs = initSendArgs();
+                sendArgs = listArgs.Find(a => a.IsUsing == false);
+                if (sendArgs == null)
+                {
+                    sendArgs = initSendArgs();
+                }
+                sendArgs.IsUsing = true;
             }
-            sendArgs.IsUsing = true;
-        }
-
-        //Log4Debug("发送所用的套接字编号：" + sendArgs.ArgsTag);
-        //lock (sendArgs) //要锁定,不锁定让别的线程抢走了就不妙了.  
-        {
             sendArgs.SetBuffer(buffer, 0, buffer.Length);
+
+            Socket s = userToken.ConnectSocket;
+            if (!s.SendAsync(sendArgs))//投递发送请求，这个函数有可能同步发送出去，这时返回false，并且不会引发SocketAsyncEventArgs.Completed事件  
+            {
+                // 同步发送时处理发送完成事件  
+                ProcessSend(sendArgs);
+            }
         }
-        Socket s = userToken.ConnectSocket;
-        if (!s.SendAsync(sendArgs))//投递发送请求，这个函数有可能同步发送出去，这时返回false，并且不会引发SocketAsyncEventArgs.Completed事件  
+        catch (Exception e)
         {
-            // 同步发送时处理发送完成事件  
-            ProcessSend(sendArgs);
+            CloseClientSocket(userToken);
         }
     }
 
     #endregion
 
     #region 服务器发送接收逻辑
-
-    /// <summary>  
-    /// 使用新进程通知事件回调  
-    /// </summary>  
-    /// <param name="buff"></param>  
-    private void DoReceiveEvent(AsyncUserToken userToken, MessageXieYi xieyi)
-    {
-        //object[] all = new object[] { userToken, xieyi };
-        //object obj = (object)all;
-        ////用新的线程,这样不拖延接收新数据. 
-        //Thread thread = new Thread(new ParameterizedThreadStart(ThreadDealReceive));
-        //thread.IsBackground = true;
-        //thread.Start(obj);
-        DealXieYi(xieyi, userToken);
-    }
-
-    private void ThreadDealReceive(object obj)
-    {
-        object[] all = (object[])obj;
-        AsyncUserToken userToken = (AsyncUserToken)all[0];
-        MessageXieYi xieyi = (MessageXieYi)all[1];
-        DealXieYi(xieyi, userToken);
-    }
 
     private void DealXieYi(MessageXieYi xieyi, AsyncUserToken userToken)
     {
@@ -526,5 +484,4 @@ public class AsyncIOCPServer
     {
         LogManager.instance.WriteLog(this.GetType().Name + ":" + msg);
     }
-
 }

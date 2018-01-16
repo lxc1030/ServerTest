@@ -122,10 +122,6 @@ public class MyJoystickManager : MonoBehaviour
     {
         uiControl.all.SetActive(false);
     }
-    public void ReLife()
-    {
-        uiControl.all.SetActive(true);
-    }
 
 
     public void OffLine()

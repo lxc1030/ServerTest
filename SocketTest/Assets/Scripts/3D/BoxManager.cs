@@ -69,7 +69,7 @@ public class BoxManager : MonoBehaviour
         Box hitBox = allBox[boxIndex];
         if (hitBox.myInfo.ownerIndex >= 0)
         {
-            TeamType lastTeam = DataController.instance.MyRoomInfo.ActorList[hitBox.myInfo.ownerIndex].MyTeam;
+            TeamType lastTeam = DataController.instance.ActorList[hitBox.myInfo.ownerIndex].MyTeam;
             if (lastTeam == TeamType.Blue)
             {
                 teamBlue -= 1;
@@ -81,7 +81,7 @@ public class BoxManager : MonoBehaviour
         }
         //
         hitBox.ChangeOwner(bulletInfo.userIndex);
-        TeamType changeTeam = DataController.instance.MyRoomInfo.ActorList[bulletInfo.userIndex].MyTeam;
+        TeamType changeTeam = DataController.instance.ActorList[bulletInfo.userIndex].MyTeam;
         if (changeTeam == TeamType.Blue)
         {
             teamBlue += 1;

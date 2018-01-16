@@ -44,6 +44,7 @@ public class CreateRoomUI : MonoBehaviour
         MessageConvention.createRoom,
         MessageConvention.joinRoom,
         MessageConvention.updateRoom,
+        MessageConvention.getRoomInfo,
     };
     private void Awake()
     {
@@ -297,9 +298,13 @@ public class CreateRoomUI : MonoBehaviour
                 }
                 else
                 {
-                    RoomUI.Show();
-                    CreateRoomUI.Close();
+                    GameManager.GetRoomInfo();
                 }
+            }
+            if ((MessageConvention)xieyi.XieYiFirstFlag == MessageConvention.getRoomInfo)
+            {
+                RoomUI.Show();
+                CreateRoomUI.Close();
             }
             if ((MessageConvention)xieyi.XieYiFirstFlag == MessageConvention.updateRoom)
             {

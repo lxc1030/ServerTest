@@ -12,10 +12,6 @@ public class AsyncUserToken
 {
     public SocketAsyncEventArgs SAEA_Receive;
 
-    private byte[] byteReceive { get; set; }
-    private byte[] byteSend { get; set; }
-
-
     /// <summary>
     /// 接收数据的缓冲区
     /// </summary>
@@ -25,7 +21,7 @@ public class AsyncUserToken
         get { return _receiveBuffer; }
         set { _receiveBuffer = value; }
     }
-    
+
 
     /// <summary>
     /// 发送数据的缓冲区
@@ -54,18 +50,15 @@ public class AsyncUserToken
     /// </summary>
     public RoomActor userInfo { get; set; }
 
-    
-
-
     public AsyncUserToken(int size)
     {
         Init();
 
-        byteReceive = new byte[size];
+        //byteReceive = new byte[size];
         SAEA_Receive = new SocketAsyncEventArgs();
-        SAEA_Receive.SetBuffer(byteReceive, 0, size);
+        //SAEA_Receive.SetBuffer(byteReceive, 0, size);
 
-        byteSend = new byte[size];
+        //byteSend = new byte[size];
     }
 
     public void Init()
@@ -87,7 +80,7 @@ public class AsyncUserToken
 
         Array.Copy(temp, 0, send, 0, sizeof(int));
         Array.Copy(buffer, 0, send, sizeof(int), length);
-        
+
         return send.ToArray();
     }
 
@@ -112,7 +105,7 @@ public sealed class ConnCache
     //public uint SocketId;                     // 连接标识
     public AsyncUserToken UserToken;
 
-    public byte[] RecvBuffer;                 // 接收数据缓存，传输层抵达的数据，首先进入此缓存       
+    public byte[] RecvBuffer;                   // 接收数据缓存，传输层抵达的数据，首先进入此缓存       
     //public int RecvLen;                       // 接收数据缓存中的有效数据长度
     //public readonly object RecvLock;          // 数据接收锁
 
@@ -122,6 +115,7 @@ public sealed class ConnCache
 
     public ConnCache(byte[] receive, AsyncUserToken _userToken)
     {
+
         //SocketId = 65535;
         //RecvBuffer = new byte[recvBuffSize];
         RecvBuffer = receive;

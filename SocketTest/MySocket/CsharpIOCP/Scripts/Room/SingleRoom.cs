@@ -1,5 +1,4 @@
-﻿using NetFrame.Net;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading;
 
@@ -15,6 +14,10 @@ public class SingleRoom
 
     public RoomInfo RoomInfo { get; set; }//客户端和服务器通用保存房间属性的变量类
 
+    /// <summary>
+    /// 房間中的會員列表
+    /// </summary>
+    public Dictionary<int, RoomActor> ActorList { get; set; }
     /// <summary>
     /// 游戏棋子对应的拥有玩家ID--盒子序号，用户站位
     /// </summary>
@@ -54,8 +57,13 @@ public class SingleRoom
 
                 break;
         }
-
         RoomInfo = new RoomInfo(roomID, roomName, roomType, limit);
+
+        ActorList = new Dictionary<int, RoomActor>() { };
+        for (int i = 0; i < limit; i++)
+        {
+            InitRoomActorByIndex(i);
+        }
     }
 
     // 會員加入房間
@@ -64,7 +72,7 @@ public class SingleRoom
         lock (this)
         {
             UniqueID = -1;
-            foreach (KeyValuePair<int, RoomActor> item in RoomInfo.ActorList)
+            foreach (KeyValuePair<int, RoomActor> item in ActorList)
             {
                 if (item.Value.Register == null)
                 {
@@ -97,10 +105,10 @@ public class SingleRoom
                 UserTokenInfo[UniqueID] = userToken;
                 RoomActor actor = new RoomActor(RoomInfo.RoomID, UniqueID, userToken.userInfo.Register, myTeam);
                 userToken.userInfo = actor;
-                RoomInfo.ActorList[UniqueID] = actor;
-                RoomInfo.ActorList[UniqueID].MyModelInfo.pos = (NetVector3)GameTypeManager.BackStandPos(RoomInfo.RoomType, UniqueID);
-                RoomInfo.ActorList[UniqueID].MyModelInfo.rotate = new NetVector3(0, GameTypeManager.BackLookAt(RoomInfo.RoomType, UniqueID), 0);
-                RoomInfo.ActorList[UniqueID].MyModelInfo.animation = 0;
+                ActorList[UniqueID] = actor;
+                ActorList[UniqueID].MyModelInfo.pos = (NetVector3)GameTypeManager.BackStandPos(RoomInfo.RoomType, UniqueID);
+                ActorList[UniqueID].MyModelInfo.rotate = new NetVector3(0, GameTypeManager.BackLookAt(RoomInfo.RoomType, UniqueID), 0);
+                ActorList[UniqueID].MyModelInfo.animation = 0;
                 BoardcastActorInfo(UniqueID);
                 return true;
             }
@@ -119,12 +127,12 @@ public class SingleRoom
     {
         lock (this)
         {
-            if (RoomInfo.ActorList.ContainsKey(unique))
+            if (ActorList.ContainsKey(unique))
             {
-                if (RoomInfo.ActorList[unique].CurState != RoomActorState.Gaming)//当前正在游戏则不能退出房间
+                if (ActorList[unique].CurState != RoomActorState.Gaming)//当前正在游戏则不能退出房间
                 {
                     //
-                    RoomInfo.InitRoomActorByIndex(unique);
+                    InitRoomActorByIndex(unique);
                     BoardcastActorInfo(unique);
                     return true;
                 }
@@ -135,7 +143,7 @@ public class SingleRoom
 
     public bool IsEmptyRoom()
     {
-        foreach (KeyValuePair<int, RoomActor> item in RoomInfo.ActorList)
+        foreach (KeyValuePair<int, RoomActor> item in ActorList)
         {
             if (item.Value.Register != null)
             {
@@ -147,7 +155,7 @@ public class SingleRoom
 
     public bool IsMaster(string memberID)
     {
-        return RoomInfo.ActorList[0].Register.userID == memberID;
+        return ActorList[0].Register.userID == memberID;
     }
 
     #endregion
@@ -155,7 +163,7 @@ public class SingleRoom
 
     public void InitRoom()
     {
-        List<RoomActor> allRA = new List<RoomActor>(RoomInfo.ActorList.Values);
+        List<RoomActor> allRA = new List<RoomActor>(ActorList.Values);
         for (int i = 0; i < allRA.Count; i++)
         {
             if (allRA[i].CurState == RoomActorState.Offline)
@@ -179,9 +187,9 @@ public class SingleRoom
 
     public void UpdateAnimation(ActorNetAnimation netAniamtion)
     {
-        if (RoomInfo.ActorList[netAniamtion.userIndex] == null)
+        if (ActorList[netAniamtion.userIndex] == null)
             return;
-        RoomInfo.ActorList[netAniamtion.userIndex].MyModelInfo.animation = netAniamtion.animationIndex;
+        ActorList[netAniamtion.userIndex].MyModelInfo.animation = netAniamtion.animationIndex;
         byte[] message = SerializeHelper.ConvertToByte(netAniamtion.GetSendInfo());
         BoardcastMessage(MessageConvention.updateActorAnimation, message, netAniamtion.userIndex);
     }
@@ -190,12 +198,12 @@ public class SingleRoom
     {
         int index = roomActorUpdate.userIndex;
         RoomActorState upState = (RoomActorState)int.Parse(roomActorUpdate.update);
-        if (RoomInfo.ActorList[index] == null)
+        if (ActorList[index] == null)
             return;
-        //if (RoomInfo.ActorList[index].CurState != RoomActorState.ReConnect)
+        //if (ActorList[index].CurState != RoomActorState.ReConnect)
         {
-            Log4Debug("站位 " + index + " 更新当前状态：" + RoomInfo.ActorList[index].CurState + " -> " + (RoomActorState)int.Parse(roomActorUpdate.update));
-            RoomInfo.ActorList[index].CurState = upState;
+            Log4Debug("站位 " + index + " 更新当前状态：" + ActorList[index].CurState + " -> " + (RoomActorState)int.Parse(roomActorUpdate.update));
+            ActorList[index].CurState = upState;
             byte[] message = SerializeHelper.ConvertToByte(roomActorUpdate.GetSendInfo());
             BoardcastMessage(MessageConvention.updateActorState, message);
 
@@ -205,7 +213,7 @@ public class SingleRoom
             }
             if (RoomInfo.CurState == RoomActorState.Gaming)
             {
-                switch (RoomInfo.ActorList[index].CurState)
+                switch (ActorList[index].CurState)
                 {
                     case RoomActorState.ReConnect:
                         break;
@@ -225,7 +233,7 @@ public class SingleRoom
 
                         break;
                     case RoomActorState.Dead:
-                        RoomInfo.ActorList[index].timerDead = new Timer(new TimerCallback(SetAfterDead), index, RoomActor.DeadLastTime, 0);
+                        ActorList[index].timerDead = new Timer(new TimerCallback(SetAfterDead), index, RoomActor.DeadLastTime, 0);
                         break;
                 }
             }
@@ -234,8 +242,8 @@ public class SingleRoom
         //{
         //    if (upState == RoomActorState.WaitForStart && RoomInfo.CurState == RoomActorState.Gaming)
         //    {
-        //        RoomInfo.ActorList[index].CurState = RoomActorState.Gaming;
-        //        roomActorUpdate.update = (int)RoomInfo.ActorList[index].CurState + "";
+        //        ActorList[index].CurState = RoomActorState.Gaming;
+        //        roomActorUpdate.update = (int)ActorList[index].CurState + "";
         //        byte[] message = SerializeHelper.ConvertToByte(roomActorUpdate.GetSendInfo());
         //        BoardcastMessage(MessageConvention.updateActorState, message);
         //    }
@@ -354,17 +362,17 @@ public class SingleRoom
                 int bulletMaster = bulletInfo.userIndex;
                 int shootedIndex = int.Parse(bulletInfo.shootInfo);
 
-                if (RoomInfo.ActorList[shootedIndex].MyTeam == RoomInfo.ActorList[bulletMaster].MyTeam)
+                if (ActorList[shootedIndex].MyTeam == ActorList[bulletMaster].MyTeam)
                 {
                     return;
                 }
-                if (RoomInfo.ActorList[shootedIndex].CurState == RoomActorState.Gaming)
+                if (ActorList[shootedIndex].CurState == RoomActorState.Gaming)
                 {
                     //增加击杀数
-                    RoomInfo.ActorList[bulletMaster].KillCount++;
+                    ActorList[bulletMaster].KillCount++;
                     if (RoomInfo.CurState == RoomActorState.Gaming)
                     {
-                        byte[] message = SerializeHelper.Serialize<List<RoomActor>>(new List<RoomActor>(RoomInfo.ActorList.Values));
+                        byte[] message = SerializeHelper.Serialize<List<RoomActor>>(new List<RoomActor>(ActorList.Values));
                         BoardcastMessage(MessageConvention.getRoommateInfo, message);
                     }
                     //改变被射击者状态
@@ -384,7 +392,7 @@ public class SingleRoom
                     //};
                     //SetRecondFrame(SerializeHelper.Serialize<GameModelData>(dead), FrameIndex);
                 }
-                else if (RoomInfo.ActorList[shootedIndex].CurState == RoomActorState.Invincible)
+                else if (ActorList[shootedIndex].CurState == RoomActorState.Invincible)
                 {
                     Log4Debug("射击者站位：" + bulletInfo.userIndex + " 攻击无敌站位：->" + shootedIndex);
                 }
@@ -406,16 +414,16 @@ public class SingleRoom
     private void SetAfterDead(object unique)
     {
         int index = (int)unique;
-        RoomInfo.ActorList[index].timerDead.Dispose();
+        ActorList[index].timerDead.Dispose();
         Log4Debug("执行回调设置复活，状态无敌。");
         RoomActorUpdate roomActorUpdate = new RoomActorUpdate() { userIndex = index, update = (int)RoomActorState.Invincible + "" };
         UpdateState(roomActorUpdate);
-        RoomInfo.ActorList[index].timerInvincible = new Timer(new TimerCallback(SetAfterInvincible), index, RoomActor.InvincibleLastTime, 0);
+        ActorList[index].timerInvincible = new Timer(new TimerCallback(SetAfterInvincible), index, RoomActor.InvincibleLastTime, 0);
     }
     private void SetAfterInvincible(object unique)
     {
         int index = (int)unique;
-        RoomInfo.ActorList[index].timerInvincible.Dispose();
+        ActorList[index].timerInvincible.Dispose();
         Log4Debug("执行回调取消无敌。");
         RoomActorUpdate roomActorUpdate = new RoomActorUpdate() { userIndex = index, update = (int)RoomActorState.Gaming + "" };
         UpdateState(roomActorUpdate);
@@ -423,7 +431,7 @@ public class SingleRoom
 
     public void UpdatePrepare(RoomActorUpdate roomActorUpdate, AsyncUserToken userToken)
     {
-        if (RoomInfo.ActorList[roomActorUpdate.userIndex] == null)
+        if (ActorList[roomActorUpdate.userIndex] == null)
             return;
 
         int index = roomActorUpdate.userIndex;
@@ -553,9 +561,9 @@ public class SingleRoom
     private bool CheckIsAllFixedState(RoomActorState state)
     {
         bool isFixed = true;
-        for (int i = 0; i < RoomInfo.ActorList.Count; i++)
+        for (int i = 0; i < ActorList.Count; i++)
         {
-            if (RoomInfo.ActorList[i] == null || RoomInfo.ActorList[i].CurState != state)
+            if (ActorList[i] == null || ActorList[i].CurState != state)
             {
                 isFixed = false;
                 break;
@@ -577,11 +585,11 @@ public class SingleRoom
             {
                 continue;
             }
-            if (RoomInfo.ActorList[item.Value.ownerIndex].MyTeam == TeamType.Blue)//该盒子的拥有者是哪个队的
+            if (ActorList[item.Value.ownerIndex].MyTeam == TeamType.Blue)//该盒子的拥有者是哪个队的
             {
                 TwoTeam[0] += 1;
             }
-            else if (RoomInfo.ActorList[item.Value.ownerIndex].MyTeam == TeamType.Red)
+            else if (ActorList[item.Value.ownerIndex].MyTeam == TeamType.Red)
             {
                 TwoTeam[1] += 1;
             }
@@ -600,6 +608,18 @@ public class SingleRoom
             return TeamType.Both;
         }
     }
+
+
+    public void InitRoomActorByIndex(int unique)
+    {
+        if (!ActorList.ContainsKey(unique))
+        {
+            ActorList.Add(unique, null);
+        }
+        ActorList[unique] = new RoomActor(RoomInfo.RoomID, unique, null, TeamType.Both);
+    }
+
+
     #endregion
 
     #region 时间自动计时
@@ -646,7 +666,7 @@ public class SingleRoom
     public void GetRoommateNetData(int uniqueID, AsyncUserToken userToken)
     {
         byte[] message = null;
-        foreach (var item in RoomInfo.ActorList)
+        foreach (var item in ActorList)
         {
             MessageXieYi xieyi = null;
             if (item.Value == null)
@@ -680,7 +700,7 @@ public class SingleRoom
     public void BoardcastActorInfo(int uniqueID)
     {
         //需要修改
-        byte[] message = SerializeHelper.Serialize<List<RoomActor>>(new List<RoomActor>(RoomInfo.ActorList.Values));
+        byte[] message = SerializeHelper.Serialize<List<RoomActor>>(new List<RoomActor>(ActorList.Values));
         BoardcastMessage(MessageConvention.getRoommateInfo, message, uniqueID);
     }
 
@@ -693,19 +713,19 @@ public class SingleRoom
     private void BoardcastMessage(MessageConvention convention, byte[] message, int uniqueID = -1, byte xieyiSecond = 0)
     {
         MessageXieYi msgXY = new MessageXieYi((byte)convention, xieyiSecond, message);
-        for (int i = 0; i < RoomInfo.ActorList.Count; i++)//逐个玩家遍历发送消息
+        for (int i = 0; i < ActorList.Count; i++)//逐个玩家遍历发送消息
         {
-            if (RoomInfo.ActorList[i].Register == null)
+            if (ActorList[i].Register == null)
             {
                 continue;
             }
-            if (RoomInfo.ActorList[i].CurState == RoomActorState.Offline)//离线玩家不发送
+            if (ActorList[i].CurState == RoomActorState.Offline)//离线玩家不发送
             {
                 continue;
             }
-            if (RoomInfo.ActorList[i].UniqueID != uniqueID)
+            if (ActorList[i].UniqueID != uniqueID)
             {
-                AsyncIOCPServer.instance.SendSave(UserTokenInfo[RoomInfo.ActorList[i].UniqueID], msgXY.ToBytes());
+                AsyncIOCPServer.instance.SendSave(UserTokenInfo[ActorList[i].UniqueID], msgXY.ToBytes());
             }
         }
     }
@@ -723,7 +743,7 @@ public class SingleRoom
         switch (RoomInfo.CurState)
         {
             case RoomActorState.NoReady:
-                foreach (var item in RoomInfo.ActorList)
+                foreach (var item in ActorList)
                 {
                     if (item.Value == null)
                     {
@@ -743,7 +763,7 @@ public class SingleRoom
             case RoomActorState.Ready:
                 Log4Debug("玩家都准备了。");
                 //设置所有玩家默认值
-                foreach (var item in RoomInfo.ActorList)
+                foreach (var item in ActorList)
                 {
                     if (item.Value == null)
                     {
@@ -775,7 +795,7 @@ public class SingleRoom
             case RoomActorState.Gaming:
                 Log4Debug("开始游戏:" + RoomInfo.FrameIndex);
 
-                foreach (var item in RoomInfo.ActorList)
+                foreach (var item in ActorList)
                 {
                     if (item.Value == null)
                     {
@@ -843,7 +863,7 @@ public class SingleRoom
     /// <param name="userToken"></param>
     public void ReConnect(AsyncUserToken userToken)
     {
-        List<RoomActor> allRA = new List<RoomActor>(RoomInfo.ActorList.Values);
+        List<RoomActor> allRA = new List<RoomActor>(ActorList.Values);
         RoomActor actor = null;
         for (int i = 0; i < allRA.Count; i++)
         {
@@ -859,6 +879,9 @@ public class SingleRoom
                 break;
             }
         }
+
+        MessageXieYi xieyi = new MessageXieYi((byte)MessageConvention.joinRoom, 0, SerializeHelper.ConvertToByte(actor.UniqueID + ""));
+        AsyncIOCPServer.instance.SendSave(userToken, xieyi.ToBytes());
     }
     public void GetReConnectFrameData(int unique)
     {

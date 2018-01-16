@@ -1,5 +1,4 @@
-﻿using NetFrame.Net;
-using Newtonsoft.Json.Linq;
+﻿using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -74,8 +73,9 @@ public class RoomCollection
         if (roomList[roomID].Join(userToken, out localIndex))
         {
             Log4Debug("创建房间成功,站位：" + localIndex);
-            RoomInfo info = GetRoomInfo(roomID);
-            backData = SerializeHelper.Serialize<RoomInfo>(info);
+            //RoomInfo info = GetRoomInfo(roomID);
+            //backData = SerializeHelper.Serialize<RoomInfo>(info);
+            backData = SerializeHelper.ConvertToByte(localIndex + "");
         }
         else
         {
@@ -100,10 +100,9 @@ public class RoomCollection
                 if (roomList[rID].Join(userToken, out localIndex))//可以加入
                 {
                     Log4Debug("加入房间成功。");
-                    RoomInfo info = GetRoomInfo(rID);
-                    info.MyLocateIndex = localIndex;
-                    backData = SerializeHelper.Serialize<RoomInfo>(info);
-                    userToken.userInfo = info.ActorList[localIndex];
+                    //RoomInfo info = GetRoomInfo(rID);
+                    //userToken.userInfo = info.ActorList[localIndex];
+                    backData = SerializeHelper.ConvertToByte(localIndex + "");
                 }
                 else
                 {
@@ -128,12 +127,10 @@ public class RoomCollection
                 int localIndex = -1;
                 if (item.Value.Join(userToken, out localIndex))//可以加入
                 {
-                    RoomInfo info = GetRoomInfo(item.Key);
-                    info.MyLocateIndex = localIndex;
-                    backData = SerializeHelper.Serialize<RoomInfo>(info);
-                    userToken.userInfo = info.ActorList[localIndex];
+                    //RoomInfo info = GetRoomInfo(item.Key);
+                    //userToken.userInfo = info.ActorList[localIndex];
+                    backData = SerializeHelper.ConvertToByte(localIndex + "");
                     return backData;
-
                 }
             }
             //请求加入的游戏模式暂没有房间，生成新房间

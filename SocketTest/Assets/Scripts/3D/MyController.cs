@@ -90,7 +90,7 @@ public class MyController : CharacterCommon
 
     public void UIMove(Vector3 moveDirection, float moveSpeed)
     {
-        if (DataController.instance.MyRoomInfo.ActorList[myIndex].CurState != RoomActorState.Gaming)
+        if (DataController.instance.ActorList[myIndex].CurState != RoomActorState.Gaming)
         {
             return;
         }
@@ -103,7 +103,7 @@ public class MyController : CharacterCommon
 
         ActorMoveDirection tempMove = new ActorMoveDirection()
         {
-            userIndex = DataController.instance.MyRoomInfo.MyLocateIndex,
+            userIndex = DataController.instance.MyLocateIndex,
             direction = new NetVector3(x, y, z),
             speed = _speed
         };
@@ -123,7 +123,7 @@ public class MyController : CharacterCommon
     private ActorRotateDirection lastRotate;
     public void UIRotation()
     {
-        if (DataController.instance.MyRoomInfo.ActorList[myIndex].CurState != RoomActorState.Gaming)
+        if (DataController.instance.ActorList[myIndex].CurState != RoomActorState.Gaming)
         {
             return;
         }
@@ -132,7 +132,7 @@ public class MyController : CharacterCommon
 
         ActorRotateDirection tempRotate = new ActorRotateDirection()
         {
-            userIndex = DataController.instance.MyRoomInfo.MyLocateIndex,
+            userIndex = DataController.instance.MyLocateIndex,
             rotateY = lookAt
         };
 
@@ -147,11 +147,11 @@ public class MyController : CharacterCommon
     
     public void UIShot()
     {
-        if (DataController.instance.MyRoomInfo.ActorList[myIndex].CurState != RoomActorState.Gaming)
+        if (DataController.instance.ActorList[myIndex].CurState != RoomActorState.Gaming)
         {
             return;
         }
-        int userIndex = DataController.instance.MyRoomInfo.MyLocateIndex;
+        int userIndex = DataController.instance.MyLocateIndex;
         byte[] message = SerializeHelper.ConvertToByte(userIndex + "");
         SocketManager.instance.SendSave((byte)MessageConvention.shootBullet, message, false);
     }

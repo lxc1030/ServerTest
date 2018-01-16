@@ -75,7 +75,7 @@ public class AsyncUserTokenPool
             {
                 if (used[i].userInfo.heartbeatTime.AddMilliseconds(iCheckInterval).CompareTo(DateTime.Now) < 0)
                 {
-                    Log4Debug(used[i].userInfo.Register.name + " 最后心跳 :" + used[i].userInfo.heartbeatTime.ToString("G") + " 当前心跳：" + DateTime.Now);
+                    //Log4Debug(used[i].userInfo.Register.name + " 最后心跳 :" + used[i].userInfo.heartbeatTime.ToString("G") + " 当前心跳：" + DateTime.Now);
                     //
                     closeAction(used[i]);
                 }

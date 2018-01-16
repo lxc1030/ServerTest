@@ -26,11 +26,11 @@ public class Box : MonoBehaviour
     {
         myInfo.ownerIndex = userIndex;
         //转换拥有者成队伍颜色
-        TeamType type = DataController.instance.MyRoomInfo.ActorList[myInfo.ownerIndex].MyTeam;
+        TeamType type = DataController.instance.ActorList[myInfo.ownerIndex].MyTeam;
         ChangeTexture(type);
         //Debug.LogError(myInfo.myIndex + "/改成" + type);
     }
-    private void ChangeTexture(TeamType type)
+    public void ChangeTexture(TeamType type)
     {
         Material m = DataController.instance.GetMaterialOfTeamType(type);
         myMesh.material = m;

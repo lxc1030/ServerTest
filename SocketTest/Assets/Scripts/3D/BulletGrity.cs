@@ -73,12 +73,17 @@ public class BulletGrity : MonoBehaviour
                     Box box = obj.GetComponent<Box>();
                     bulletInfo.shootTag = ShootTag.Box;
                     bulletInfo.shootInfo = box.myInfo.myIndex + "";
+                    if (isSendTrigger)//本人射击
+                    {
+                        TeamType type = DataController.instance.ActorList[DataController.instance.MyLocateIndex].MyTeam;
+                        box.ChangeTexture(type);
+                    }
                     break;
                 case nameof(Tag.Member):
                     CharacterCommon member = obj.GetComponent<CharacterCommon>();
                     bulletInfo.shootTag = ShootTag.Character;
                     bulletInfo.shootInfo = member.myIndex + "";
-                    RoomActorState state = DataController.instance.MyRoomInfo.ActorList[member.myIndex].CurState;
+                    RoomActorState state = DataController.instance.ActorList[member.myIndex].CurState;
                     string tip = "";
                     switch (state)
                     {
@@ -102,7 +107,7 @@ public class BulletGrity : MonoBehaviour
             if (isSendTrigger)
             {
                 Debug.Log("射中：" + bulletInfo.shootTag);
-                bulletInfo.userIndex = DataController.instance.MyRoomInfo.MyLocateIndex;
+                bulletInfo.userIndex = DataController.instance.MyLocateIndex;
                 //发送
                 byte[] message = SerializeHelper.Serialize<BulletInfo>(bulletInfo);
                 SocketManager.instance.SendSave((byte)MessageConvention.bulletInfo, message, false);

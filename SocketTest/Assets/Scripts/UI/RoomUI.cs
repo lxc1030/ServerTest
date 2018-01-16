@@ -116,9 +116,9 @@ public class RoomUI : MonoBehaviour
         for (int i = 0; i < allMemberShow.Count; i++)
         {
             RoomActor info = null;
-            if (DataController.instance.MyRoomInfo.ActorList.ContainsKey(i))
+            if (DataController.instance.ActorList.ContainsKey(i))
             {
-                info = DataController.instance.MyRoomInfo.ActorList[i];
+                info = DataController.instance.ActorList[i];
             }
             if (info == null || info.Register == null)
             {
@@ -144,9 +144,9 @@ public class RoomUI : MonoBehaviour
         for (int i = 0; i < allMemberShow.Count; i++)
         {
             RoomActor info = null;
-            if (DataController.instance.MyRoomInfo.ActorList.ContainsKey(i))
+            if (DataController.instance.ActorList.ContainsKey(i))
             {
-                info = DataController.instance.MyRoomInfo.ActorList[i];
+                info = DataController.instance.ActorList[i];
             }
             if (info != null)
             {
@@ -248,7 +248,14 @@ public class RoomUI : MonoBehaviour
                 }
                 else
                 {
-                    ReflashRoomState();
+                    string messageInfo = SerializeHelper.ConvertToString(xieyi.MessageContent);
+                    RoomActorUpdate roomActorUpdate = new RoomActorUpdate();
+                    roomActorUpdate.SetSendInfo(messageInfo);
+                    RoomActorState state = (RoomActorState)int.Parse(roomActorUpdate.update);
+                    if (state == RoomActorState.Ready || state == RoomActorState.NoReady || state == RoomActorState.Offline)
+                    {
+                        ReflashRoomState();
+                    }
                 }
             }
             if ((MessageConvention)xieyi.XieYiFirstFlag == MessageConvention.updateRoom)

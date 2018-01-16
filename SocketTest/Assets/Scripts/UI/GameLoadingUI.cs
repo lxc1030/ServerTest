@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -75,24 +76,34 @@ public class GameLoadingUI : MonoBehaviour
         allLoad = new Dictionary<int, PrefabLoad>();
         Common.Clear(transTeamBlue);
         Common.Clear(transTeamRed);
-        GetRoomInfo();
+        GameManager.GetRoomInfo();
     }
 
-    private void GetRoomInfo()
-    {
-        SocketManager.instance.SendSave((byte)MessageConvention.getRoomInfo, new byte[] { }, false);
-    }
+
 
 
     private void GenerateUserUI()
     {
-        foreach (var item in DataController.instance.MyRoomInfo.ActorList.Values)
+        foreach (var item in DataController.instance.ActorList.Values)
         {
+            if (item == null)
+            {
+                Debug.LogError("不该有空值，请检查。");
+                continue;
+            }
             if (!string.IsNullOrEmpty(item.Register.name))
             {
-                Generate(item);
+                if (!allLoad.ContainsKey(item.UniqueID))
+                {
+                    Generate(item);
+                }
+                else
+                {
+                    allLoad[item.UniqueID].Init(item);
+                }
             }
         }
+
     }
 
 

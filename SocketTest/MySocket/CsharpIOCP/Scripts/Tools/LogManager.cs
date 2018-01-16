@@ -7,6 +7,9 @@ public class LogManager
     public static LogManager instance;
     public static string logPath = @"..\..\Log\";
 
+    public static bool isConsole = true;
+    public static bool isWriteIO = false;
+
     private bool isWriting;
     private List<string> waitToWrite;
 
@@ -28,7 +31,14 @@ public class LogManager
 
     public void WriteLog(string LogText)
     {
-        Console.WriteLine(LogText);
+        if (isConsole)
+        {
+            Console.WriteLine(LogText);
+        }
+        if (!isWriteIO)
+        {
+            return;
+        }
         lock (waitToWrite)
         {
             waitToWrite.Add(LogText);

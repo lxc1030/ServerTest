@@ -52,7 +52,9 @@ public class DataController : MonoBehaviour
     }
 
     public RoomActor myInfo = new RoomActor();
-    
+
+    public Dictionary<int, RoomActor> ActorList;
+
     private RoomInfo myRoomInfo = null;
 
     public RoomInfo MyRoomInfo
@@ -67,6 +69,7 @@ public class DataController : MonoBehaviour
         }
     }
     public int FrameCanIndex = 0;
+    public int MyLocateIndex = -1;
 
 
     public const int bulletAutoDestory = 100;

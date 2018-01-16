@@ -19,6 +19,8 @@ namespace CsharpIOCP
         int m_currentIndex; //当前缓冲池索引
         int m_bufferSize; //单个缓冲区容量
 
+
+
         /// <summary>
         /// 缓冲池重载
         /// </summary>
