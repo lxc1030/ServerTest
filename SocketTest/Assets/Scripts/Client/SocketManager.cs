@@ -525,14 +525,14 @@ public class SocketManager : MonoBehaviour
                 case MessageConvention.getHeartBeatTime:
                     HeartbeatTime beatTime = SerializeHelper.Deserialize<HeartbeatTime>(xieyi.MessageContent);
                     heartbeatSecondTime = beatTime.time - 1;//-1防止和服务器心跳时间一致的时候会导致偏差
-                    Debug.Log("心跳间隔：" + heartbeatSecondTime);
+                    //Debug.Log("心跳间隔：" + heartbeatSecondTime);
                     break;
                 case MessageConvention.reConnectCheck:
                     break;
                 case MessageConvention.reConnectIndex:
                     int index = int.Parse(SerializeHelper.ConvertToString(xieyi.MessageContent));
                     GameManager.instance.reConnectIndex = index;
-                    Debug.LogError("重连帧：" + index);
+                    Debug.Log("重连帧：" + index);
                     break;
                 case MessageConvention.heartBeat:
                     break;
@@ -545,7 +545,7 @@ public class SocketManager : MonoBehaviour
                     DataController.instance.MyLocateIndex = int.Parse(SerializeHelper.ConvertToString(tempMessageContent));
                     break;
                 case MessageConvention.updateRoom:
-                    Debug.Log((MessageConvention)xieyi.XieYiFirstFlag + "数据长度：" + xieyi.MessageContent.Length);
+                    //Debug.Log((MessageConvention)xieyi.XieYiFirstFlag + "数据长度：" + xieyi.MessageContent.Length);
                     error = ClassGroup.CheckIsError(xieyi);
                     if (error == ErrorType.none)
                     {
@@ -603,7 +603,7 @@ public class SocketManager : MonoBehaviour
                 case MessageConvention.updateActorState:
                     messageInfo = SerializeHelper.ConvertToString(tempMessageContent);
                     roomActorUpdate.SetSendInfo(messageInfo);
-                    Debug.Log("更新用户->" + roomActorUpdate.userIndex + " 状态为:" + (RoomActorState)int.Parse(roomActorUpdate.update));
+                    //Debug.Log("更新用户->" + roomActorUpdate.userIndex + " 状态为:" + (RoomActorState)int.Parse(roomActorUpdate.update));
                     DataController.instance.ActorList[roomActorUpdate.userIndex].CurState = (RoomActorState)int.Parse(roomActorUpdate.update);
                     break;
                 case MessageConvention.prepareLocalModel:
@@ -611,17 +611,17 @@ public class SocketManager : MonoBehaviour
                     //DataController.instance.myRoomInfo.CountDownTime = waitSecond / 1000;
                     messageInfo = SerializeHelper.ConvertToString(tempMessageContent);
                     roomActorUpdate.SetSendInfo(messageInfo);
-                    Debug.Log("用户站位：" + roomActorUpdate.userIndex + "准备进度：" + roomActorUpdate.update + "%");
+                    //Debug.Log("用户站位：" + roomActorUpdate.userIndex + "准备进度：" + roomActorUpdate.update + "%");
                     break;
                 case MessageConvention.updateModelInfo:
 
                     break;
                 case MessageConvention.getPreGameData:
-                    Debug.LogError("getPreGameData已收到。");
+                    //Debug.Log("getPreGameData已收到。");
                     break;
                 case MessageConvention.startGaming:
                     string time = SerializeHelper.ConvertToString(tempMessageContent);
-                    Debug.LogError("开始游戏时间：" + time);
+                    Debug.Log("开始游戏时间：" + time);
                     startGamTime = DateTime.Parse(time);
                     DataController.instance.MyRoomInfo.CurState = RoomActorState.Gaming;
                     break;
@@ -649,7 +649,13 @@ public class SocketManager : MonoBehaviour
                     }
                     catch (Exception e)
                     {
-                        Debug.LogError("帧出错：" + e.Message);
+                        string frameError = "帧出错：" + e.Message + "：" + tempMessageContent.Length + "\n";
+                        for (int i = 0; i < tempMessageContent.Length; i++)
+                        {
+                            frameError += tempMessageContent[i] + ",";
+                        }
+                        Debug.LogError(frameError);
+                        return;
                     }
                     if (fInfos == null)
                     {

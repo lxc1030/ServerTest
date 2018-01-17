@@ -59,7 +59,7 @@ public class SocketConnectUI : MonoBehaviour
         messageHandle.Clear();
         messageHandle.Add(con);
         SocketManager.ListenDelegate(true, messageHandle, OperationListenInfo);//添加侦听
-        Debug.Log("协议：" + con + " 显示挡板。");
+        //Debug.Log("协议：" + con + " 显示挡板。");
         ChangeUIByState(NetState.显示挡板);
     }
 

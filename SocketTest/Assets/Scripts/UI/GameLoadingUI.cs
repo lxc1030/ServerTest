@@ -159,7 +159,14 @@ public class GameLoadingUI : MonoBehaviour
                 {
                     RoomActorUpdate roomActorUpdate = new RoomActorUpdate();
                     roomActorUpdate.SetSendInfo(SerializeHelper.ConvertToString(xieyi.MessageContent));
-                    allLoad[roomActorUpdate.userIndex].UpdateSlider(int.Parse(roomActorUpdate.update));
+                    if (allLoad.ContainsKey(roomActorUpdate.userIndex))
+                    {
+                        allLoad[roomActorUpdate.userIndex].UpdateSlider(int.Parse(roomActorUpdate.update));
+                    }
+                    else
+                    {
+                        Debug.LogError("allLoad没有该值:" + roomActorUpdate.userIndex);
+                    }
                 }
             }
         }

@@ -39,7 +39,6 @@ public class RoomCollection
     public byte[] CreateNewRoom(JObject json, AsyncUserToken userToken)
     {
         byte[] backData = null;
-        object userID = json[nameof(Register.userID)];
         GameModel roomType = (GameModel)(int)json[nameof(RoomInfo.RoomType)];
         string roomName = (string)json[nameof(RoomInfo.RoomName)];
 
@@ -86,14 +85,13 @@ public class RoomCollection
     public byte[] JoinRoom(JObject json, AsyncUserToken userToken)
     {
         byte[] backData = null;
-        object userID = json[nameof(Register.userID)];
-        object roomID = json[nameof(RoomInfo.RoomID)];
+        string roomID = (string)json[nameof(RoomInfo.RoomID)];
         GameModel roomType = (GameModel)(int)json[nameof(RoomInfo.RoomType)];
 
         //主逻辑
-        if (roomID == null)//加入指定房间
+        if (!string.IsNullOrEmpty(roomID))//加入指定房间
         {
-            int rID = (int)roomID;
+            int rID = int.Parse(roomID);
             int localIndex = -1;
             if (roomList.ContainsKey(rID))
             {
@@ -174,7 +172,7 @@ public class RoomCollection
         switch (type)
         {
             case GameModel.组队模式:
-                limet = 2;
+                limet = 4;
                 break;
         }
         return limet;

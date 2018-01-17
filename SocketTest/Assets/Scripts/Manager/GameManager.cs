@@ -185,7 +185,7 @@ public class GameManager : MonoBehaviour
     /// <param name="state"></param>
     private void ReConnectLogin()
     {
-        Debug.LogError("重连：" + isReconnect);
+        Debug.Log("重连：" + isReconnect);
         GameLoadingUI.Show();
     }
 
@@ -376,7 +376,7 @@ public class GameManager : MonoBehaviour
     {
         HomeUI.Close();
         frameIndex = 0;
-        Debug.LogError("开始游戏");
+        Debug.Log("开始游戏");
         isOnFrame = true;
         frameIndexTime = Time.realtimeSinceStartup;
     }
@@ -390,7 +390,7 @@ public class GameManager : MonoBehaviour
         frameIndex = 0;
         reConnectIndex = 0;//游戏结束的时候未完成复现，怎清除重连记录帧
         MyJoystickManager.instance.Close();
-        Debug.LogError("结束游戏");
+        Debug.Log("结束游戏");
         foreach (var item in memberGroup)
         {
             item.Value.Init(item.Key);
@@ -424,7 +424,7 @@ public class GameManager : MonoBehaviour
         FrameInfo info = new FrameInfo() { frameIndex = frameEmpty, frameData = new List<byte[]>() };
         string debug = "请求帧：" + info.frameIndex;
         UIManager.instance.ShowAlertTip(debug);
-        Debug.LogError(debug);
+        //Debug.LogError(debug);
         byte[] message = SerializeHelper.Serialize<FrameInfo>(info);
         SocketManager.instance.SendSave((byte)MessageConvention.frameData, message, false);
     }

@@ -162,7 +162,7 @@ public class CharacterCommon : MonoBehaviour
     public void SetAnimation(int animation)
     {
         string name = GameManager.instance.animationGroup[animation].name;
-        Debug.LogError(name);
+        Debug.Log(name);
         //myAnimation.CrossFade("soldierIdleRelaxed");
     }
 
