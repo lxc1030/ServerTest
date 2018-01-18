@@ -103,9 +103,7 @@ public class GameLoadingUI : MonoBehaviour
                 }
             }
         }
-
     }
-
 
     private void Generate(RoomActor actor)
     {
@@ -136,6 +134,7 @@ public class GameLoadingUI : MonoBehaviour
                 GenerateUserUI();
                 if (GameManager.instance.isReconnect)
                 {
+                    Debug.Log("重连请求重连帧。");
                     GameManager.GetReconnectIndex();
                 }
                 else
@@ -150,23 +149,15 @@ public class GameLoadingUI : MonoBehaviour
             }
             if ((MessageConvention)xieyi.XieYiFirstFlag == MessageConvention.prepareLocalModel)
             {
-                ErrorType error = ClassGroup.CheckIsError(xieyi);
-                if (error != ErrorType.none)
+                RoomActorUpdate roomActorUpdate = new RoomActorUpdate();
+                roomActorUpdate.SetSendInfo(SerializeHelper.ConvertToString(xieyi.MessageContent));
+                if (allLoad.ContainsKey(roomActorUpdate.userIndex))
                 {
-                    Debug.LogError(error);
+                    allLoad[roomActorUpdate.userIndex].UpdateSlider(int.Parse(roomActorUpdate.update));
                 }
                 else
                 {
-                    RoomActorUpdate roomActorUpdate = new RoomActorUpdate();
-                    roomActorUpdate.SetSendInfo(SerializeHelper.ConvertToString(xieyi.MessageContent));
-                    if (allLoad.ContainsKey(roomActorUpdate.userIndex))
-                    {
-                        allLoad[roomActorUpdate.userIndex].UpdateSlider(int.Parse(roomActorUpdate.update));
-                    }
-                    else
-                    {
-                        Debug.LogError("allLoad没有该值:" + roomActorUpdate.userIndex);
-                    }
+                    Debug.LogError("在自己UI未准备好的时候，收到了其他用户的进度。");
                 }
             }
         }

@@ -45,7 +45,7 @@ public class AsyncIOCPServer
     /// <summary>
     /// 心跳检测间隔秒数
     /// </summary>
-    public const int HeartbeatSecondTime = 60;
+    public const int HeartbeatSecondTime = 5;
 
 
     /// <summary>
@@ -208,14 +208,17 @@ public class AsyncIOCPServer
                 byte[] copy = new byte[e.BytesTransferred];
                 Array.Copy(e.Buffer, e.Offset, copy, 0, e.BytesTransferred);
 
-            
-                ConnCache connCache = new ConnCache(copy, userToken);
-                //ConnCache connCache = new ConnCache(e.Buffer, userToken);
-                //处理线程
-                ThreadPool.QueueUserWorkItem(new WaitCallback(AnalyzeThrd), connCache);
+                lock (userToken.ReceiveBuffer)
+                {
+                    userToken.ReceiveBuffer.AddRange(copy);
+                }
 
                 if (!userToken.ConnectSocket.ReceiveAsync(e))
                     ProcessReceive(userToken);
+
+
+                //处理线程
+                ThreadPool.QueueUserWorkItem(new WaitCallback(Handle), userToken);
 
             }
             //catch (Exception error)
@@ -228,65 +231,50 @@ public class AsyncIOCPServer
             CloseClientSocket(userToken);
         }
     }
-
     /// <summary>
-    /// 线程处理接收事件
+    /// 线程处理接收数据
     /// </summary>
     /// <param name="state"></param>
-    private void AnalyzeThrd(object state)
+    private void Handle(object state)
     {
-        ConnCache connCache = (ConnCache)state;
-        AsyncUserToken userToken = connCache.UserToken;
-        lock (userToken.AnalyzeLock)
+        AsyncUserToken userToken = (AsyncUserToken)state;
+        lock (userToken.LockHanding)
         {
-            lock (userToken.ReceiveBuffer)
+            while (userToken.ReceiveBuffer.Count > sizeof(int))//包整长判断
             {
-                userToken.ReceiveBuffer.AddRange(connCache.RecvBuffer);
-            }
-            Handle(userToken);
-        }
-    }
-
-
-    private void Handle(AsyncUserToken userToken)
-    {
-        do
-        {
-            byte[] lenBytes = userToken.ReceiveBuffer.GetRange(0, sizeof(int)).ToArray();
-            int packageLen = BitConverter.ToInt32(lenBytes, 0);
-            if (packageLen <= userToken.ReceiveBuffer.Count - sizeof(int))
-            {
-                //包够长时,则提取出来,交给后面的程序去处理  
-                byte[] buffer = userToken.ReceiveBuffer.GetRange(sizeof(int), packageLen).ToArray();
-                //从数据池中移除这组数据,为什么要lock,你懂的  
+                int packageLen = 0;
+                byte[] completeMessage = null;
                 lock (userToken.ReceiveBuffer)
                 {
-                    userToken.ReceiveBuffer.RemoveRange(0, packageLen + sizeof(int));
+                    byte[] lenBytes = userToken.ReceiveBuffer.GetRange(0, sizeof(int)).ToArray();
+                    packageLen = BitConverter.ToInt32(lenBytes, 0);
+                    if (packageLen <= userToken.ReceiveBuffer.Count - sizeof(int))//数据够长
+                    {
+                        completeMessage = userToken.ReceiveBuffer.GetRange(sizeof(int), packageLen).ToArray();
+                        userToken.ReceiveBuffer.RemoveRange(0, packageLen + sizeof(int));
+                    }
                 }
-
-                while (buffer.Length > 0)
+                //处理Complete
+                MessageXieYi xieyi = MessageXieYi.FromBytes(completeMessage);
+                if (xieyi == null)
                 {
-                    if (buffer[0] != MessageXieYi.markStart)
-                    {
-                        break;
-                    }
-                    MessageXieYi xieyi = MessageXieYi.FromBytes(buffer);
-                    if (xieyi == null)
-                    {
-                        Log4Debug("奇怪为什么协议为空");
-                        break;
-                    }
-                    int messageLength = xieyi.MessageContentLength + MessageXieYi.XieYiLength + 1 + 1;
-                    buffer = buffer.Skip(messageLength).ToArray();
-                    //将数据包交给前台去处理
-                    DealXieYi(xieyi, userToken);
+                    Log4Debug("完整长度数据不能反序列化成MessageXieYi，本段数据丢弃。");
+                }
+                else
+                {
+                    object[] all = new object[] { userToken, xieyi };
+                    ThreadPool.QueueUserWorkItem(new WaitCallback(XieYiThrd), all);
                 }
             }
-            else
-            {   //长度不够,还得继续接收,需要跳出循环  
-                break;
-            }
-        } while (userToken.ReceiveBuffer.Count > sizeof(int));
+        }
+    }
+    private void XieYiThrd(object state)
+    {
+        object[] all = (object[])state;
+        AsyncUserToken userToken = (AsyncUserToken)all[0];
+        MessageXieYi xieyi = (MessageXieYi)all[1];
+        //将数据包交给前台去处理
+        DealXieYi(xieyi, userToken);
     }
 
     #endregion
@@ -466,6 +454,7 @@ public class AsyncIOCPServer
             //}
         }
     }
+    
     #endregion
 
 

@@ -21,18 +21,7 @@ public class AsyncUserToken
         get { return _receiveBuffer; }
         set { _receiveBuffer = value; }
     }
-
-
-    /// <summary>
-    /// 发送数据的缓冲区
-    /// </summary>
-    private List<byte> _sendBuffer;
-    public List<byte> SendBuffer
-    {
-        get { return _sendBuffer; }
-        set { _sendBuffer = value; }
-    }
-
+    
     /// <summary>
     /// 连接套接字
     /// </summary>
@@ -42,9 +31,8 @@ public class AsyncUserToken
         get { return _connectSocket; }
         set { _connectSocket = value; }
     }
-
-    public readonly object AnalyzeLock = new object();      // 数据分析锁
-
+    public readonly object LockHanding = new object();
+    
     /// <summary>
     /// 用户数据
     /// </summary>
@@ -53,21 +41,13 @@ public class AsyncUserToken
     public AsyncUserToken(int size)
     {
         Init();
-
-        //byteReceive = new byte[size];
         SAEA_Receive = new SocketAsyncEventArgs();
-        //SAEA_Receive.SetBuffer(byteReceive, 0, size);
-
-        //byteSend = new byte[size];
     }
 
     public void Init()
     {
         userInfo = null;
-
         _receiveBuffer = new List<byte>();
-        _sendBuffer = new List<byte>();
-
         ConnectSocket = null;
     }
 
@@ -95,35 +75,4 @@ public class MySocketEventArgs : SocketAsyncEventArgs
     /// 设置/获取使用状态  
     /// </summary>  
     public bool IsUsing { get; set; }
-}
-
-/// <summary>
-/// 每次接收到的数据，放进队列中等待线程池处理
-/// </summary>
-public sealed class ConnCache
-{
-    //public uint SocketId;                     // 连接标识
-    public AsyncUserToken UserToken;
-
-    public byte[] RecvBuffer;                   // 接收数据缓存，传输层抵达的数据，首先进入此缓存       
-    //public int RecvLen;                       // 接收数据缓存中的有效数据长度
-    //public readonly object RecvLock;          // 数据接收锁
-
-    //public byte[] WaitBuffer;                 // 待处理数据缓存，首先要将数据从RecvBuffer转移到该缓存，数据处理线程才能进行处理
-    //public int WaitLen;                       // 待处理数据缓存中的有效数据长度
-    //public readonly object AnalyzeLock;       // 数据分析锁
-
-    public ConnCache(byte[] receive, AsyncUserToken _userToken)
-    {
-
-        //SocketId = 65535;
-        //RecvBuffer = new byte[recvBuffSize];
-        RecvBuffer = receive;
-        UserToken = _userToken;
-        //RecvLen = 0;
-        //RecvLock = new object();
-        //WaitBuffer = new byte[waitBuffSize];
-        //WaitLen = 0;
-        //AnalyzeLock = new object();
-    }
 }

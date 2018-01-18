@@ -8,7 +8,7 @@ public class LogManager
     public static string logPath = @"..\..\Log\";
 
     public static bool isConsole = true;
-    public static bool isWriteIO = false;
+    public static bool isWriteIO = true;
 
     private bool isWriting;
     private List<string> waitToWrite;

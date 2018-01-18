@@ -104,7 +104,7 @@ public class GameRunUI : MonoBehaviour
     
     public void Update()
     {
-        SetShowTime(DataController.instance.MyRoomInfo.GameTime);
+        SetShowTime(GameManager.instance.GetGameTime());
         SetScorePercent();
     }
 

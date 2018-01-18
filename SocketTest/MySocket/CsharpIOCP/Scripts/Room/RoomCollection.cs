@@ -163,21 +163,7 @@ public class RoomCollection
         return backData;
     }
 
-
-
-
-    public static int BackRoomLimetByModel(GameModel type)
-    {
-        int limet = 1;
-        switch (type)
-        {
-            case GameModel.组队模式:
-                limet = 4;
-                break;
-        }
-        return limet;
-    }
-
+    
 
 
 

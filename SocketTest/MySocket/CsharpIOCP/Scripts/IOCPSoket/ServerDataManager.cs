@@ -121,9 +121,9 @@ public class ServerDataManager
                     break;
                 case MessageConvention.heartBeat:
                     //心跳检测客户端传递服务器时间
-                    Log4Debug("接收到 " + userToken.userInfo.Register.userID + " 的心跳检测");
+                    //Log4Debug("接收到 " + userToken.userInfo.Register.name + " 的心跳检测");
                     //newBuffer = SerializeHelper.DateTimeToBytes(DateTime.Now);
-                    newBuffer = SerializeHelper.Serialize<HeartbeatTime>(new HeartbeatTime() { time = AsyncIOCPServer.HeartbeatSecondTime });
+                    //newBuffer = SerializeHelper.Serialize<HeartbeatTime>(new HeartbeatTime() { time = AsyncIOCPServer.HeartbeatSecondTime });
                     break;
                 case MessageConvention.updateName:
                     tempMessageContent = xieyi.MessageContent;
@@ -143,7 +143,6 @@ public class ServerDataManager
                     Log4Debug("更新房间");
                     json = JObject.Parse(SerializeHelper.ConvertToString(xieyi.MessageContent));
                     newBuffer = allRoom.UpdateRoom(json);
-                    Log4Debug(newBuffer.Length + "newBuffer");
                     break;
                 case MessageConvention.getRoomInfo:
                     newBuffer = SerializeHelper.Serialize<RoomInfo>(room.RoomInfo);
@@ -247,7 +246,7 @@ public class ServerDataManager
                     tempMessageContent = xieyi.MessageContent;
                     FrameInfo frame = SerializeHelper.Deserialize<FrameInfo>(tempMessageContent);
                     newBuffer = room.GetBoardFrame(frame.frameIndex);
-                    Log4Debug("用户" + userToken.userInfo.Register.userID + "/请求帧数据：" + frame.frameIndex + "/" + room.RoomInfo.FrameIndex + "数据总长：" + newBuffer.Length);
+                    Log4Debug("用户" + userToken.userInfo.Register.name + "/请求帧数据：" + frame.frameIndex + "/" + room.RoomInfo.FrameIndex + "数据总长：" + newBuffer.Length);
                     break;
                 case MessageConvention.testConnect:
                     tempMessageContent = xieyi.MessageContent;

@@ -79,9 +79,7 @@ public class GameManager : MonoBehaviour
     {
         MessageConvention.login,
         MessageConvention.getHeartBeatTime,
-        MessageConvention.heartBeat,
         MessageConvention.reConnectCheck,
-        MessageConvention.getRoommateInfo,
         MessageConvention.quitRoom,
         MessageConvention.updateActorState,
         MessageConvention.updateModelInfo,
@@ -154,7 +152,15 @@ public class GameManager : MonoBehaviour
             memberGroup[i].BeStop();
         }
     }
-
+    public float GetGameTime()
+    {
+        int FrameCount = (int)(DataController.instance.MyRoomInfo.GameTime / RoomInfo.frameTime);
+        int leaveFrame = FrameCount - frameIndex;
+        float time = leaveFrame * RoomInfo.frameTime;
+        time = time / 1000;
+        time = (time < 0) ? 0 : time;
+        return time;
+    }
     #endregion
 
 
@@ -704,6 +710,11 @@ public class GameManager : MonoBehaviour
         if (serverEvent.Count > 0)
         {
             MessageXieYi xieyi = serverEvent.Dequeue();
+            if (xieyi == null)
+            {
+                Debug.LogError("有事件操作的协议为空？");
+                return;
+            }
             if (xieyi.XieYiFirstFlag == (byte)MessageConvention.login)
             {
                 ErrorType error = ClassGroup.CheckIsError(xieyi);
@@ -750,29 +761,6 @@ public class GameManager : MonoBehaviour
                     }
                 }
             }
-            //if ((MessageConvention)xieyi.XieYiFirstFlag == MessageConvention.getRoommateInfo)
-            //{
-            //    ErrorType error = ClassGroup.CheckIsError(xieyi);
-            //    if (error != ErrorType.none)
-            //    {
-            //        Debug.LogError(error);
-            //    }
-            //    else
-            //    {
-            //        HomeUI.instance.Close();
-            //        if (DataController.instance.MyRoomInfo.CurState != RoomActorState.Gaming)
-            //        {
-            //            RoomUI.Show();
-            //        }
-            //        else
-            //        {
-            //            if (reConnectIndex > 0)
-            //            {
-            //                PrepareLocalModel();
-            //            }
-            //        }
-            //    }
-            //}
             if ((MessageConvention)xieyi.XieYiFirstFlag == MessageConvention.quitRoom)//自己退出房间
             {
                 ErrorType error = ClassGroup.CheckIsError(xieyi);

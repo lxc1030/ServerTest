@@ -28,13 +28,6 @@ public class SocketManager : MonoBehaviour
     /// 用于每个I/O Socket操作的缓冲区大小 默认1024
     /// </summary>
     int bufferSize = 1024;
-    /// <summary>
-    /// 处理线程通过这个队列知道有数据需要处理
-    /// </summary>
-    /// <typeparam name="ConnCache"></typeparam>
-    /// <param name=""></param>
-    /// <returns></returns>
-    Queue<ConnCache> tokenQueue;
 
 
 
@@ -119,7 +112,7 @@ public class SocketManager : MonoBehaviour
         hostEndPoint = new IPEndPoint(IPAddress.Parse(IP), portNo);
         _Socket = new Socket(hostEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 
-        //SocketError error = Connect(Login);
+        //SocketError error = Connect(SendLogin);
         SocketError error = Connect();
         if (callback != null)
         {
@@ -174,6 +167,10 @@ public class SocketManager : MonoBehaviour
         //{
         //    OnConnect(callback, connectArgs);
         //};
+
+        MyUserToken = new AsyncUserToken(bufferSize);
+        MyUserToken.ConnectSocket = _Socket;
+
         if (!_Socket.ConnectAsync(connectArgs))
         {
             ProcessConnected(connectArgs);
@@ -194,9 +191,6 @@ public class SocketManager : MonoBehaviour
         {
             Debug.Log("Socket连接成功");
 
-            MyUserToken = new AsyncUserToken(bufferSize);
-            MyUserToken.ConnectSocket = _Socket;
-
             MyUserToken.SAEA_Receive.SetBuffer(new byte[1024], 0, 1024);
             MyUserToken.SAEA_Receive.Completed += new EventHandler<SocketAsyncEventArgs>(OnIOCompleted);
             MyUserToken.SAEA_Receive.UserToken = MyUserToken;
@@ -212,6 +206,9 @@ public class SocketManager : MonoBehaviour
         }
     }
     #endregion
+
+   
+
 
     #region Receive
     private void ProcessReceive(AsyncUserToken userToken)
@@ -229,12 +226,18 @@ public class SocketManager : MonoBehaviour
                 byte[] copy = new byte[e.BytesTransferred];
                 Array.Copy(e.Buffer, e.Offset, copy, 0, e.BytesTransferred);
 
-                ConnCache connCache = new ConnCache(copy, userToken);
-                //处理线程
-                ThreadPool.QueueUserWorkItem(new WaitCallback(AnalyzeThrd), connCache);
+                lock (userToken.ReceiveBuffer)
+                {
+                    userToken.ReceiveBuffer.AddRange(copy);
+                }
 
                 if (!userToken.ConnectSocket.ReceiveAsync(e))
                     ProcessReceive(userToken);
+
+
+                //处理线程
+                ThreadPool.QueueUserWorkItem(new WaitCallback(Handle), userToken);
+
             }
             //catch (Exception error)
             //{
@@ -247,62 +250,52 @@ public class SocketManager : MonoBehaviour
         }
     }
     /// <summary>
-    /// 线程处理接收事件
+    /// 线程处理接收数据
     /// </summary>
     /// <param name="state"></param>
-    private void AnalyzeThrd(object state)
+    private void Handle(object state)
     {
-        ConnCache connCache = (ConnCache)state;
-        AsyncUserToken userToken = connCache.UserToken;
-        lock (userToken.AnalyzeLock)
+        AsyncUserToken userToken = (AsyncUserToken)state;
+        lock (userToken.LockHanding)
         {
-            lock (userToken.ReceiveBuffer)
+            while (userToken.ReceiveBuffer.Count > sizeof(int))//包整长判断
             {
-                userToken.ReceiveBuffer.AddRange(connCache.RecvBuffer);
-            }
-            Handle(userToken);
-        }
-    }
-    private void Handle(AsyncUserToken userToken)
-    {
-        do
-        {
-            byte[] lenBytes = userToken.ReceiveBuffer.GetRange(0, sizeof(int)).ToArray();
-            int packageLen = BitConverter.ToInt32(lenBytes, 0);
-            if (packageLen <= userToken.ReceiveBuffer.Count - sizeof(int))
-            {
-                //包够长时,则提取出来,交给后面的程序去处理  
-                byte[] buffer = userToken.ReceiveBuffer.GetRange(sizeof(int), packageLen).ToArray();
-                //从数据池中移除这组数据,为什么要lock,你懂的  
+                int packageLen = 0;
+                byte[] completeMessage = null;
                 lock (userToken.ReceiveBuffer)
                 {
-                    userToken.ReceiveBuffer.RemoveRange(0, packageLen + sizeof(int));
+                    byte[] lenBytes = userToken.ReceiveBuffer.GetRange(0, sizeof(int)).ToArray();
+                    packageLen = BitConverter.ToInt32(lenBytes, 0);
+                    if (packageLen <= userToken.ReceiveBuffer.Count - sizeof(int))//数据够长
+                    {
+                        completeMessage = userToken.ReceiveBuffer.GetRange(sizeof(int), packageLen).ToArray();
+                        userToken.ReceiveBuffer.RemoveRange(0, packageLen + sizeof(int));
+                    }
                 }
-
-                while (buffer.Length > 0)
+                //处理Complete
+                MessageXieYi xieyi = MessageXieYi.FromBytes(completeMessage);
+                if (xieyi == null)
                 {
-                    if (buffer[0] != MessageXieYi.markStart)
-                    {
-                        break;
-                    }
-                    MessageXieYi xieyi = MessageXieYi.FromBytes(buffer);
-                    if (xieyi == null)
-                    {
-                        Log4Debug("奇怪为什么协议为空");
-                        break;
-                    }
-                    int messageLength = xieyi.MessageContentLength + MessageXieYi.XieYiLength + 1 + 1;
-                    buffer = buffer.Skip(messageLength).ToArray();
-                    //将数据包交给前台去处理
-                    DealXieYi(xieyi, userToken);
+                    Log4Debug("完整长度数据不能反序列化成MessageXieYi，本段数据丢弃。");
+                }
+                else
+                {
+                    object[] all = new object[] { userToken, xieyi };
+                    ThreadPool.QueueUserWorkItem(new WaitCallback(XieYiThrd), all);
+                    //DealXieYi(xieyi, userToken);
                 }
             }
-            else
-            {   //长度不够,还得继续接收,需要跳出循环  
-                break;
-            }
-        } while (userToken.ReceiveBuffer.Count > sizeof(int));
+        }
     }
+    private void XieYiThrd(object state)
+    {
+        object[] all = (object[])state;
+        AsyncUserToken userToken = (AsyncUserToken)all[0];
+        MessageXieYi xieyi = (MessageXieYi)all[1];
+        //将数据包交给前台去处理
+        DealXieYi(xieyi, userToken);
+    }
+
 
     #endregion
 
@@ -436,7 +429,6 @@ public class SocketManager : MonoBehaviour
         {
             if (userToken.ConnectSocket == null)
                 return;
-
             Log4Debug(String.Format("客户 {0} 清理链接!", userToken.ConnectSocket.RemoteEndPoint.ToString()));
             //
             DisConnect();
@@ -532,7 +524,6 @@ public class SocketManager : MonoBehaviour
                 case MessageConvention.reConnectIndex:
                     int index = int.Parse(SerializeHelper.ConvertToString(xieyi.MessageContent));
                     GameManager.instance.reConnectIndex = index;
-                    Debug.Log("重连帧：" + index);
                     break;
                 case MessageConvention.heartBeat:
                     break;
@@ -554,31 +545,25 @@ public class SocketManager : MonoBehaviour
                     break;
                 case MessageConvention.getRoomInfo:
                     DataController.instance.MyRoomInfo = SerializeHelper.Deserialize<RoomInfo>(tempMessageContent);
+                    Debug.Log("得到房间信息。");
                     break;
                 case MessageConvention.quitRoom:
                     break;
                 case MessageConvention.getRoommateInfo:
-                    error = ClassGroup.CheckIsError(xieyi);
-                    if (error != ErrorType.none)
+                    List<RoomActor> rActors = SerializeHelper.Deserialize<List<RoomActor>>(tempMessageContent);
+                    for (int i = 0; i < rActors.Count; i++)
                     {
-                        Debug.LogError(error);
-                    }
-                    else
-                    {
-                        List<RoomActor> rActors = SerializeHelper.Deserialize<List<RoomActor>>(tempMessageContent);
-                        for (int i = 0; i < rActors.Count; i++)
+                        if (DataController.instance.ActorList == null)
                         {
-                            if (DataController.instance.ActorList == null)
-                            {
-                                DataController.instance.ActorList = new Dictionary<int, RoomActor>();
-                            }
-                            if (!DataController.instance.ActorList.ContainsKey(rActors[i].UniqueID))
-                            {
-                                DataController.instance.ActorList.Add(rActors[i].UniqueID, null);
-                            }
-                            DataController.instance.ActorList[rActors[i].UniqueID] = rActors[i];
+                            DataController.instance.ActorList = new Dictionary<int, RoomActor>();
                         }
+                        if (!DataController.instance.ActorList.ContainsKey(rActors[i].UniqueID))
+                        {
+                            DataController.instance.ActorList.Add(rActors[i].UniqueID, null);
+                        }
+                        DataController.instance.ActorList[rActors[i].UniqueID] = rActors[i];
                     }
+                    Debug.Log("得到房间人物列表。");
                     break;
                 case MessageConvention.rotateDirection:
 
@@ -607,11 +592,8 @@ public class SocketManager : MonoBehaviour
                     DataController.instance.ActorList[roomActorUpdate.userIndex].CurState = (RoomActorState)int.Parse(roomActorUpdate.update);
                     break;
                 case MessageConvention.prepareLocalModel:
-                    //int waitSecond = int.Parse(SerializeHelper.ConvertToString(tempMessageContent));
-                    //DataController.instance.myRoomInfo.CountDownTime = waitSecond / 1000;
                     messageInfo = SerializeHelper.ConvertToString(tempMessageContent);
                     roomActorUpdate.SetSendInfo(messageInfo);
-                    //Debug.Log("用户站位：" + roomActorUpdate.userIndex + "准备进度：" + roomActorUpdate.update + "%");
                     break;
                 case MessageConvention.updateModelInfo:
 
@@ -624,11 +606,6 @@ public class SocketManager : MonoBehaviour
                     Debug.Log("开始游戏时间：" + time);
                     startGamTime = DateTime.Parse(time);
                     DataController.instance.MyRoomInfo.CurState = RoomActorState.Gaming;
-                    break;
-                case MessageConvention.gamingTime:
-                    messageInfo = SerializeHelper.ConvertToString(tempMessageContent);
-                    DataController.instance.MyRoomInfo.GameTime = int.Parse(messageInfo) / 1000;
-                    //Debug.LogError("游戏时间：" + DataController.instance.myRoomInfo.GameTime);
                     break;
                 case MessageConvention.shootBullet:
                     break;
@@ -741,6 +718,9 @@ public class SocketManager : MonoBehaviour
         {
             Init(GetSocketBack);
         }
+    }
+    private void SendLogin()
+    {
         Register login = LoginInfo();
         byte[] message = SerializeHelper.Serialize<Register>(login);
         SendSave((byte)MessageConvention.login, message);
@@ -754,6 +734,7 @@ public class SocketManager : MonoBehaviour
         {
             case SocketError.Success:
                 info = "连接服务器成功。";
+                SendLogin();
                 break;
             case SocketError.ConnectionRefused:
                 info = "服务器主动拒绝本次请求。";
@@ -769,7 +750,6 @@ public class SocketManager : MonoBehaviour
     {
         isConnected = false;
         MyUserToken.ConnectSocket.Shutdown(SocketShutdown.Both);
-        MyUserToken.ConnectSocket = null;
     }
     public void Log4Debug(string msg)
     {
