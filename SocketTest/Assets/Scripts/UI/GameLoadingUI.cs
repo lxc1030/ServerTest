@@ -13,7 +13,7 @@ public class GameLoadingUI : MonoBehaviour
     public Transform transTeamRed;
 
     public GameObject loadPrefab;
-
+    public CheckLoading curState;
     public Dictionary<int, PrefabLoad> allLoad = new Dictionary<int, PrefabLoad>();
 
 
@@ -35,7 +35,6 @@ public class GameLoadingUI : MonoBehaviour
     {
         MessageConvention.getRoomInfo,
         MessageConvention.getRoommateInfo,
-        MessageConvention.reConnectIndex,
         MessageConvention.prepareLocalModel,
     };
     private void Start()
@@ -76,10 +75,48 @@ public class GameLoadingUI : MonoBehaviour
         allLoad = new Dictionary<int, PrefabLoad>();
         Common.Clear(transTeamBlue);
         Common.Clear(transTeamRed);
-        GameManager.GetRoomInfo();
+
+        ChangeState(CheckLoading.房间信息);
+
     }
 
+    private void ChangeState(CheckLoading state)
+    {
+        curState = state;
+        switch (curState)
+        {
+            case CheckLoading.房间信息:
+                if (DataController.instance.MyRoomInfo == null)
+                {
+                    GameManager.GetRoomInfo();
+                }
+                else
+                {
+                    ChangeState(CheckLoading.人物信息);
+                }
+                break;
+            case CheckLoading.人物信息:
+                if (DataController.instance.ActorList == null)
+                {
+                    GameManager.GetRoommateInfo();
+                }
+                else
+                {
+                    GenerateUserUI();
+                    GameManager.instance.PrepareLocalModel();
+                }
+                break;
+            case CheckLoading.取重连帧:
+                if (GameManager.instance.isReconnect)
+                {
+                    Debug.Log("重连时，取重连帧。");
+                    GameManager.GetReconnectIndex();
+                    GameManager.instance.PrepareLocalModel();
+                }
+                break;
+        }
 
+    }
 
 
     private void GenerateUserUI()
@@ -127,25 +164,11 @@ public class GameLoadingUI : MonoBehaviour
             MessageXieYi xieyi = serverEvent.Dequeue();
             if ((MessageConvention)xieyi.XieYiFirstFlag == MessageConvention.getRoomInfo)//房间信息
             {
-                GameManager.GetRoommateInfo();
+                ChangeState(CheckLoading.人物信息);
             }
             if ((MessageConvention)xieyi.XieYiFirstFlag == MessageConvention.getRoommateInfo)//房间中人物信息
             {
-                GenerateUserUI();
-                if (GameManager.instance.isReconnect)
-                {
-                    Debug.Log("重连请求重连帧。");
-                    GameManager.GetReconnectIndex();
-                }
-                else
-                {
-                    GameManager.instance.PrepareLocalModel();
-                }
-            }
-            if ((MessageConvention)xieyi.XieYiFirstFlag == MessageConvention.reConnectIndex)//获取重连帧编号
-            {
-                //GameManager.instance.DoFrameRequest(GameManager.instance.reConnectIndex);
-                GameManager.instance.PrepareLocalModel();//准备本地模型加载
+                ChangeState(CheckLoading.取重连帧);
             }
             if ((MessageConvention)xieyi.XieYiFirstFlag == MessageConvention.prepareLocalModel)
             {
@@ -162,4 +185,11 @@ public class GameLoadingUI : MonoBehaviour
             }
         }
     }
+}
+
+public enum CheckLoading
+{
+    房间信息,
+    人物信息,
+    取重连帧,
 }

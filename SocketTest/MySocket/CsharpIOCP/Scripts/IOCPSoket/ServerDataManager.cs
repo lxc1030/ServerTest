@@ -102,12 +102,16 @@ public class ServerDataManager
                 case MessageConvention.reConnectCheck:
                     //检查是否是掉线用户
                     int isReconnect = 0;
+
                     if (OffLineRooms.ContainsKey(userToken.userInfo.Register.userID))
                     {
                         int roomID = OffLineRooms[userToken.userInfo.Register.userID];
                         userToken.userInfo.RoomID = roomID;
                         allRoom.RoomList[roomID].ReConnect(userToken);
-                        OffLineRooms.Remove(userToken.userInfo.Register.userID);
+                        lock (OffLineRooms)
+                        {
+                            OffLineRooms.Remove(userToken.userInfo.Register.userID);
+                        }
                         isReconnect = 1;
                     }
                     else
@@ -147,20 +151,6 @@ public class ServerDataManager
                 case MessageConvention.getRoomInfo:
                     newBuffer = SerializeHelper.Serialize<RoomInfo>(room.RoomInfo);
                     break;
-                case MessageConvention.quitRoom:
-                    QuitInfo quitInfo = new QuitInfo();
-                    if (room != null)
-                    {
-                        Log4Debug("房间：" + room.RoomInfo.RoomID + " 用户站位：" + userToken.userInfo.UniqueID + "请求退出房间");
-                        bool isQuit = room.Quit(userToken.userInfo.UniqueID);
-                        quitInfo = new QuitInfo() { isQuit = isQuit };
-                    }
-                    else
-                    {
-                        quitInfo.isQuit = true;
-                    }
-                    newBuffer = SerializeHelper.Serialize<QuitInfo>(quitInfo);
-                    break;
                 case MessageConvention.getRoommateInfo:
                     tempMessageContent = xieyi.MessageContent;
                     Log4Debug("请求房间人物信息：" + SerializeHelper.ConvertToString(tempMessageContent));
@@ -168,6 +158,14 @@ public class ServerDataManager
                     roomActorUpdate.SetSendInfo(SerializeHelper.ConvertToString(tempMessageContent));
                     //
                     newBuffer = SerializeHelper.Serialize<List<RoomActor>>(new List<RoomActor>(room.ActorList.Values));
+                    break;
+                case MessageConvention.quitRoom:
+                    tempMessageContent = xieyi.MessageContent;
+                    QuitInfo qInfo = SerializeHelper.Deserialize<QuitInfo>(tempMessageContent);
+                    if (room != null)
+                    {
+                        room.CheckQuit(userToken, qInfo);
+                    }
                     break;
                 case MessageConvention.updateActorAnimation:
                     tempMessageContent = xieyi.MessageContent;
@@ -195,7 +193,7 @@ public class ServerDataManager
                 case MessageConvention.bulletInfo:
                     tempMessageContent = xieyi.MessageContent;
                     BulletInfo bulletInfo = SerializeHelper.Deserialize<BulletInfo>(tempMessageContent);
-                    Log4Debug("bulletIndex:" + bulletInfo.userIndex + "->" + bulletInfo.shootTag + "/" + bulletInfo.shootInfo);
+                    //Log4Debug("bulletIndex:" + bulletInfo.userIndex + "->" + bulletInfo.shootTag + "/" + bulletInfo.shootInfo);
                     //
                     room.UpdateBulletInfo(bulletInfo);//更新
                     room.SetRecondFrame(xieyi.ToBytes());
@@ -337,11 +335,14 @@ public class ServerDataManager
             if (room.RoomInfo.CurState != RoomActorState.NoReady)
             {
                 Log4Debug("用户账号：" + userToken.userInfo.Register.userID + " 掉线前保存房间号：" + userToken.userInfo.RoomID);
-                if (!OffLineRooms.ContainsKey(userToken.userInfo.Register.userID))
+                lock (OffLineRooms)
                 {
-                    OffLineRooms.Add(userToken.userInfo.Register.userID, -1);
+                    if (!OffLineRooms.ContainsKey(userToken.userInfo.Register.userID))
+                    {
+                        OffLineRooms.Add(userToken.userInfo.Register.userID, -1);
+                    }
+                    OffLineRooms[userToken.userInfo.Register.userID] = userToken.userInfo.RoomID;
                 }
-                OffLineRooms[userToken.userInfo.Register.userID] = userToken.userInfo.RoomID;
                 //更新掉线用户的状态
                 RoomActorUpdate roomActorUpdate = new RoomActorUpdate()
                 {
@@ -359,9 +360,12 @@ public class ServerDataManager
     }
     public void ClearOffLine(RoomActor actor)
     {
-        if (OffLineRooms.ContainsKey(actor.Register.userID))
+        lock (OffLineRooms)
         {
-            OffLineRooms.Remove(actor.Register.userID);
+            if (OffLineRooms.ContainsKey(actor.Register.userID))
+            {
+                OffLineRooms.Remove(actor.Register.userID);
+            }
         }
     }
 

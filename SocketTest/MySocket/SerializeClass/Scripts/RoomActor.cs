@@ -35,8 +35,7 @@ public class RoomActor// 因為要多記錄加入房間時間的屬性，因此�
         RoomID = roomID;
         UniqueID = uniqueID;                    //记录加入此房间的站位
         MyTeam = myTeam;
-
-        JoinTime = System.DateTime.Now;    //记录加入此房间的时间
+        
         MyModelInfo = new GameModelData()
         {
             userIndex = uniqueID
@@ -77,8 +76,6 @@ public class RoomActor// 因為要多記錄加入房間時間的屬性，因此�
 
     #endregion
     public DateTime heartbeatTime { get; set; }// 最新一次心跳时间
-    public DateTime JoinTime { get; set; }
-
     #region 计时器变量
     /// <summary>
     /// 死亡复活时间（毫秒）
@@ -88,7 +85,7 @@ public class RoomActor// 因為要多記錄加入房間時間的屬性，因此�
     /// <summary>
     /// 无敌时间（毫秒）
     /// </summary>
-    public static int InvincibleLastTime = 1000;
+    public static int InvincibleLastTime = 2000;
     public Timer timerInvincible { get; set; }
     #endregion
     public GameModelData MyModelInfo { get; set; }//模型的相关属性

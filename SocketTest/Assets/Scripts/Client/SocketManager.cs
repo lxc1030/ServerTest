@@ -74,17 +74,20 @@ public class SocketManager : MonoBehaviour
         for (int i = 0; i < listen.Count; i++)
         {
             MessageConvention temp = listen[i];
-            if (!allHandle.ContainsKey(temp))
+            lock (allHandle)
             {
-                allHandle.Add(temp, MessageEvent);
-            }
-            if (isListen)
-            {
-                allHandle[temp] += new MessageEventHandler(action);
-            }
-            else
-            {
-                allHandle[temp] -= new MessageEventHandler(action);
+                if (!allHandle.ContainsKey(temp))
+                {
+                    allHandle.Add(temp, MessageEvent);
+                }
+                if (isListen)
+                {
+                    allHandle[temp] += new MessageEventHandler(action);
+                }
+                else
+                {
+                    allHandle[temp] -= new MessageEventHandler(action);
+                }
             }
         }
     }
@@ -292,6 +295,10 @@ public class SocketManager : MonoBehaviour
         object[] all = (object[])state;
         AsyncUserToken userToken = (AsyncUserToken)all[0];
         MessageXieYi xieyi = (MessageXieYi)all[1];
+        if (xieyi == null)
+        {
+            Debug.LogError("线程处理协议前，协议已为空。");
+        }
         //将数据包交给前台去处理
         DealXieYi(xieyi, userToken);
     }
@@ -548,6 +555,12 @@ public class SocketManager : MonoBehaviour
                     Debug.Log("得到房间信息。");
                     break;
                 case MessageConvention.quitRoom:
+                    QuitInfo qInfo = SerializeHelper.Deserialize<QuitInfo>(xieyi.MessageContent);
+                    if (qInfo.isQuit)
+                    {
+                        DataController.instance.MyRoomInfo = null;
+                        DataController.instance.ActorList = null;
+                    }
                     break;
                 case MessageConvention.getRoommateInfo:
                     List<RoomActor> rActors = SerializeHelper.Deserialize<List<RoomActor>>(tempMessageContent);
@@ -669,9 +682,12 @@ public class SocketManager : MonoBehaviour
             }
 
             //在数据处理后再执行委托响应脚本
-            if (allHandle.ContainsKey((MessageConvention)xieyi.XieYiFirstFlag))
+            lock (allHandle)
             {
-                allHandle[(MessageConvention)xieyi.XieYiFirstFlag](xieyi);
+                if (allHandle.ContainsKey((MessageConvention)xieyi.XieYiFirstFlag))
+                {
+                    allHandle[(MessageConvention)xieyi.XieYiFirstFlag](xieyi);
+                }
             }
         }
         catch (Exception e)

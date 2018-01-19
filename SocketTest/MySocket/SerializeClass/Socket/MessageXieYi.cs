@@ -6,6 +6,7 @@ using UnityEngine;
 /// 【消息协议】=【协议一级标志】+【协议二级标志】+【实际消息长度】+【实际消息内容】+【多于消息内容】
 /// http://www.cnblogs.com/sungong1987/p/5267011.html
 /// </summary>
+[Serializable]
 public class MessageXieYi
 {
     #region 自定义

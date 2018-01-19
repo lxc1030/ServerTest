@@ -32,11 +32,11 @@ public class RoomInfo
         switch (RoomType)
         {
             case GameModel.组队模式:
-                Limit = 2;
+                Limit = 4;
                 frameInterval = 8;
                 FrameDelay = 10;
-                //GameTime = 2 * 60 * 1000;//分钟
-                GameTime = 1 * 30 * 1000;
+                GameTime = 2 * 60 * 1000;//分钟
+                //GameTime = 1 * 30 * 1000;
                 break;
         }
         //

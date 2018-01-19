@@ -45,7 +45,7 @@ public class AsyncIOCPServer
     /// <summary>
     /// 心跳检测间隔秒数
     /// </summary>
-    public const int HeartbeatSecondTime = 5;
+    public const int HeartbeatSecondTime = 60;
 
 
     /// <summary>
@@ -359,17 +359,17 @@ public class AsyncIOCPServer
         Send(userToken, data);
     }
 
-    public void SendSave(string userID, byte[] message, byte xieyiFirst, byte xieyiSecond)
-    {
-        AsyncUserToken userToken = GetTokenByMemberID(userID);
-        if (userToken != null)
-        {
-            //创建一个发送缓冲区。   
-            MessageXieYi msgXY = new MessageXieYi(xieyiFirst, xieyiSecond, message);
-            //Log4Debug("给 ID:" + userID + "/发送消息协议号：" + (MessageConvention)xieyiFirst + "/大小：" + message.Length);
-            SendSave(userToken, msgXY.ToBytes());
-        }
-    }
+    //public void SendSave(string userID, byte[] message, byte xieyiFirst, byte xieyiSecond)
+    //{
+    //    AsyncUserToken userToken = GetTokenByMemberID(userID);
+    //    if (userToken != null)
+    //    {
+    //        //创建一个发送缓冲区。   
+    //        MessageXieYi msgXY = new MessageXieYi(xieyiFirst, xieyiSecond, message);
+    //        //Log4Debug("给 ID:" + userID + "/发送消息协议号：" + (MessageConvention)xieyiFirst + "/大小：" + message.Length);
+    //        SendSave(userToken, msgXY.ToBytes());
+    //    }
+    //}
 
 
     #endregion

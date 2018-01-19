@@ -37,7 +37,6 @@ public class RoomUI : MonoBehaviour
     private List<MessageConvention> messageHandle = new List<MessageConvention>()
     {
         MessageConvention.getRoommateInfo,
-        MessageConvention.quitRoom,
         MessageConvention.updateActorState,
         MessageConvention.updateRoom,
     };
@@ -78,8 +77,7 @@ public class RoomUI : MonoBehaviour
         {
             case RoomState.初始化:
                 uiNoReady.all.SetActive(true);
-                uiNoReady.btnReady.SetActive(true);
-
+                uiNoReady.btnReady.SetActive(false);
                 UpdateUIInfo();
                 GameManager.GetRoommateInfo();
                 //ReflashRoomInfo();
@@ -151,8 +149,29 @@ public class RoomUI : MonoBehaviour
             if (info != null)
             {
                 allMemberShow[i].imaState.SetActive(info.CurState == RoomActorState.Ready);
+                if (DataController.instance.MyLocateIndex == 0 && info.CurState == RoomActorState.NoReady)
+                {
+                    allMemberShow[i].objExpel.SetActive(true);
+                }
+                else
+                {
+                    allMemberShow[i].objExpel.SetActive(false);
+                }
                 //UI
             }
+        }
+    }
+    private void ReflashBtnReady()
+    {
+        bool isReady = DataController.instance.ActorList[DataController.instance.MyLocateIndex].CurState == RoomActorState.Ready;
+        if (isReady)
+        {
+            uiNoReady.btnReady.SetActive(false);
+        }
+        bool isNoReady = DataController.instance.ActorList[DataController.instance.MyLocateIndex].CurState == RoomActorState.NoReady;
+        if (isNoReady)
+        {
+            uiNoReady.btnReady.SetActive(true);
         }
     }
 
@@ -178,7 +197,11 @@ public class RoomUI : MonoBehaviour
 
     public void OnClickClose()
     {
-        SocketManager.instance.SendSave((byte)MessageConvention.quitRoom, new byte[] { });
+        QuitInfo info = new QuitInfo();
+        info.userIndex = DataController.instance.MyLocateIndex;
+        info.quitUnique = DataController.instance.MyLocateIndex;
+        byte[] message = SerializeHelper.Serialize<QuitInfo>(info);
+        SocketManager.instance.SendSave((byte)MessageConvention.quitRoom, message);
     }
     public void OnClickReady()
     {
@@ -187,12 +210,18 @@ public class RoomUI : MonoBehaviour
         GameManager.SendState(RoomActorState.Ready);
         DataController.instance.FrameCanIndex = 0;
     }
-
-
-
     public void OnClickSetting()
     {
         CreateRoomUI.Show(RoomControl.修改房间, DataController.instance.MyRoomInfo.RoomType);
+    }
+
+    public void OnClickExpel(int unique)
+    {
+        QuitInfo info = new QuitInfo();
+        info.userIndex = DataController.instance.MyLocateIndex;
+        info.quitUnique = unique;
+        byte[] message = SerializeHelper.Serialize<QuitInfo>(info);
+        SocketManager.instance.SendSave((byte)MessageConvention.quitRoom, message, false);
     }
 
     #endregion
@@ -214,29 +243,9 @@ public class RoomUI : MonoBehaviour
                 {
                     HomeUI.Close();
                     Debug.Log("根据玩家数据刷新房间UI");
+                    ReflashBtnReady();
                     ReflashRoomInfo();
                     ReflashRoomState();
-                }
-            }
-            if ((MessageConvention)xieyi.XieYiFirstFlag == MessageConvention.quitRoom)
-            {
-                ErrorType error = ClassGroup.CheckIsError(xieyi);
-                if (error != ErrorType.none)
-                {
-                    Debug.LogError(error);
-                }
-                else
-                {
-                    QuitInfo qInfo = SerializeHelper.Deserialize<QuitInfo>(xieyi.MessageContent);
-                    if (qInfo.isQuit)
-                    {
-                        Close();
-                        HomeUI.Show();
-                    }
-                    else
-                    {
-                        UIManager.instance.ShowAlertTip("退出房间失败。");
-                    }
                 }
             }
             if ((MessageConvention)xieyi.XieYiFirstFlag == MessageConvention.updateActorState)
@@ -292,8 +301,8 @@ public class RoomShowInfo
     public GameObject all;
     public Image imgIcon;
     public Text txName;
-    public ShowNumImage txKill;
     public GameObject imaState;
+    public GameObject objExpel;
 }
 
 

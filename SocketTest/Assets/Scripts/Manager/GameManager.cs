@@ -65,7 +65,6 @@ public class GameManager : MonoBehaviour
         instance.Init();
     }
 
-
     #region 注册Socket处理
 
     /// <summary>
@@ -763,19 +762,20 @@ public class GameManager : MonoBehaviour
             }
             if ((MessageConvention)xieyi.XieYiFirstFlag == MessageConvention.quitRoom)//自己退出房间
             {
-                ErrorType error = ClassGroup.CheckIsError(xieyi);
-                if (error != ErrorType.none)
+                QuitInfo qInfo = SerializeHelper.Deserialize<QuitInfo>(xieyi.MessageContent);
+                if (qInfo.isQuit)
                 {
-                    Debug.LogError(error);
+                    UpdateMemberHide();
+                    RoomUI.Close();
+                    HomeUI.Show();
+                    if (qInfo.userIndex != DataController.instance.MyLocateIndex)
+                    {
+                        UIManager.instance.ShowAlertTip("您被踢出房间。");
+                    }
                 }
                 else
                 {
-                    QuitInfo qInfo = SerializeHelper.Deserialize<QuitInfo>(xieyi.MessageContent);
-                    if (qInfo.isQuit)
-                    {
-                        UpdateMemberHide();
-                    }
-                    else
+                    if (qInfo.userIndex == qInfo.quitUnique)
                     {
                         UIManager.instance.ShowAlertTip("退出房间失败。");
                     }

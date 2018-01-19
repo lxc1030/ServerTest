@@ -119,20 +119,32 @@ public class SingleRoom
 
     #region 判断命令
 
+    public void CheckQuit(AsyncUserToken userToken, QuitInfo quitInfo)
+    {
+        if (quitInfo.userIndex != 0 && quitInfo.userIndex != quitInfo.quitUnique)//不是房主，并且踢的也不是自己
+        {
+            Log4Debug("无权踢人");
+            quitInfo.isQuit = false;
+        }
+        else
+        {
+            quitInfo.isQuit = Quit(quitInfo.quitUnique);
+        }
+        byte[] message = SerializeHelper.Serialize<QuitInfo>(quitInfo);
+        MessageXieYi xieyi = new MessageXieYi((byte)MessageConvention.quitRoom, 0, message);
+        AsyncIOCPServer.instance.SendSave(UserTokenInfo[quitInfo.quitUnique], xieyi.ToBytes());
+    }
     // 會員離開房間
     public bool Quit(int unique)
     {
-        lock (this)
+        if (ActorList.ContainsKey(unique))
         {
-            if (ActorList.ContainsKey(unique))
+            if (ActorList[unique].CurState != RoomActorState.Gaming)//当前正在游戏则不能退出房间
             {
-                if (ActorList[unique].CurState != RoomActorState.Gaming)//当前正在游戏则不能退出房间
-                {
-                    //
-                    InitRoomActorByIndex(unique);
-                    BoardcastActorInfo(unique);
-                    return true;
-                }
+                //
+                InitRoomActorByIndex(unique);
+                BoardcastActorInfo(unique);
+                return true;
             }
         }
         return false;
@@ -415,18 +427,24 @@ public class SingleRoom
     {
         int index = (int)unique;
         ActorList[index].timerDead.Dispose();
-        Log4Debug("执行回调设置复活，状态无敌。");
-        RoomActorUpdate roomActorUpdate = new RoomActorUpdate() { userIndex = index, update = (int)RoomActorState.Invincible + "" };
-        UpdateState(roomActorUpdate);
-        ActorList[index].timerInvincible = new Timer(new TimerCallback(SetAfterInvincible), index, RoomActor.InvincibleLastTime, 0);
+        if (RoomInfo.CurState == RoomActorState.Gaming)//游戏中计时器才可以切换状态
+        {
+            //Log4Debug("执行回调设置复活，状态无敌。");
+            RoomActorUpdate roomActorUpdate = new RoomActorUpdate() { userIndex = index, update = (int)RoomActorState.Invincible + "" };
+            UpdateState(roomActorUpdate);
+            ActorList[index].timerInvincible = new Timer(new TimerCallback(SetAfterInvincible), index, RoomActor.InvincibleLastTime, 0);
+        }
     }
     private void SetAfterInvincible(object unique)
     {
         int index = (int)unique;
         ActorList[index].timerInvincible.Dispose();
-        Log4Debug("执行回调取消无敌。");
-        RoomActorUpdate roomActorUpdate = new RoomActorUpdate() { userIndex = index, update = (int)RoomActorState.Gaming + "" };
-        UpdateState(roomActorUpdate);
+        if (RoomInfo.CurState == RoomActorState.Gaming)//游戏中计时器才可以切换状态
+        {
+            //Log4Debug("执行回调取消无敌。");
+            RoomActorUpdate roomActorUpdate = new RoomActorUpdate() { userIndex = index, update = (int)RoomActorState.Gaming + "" };
+            UpdateState(roomActorUpdate);
+        }
     }
 
     public void UpdatePrepare(RoomActorUpdate roomActorUpdate, AsyncUserToken userToken)
@@ -452,6 +470,7 @@ public class SingleRoom
             GetRoommateNetData(roomActorUpdate.userIndex, userToken);
         }
     }
+
     #endregion
 
     #region 帧同步保存和读取
@@ -461,12 +480,12 @@ public class SingleRoom
     /// </summary>
     /// <param name="message"></param>
     /// <param name="index">保存在指定帧内</param>
-    public void SetRecondFrame(byte[] message, int index = -1)
+    public void SetRecondFrame(byte[] message)
     {
         int curIndex = RoomInfo.FrameIndex;
-        if (index != -1)
+        if (curIndex >= FrameCount)
         {
-            curIndex = index;
+            return;
         }
         //Log4Debug("存储帧：" + curIndex);
         if (RoomInfo.CurState == RoomActorState.Gaming)
@@ -524,6 +543,7 @@ public class SingleRoom
             }
             if (tempIndex == FrameCount)//判断游戏是否结束。
             {
+                FrameTimer.Dispose();
                 ChangeRoomState(RoomActorState.GameEnd);
             }
         }
@@ -616,11 +636,14 @@ public class SingleRoom
 
     public void InitRoomActorByIndex(int unique)
     {
-        if (!ActorList.ContainsKey(unique))
+        lock (ActorList)
         {
-            ActorList.Add(unique, null);
+            if (!ActorList.ContainsKey(unique))
+            {
+                ActorList.Add(unique, null);
+            }
+            ActorList[unique] = new RoomActor(RoomInfo.RoomID, unique, null, TeamType.Both);
         }
-        ActorList[unique] = new RoomActor(RoomInfo.RoomID, unique, null, TeamType.Both);
     }
 
 
@@ -638,8 +661,8 @@ public class SingleRoom
         Log4Debug("倒计时时间：" + PassedCountDownTime / 1000);
         if (PassedCountDownTime >= CountDownTime)
         {
-            ChangeRoomState(RoomActorState.Gaming);
             CountDownTimer.Dispose();
+            ChangeRoomState(RoomActorState.Gaming);
         }
     }
 
@@ -681,7 +704,7 @@ public class SingleRoom
 
 
     /// <summary>
-    /// 广播我的信息给房间其他用户
+    /// 广播房间人物信息给房间其他用户
     /// </summary>
     /// <param name="memberID">除该ID以外都广播</param>
     public void BoardcastActorInfo(int uniqueID)
@@ -820,8 +843,6 @@ public class SingleRoom
                 PassedGameTime = 0;
                 break;
             case RoomActorState.GameEnd:
-                //帧同步
-                FrameTimer.Dispose();
                 Log4Debug("退出计数");
                 TeamType winTeam = GetWinnerTeam();
                 Log4Debug("游戏结束" + winTeam + "胜利");
@@ -832,7 +853,6 @@ public class SingleRoom
                 break;
         }
     }
-
 
 
 

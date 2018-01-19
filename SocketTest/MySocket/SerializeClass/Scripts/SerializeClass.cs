@@ -72,8 +72,13 @@ public class HeartbeatTime
 public class QuitInfo
 {
     [ProtoBuf.ProtoMember(1)]
+    public int userIndex;
+    [ProtoBuf.ProtoMember(2)]
+    public int quitUnique;
+    [ProtoBuf.ProtoMember(3)]
     public bool isQuit;
 }
+
 
 [ProtoBuf.ProtoContract]
 public class FrameInfo

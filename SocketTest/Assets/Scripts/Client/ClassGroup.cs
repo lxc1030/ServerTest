@@ -109,7 +109,7 @@ public enum MessageConvention
     error = -1,
     login,
     getHeartBeatTime,
-    reConnectCheck,//重连
+    reConnectCheck,//检查是否重连
     reConnectIndex,//重连客户端Loading帧编号
     heartBeat,
     updateName,//更新用户昵称
@@ -117,8 +117,8 @@ public enum MessageConvention
     joinRoom,
     updateRoom,
     getRoomInfo,
-    quitRoom,
     getRoommateInfo,
+    quitRoom,
     updateActorAnimation,
     updateActorState,
     prepareLocalModel,
@@ -131,7 +131,7 @@ public enum MessageConvention
     moveDirection,
     rotateDirection,
     frameData,
+    testConnect,
 }
-
 #endregion
 

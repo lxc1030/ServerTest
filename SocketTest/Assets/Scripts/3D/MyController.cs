@@ -18,7 +18,7 @@ public class MyController : CharacterCommon
     {
         instance = this;
     }
-    
+
     public void PlayShootAnimation()
     {
         //此处需要修改
@@ -90,7 +90,7 @@ public class MyController : CharacterCommon
 
     public void UIMove(Vector3 moveDirection, float moveSpeed)
     {
-        if (DataController.instance.ActorList[myIndex].CurState != RoomActorState.Gaming)
+        if (DataController.instance.ActorList[myIndex].CurState == RoomActorState.Dead)
         {
             return;
         }
@@ -123,7 +123,7 @@ public class MyController : CharacterCommon
     private ActorRotateDirection lastRotate;
     public void UIRotation()
     {
-        if (DataController.instance.ActorList[myIndex].CurState != RoomActorState.Gaming)
+        if (DataController.instance.ActorList[myIndex].CurState == RoomActorState.Dead)
         {
             return;
         }
@@ -144,7 +144,7 @@ public class MyController : CharacterCommon
         }
 
     }
-    
+
     public void UIShot()
     {
         if (DataController.instance.ActorList[myIndex].CurState != RoomActorState.Gaming)
