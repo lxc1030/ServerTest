@@ -4,14 +4,14 @@ using System.Threading;
 
 public class SingleRoom
 {
-    private Dictionary<int, AsyncUserToken> UserTokenInfo;
+    private Dictionary<int, AsyncUserToken> UserTokenInfo { get; set; }
+
     public int PassedCountDownTime = 0;//倒计时已经过了多久
     public int CountDownTime = 5 * 1000;//倒计时X秒以后开始游戏
 
 
     public int PassedGameTime = 0;// 游戏已经过了多久
     private int FrameCount;
-
     public RoomInfo RoomInfo { get; set; }//客户端和服务器通用保存房间属性的变量类
 
     /// <summary>
@@ -30,10 +30,27 @@ public class SingleRoom
     public Timer CountDownTimer { get; set; }
     public Timer FrameTimer { get; set; }
 
+    private Dictionary<int, FrameInfo> frameGroup;
     /// <summary>
     /// 保存每帧玩家发送来的数据
     /// </summary>
-    public Dictionary<int, FrameInfo> FrameGroup { get; set; }
+    public Dictionary<int, FrameInfo> FrameGroup
+    {
+        get
+        {
+            lock (frameGroup)
+            {
+                return frameGroup;
+            }
+        }
+        set
+        {
+            lock (frameGroup)
+            {
+                frameGroup = value;
+            }
+        }
+    }
 
     public SingleRoom(int roomID, string roomName, GameModel roomType)
     {
@@ -66,53 +83,62 @@ public class SingleRoom
     // 會員加入房間
     public bool Join(AsyncUserToken userToken, out int UniqueID)
     {
+        UniqueID = -1;
         lock (ActorList)
         {
-            UniqueID = -1;
             foreach (KeyValuePair<int, RoomActor> item in ActorList)
             {
                 if (item.Value.Register == null)
                 {
                     UniqueID = item.Key;
+                    item.Value.Register = userToken.userInfo.Register;//先占位，放开lock，允许其他人加入。
                     break;
                 }
             }
-            if (UniqueID != -1)
+        }
+        if (UniqueID != -1)
+        {
+            Log4Debug("账号->" + userToken.userInfo.Register.userID + " 用户名->" + userToken.userInfo.Register.name + " 加入房间->" + RoomInfo.RoomID + " 站位为->" + UniqueID);
+            //
+            TeamType myTeam = TeamType.Both;
+            switch (RoomInfo.RoomType)
             {
-                Log4Debug("账号->" + userToken.userInfo.Register.userID + " 用户名->" + userToken.userInfo.Register.name + " 加入房间->" + RoomInfo.RoomID + " 站位为->" + UniqueID);
-                //
-                TeamType myTeam = TeamType.Both;
-                switch (RoomInfo.RoomType)
-                {
-                    case GameModel.组队模式:
-                        if (UniqueID % 2 == 0)//红蓝两队
-                        {
-                            myTeam = TeamType.Blue;
-                        }
-                        else
-                        {
-                            myTeam = TeamType.Red;
-                        }
-                        break;
-                    case GameModel.Boss模式:
+                case GameModel.组队模式:
+                    if (UniqueID % 2 == 0)//红蓝两队
+                    {
                         myTeam = TeamType.Blue;
-                        break;
-                }
-                //
-                UserTokenInfo[UniqueID] = userToken;
-                RoomActor actor = new RoomActor(RoomInfo.RoomID, UniqueID, userToken.userInfo.Register, myTeam);
-                userToken.userInfo = actor;
-                ActorList[UniqueID] = actor;
-                ActorList[UniqueID].MyModelInfo.pos = (NetVector3)GameTypeManager.BackStandPos(RoomInfo.RoomType, UniqueID);
-                ActorList[UniqueID].MyModelInfo.rotate = new NetVector3(0, GameTypeManager.BackLookAt(RoomInfo.RoomType, UniqueID), 0);
-                ActorList[UniqueID].MyModelInfo.animation = 0;
-                BoardcastActorInfo(UniqueID);
-                return true;
+                    }
+                    else
+                    {
+                        myTeam = TeamType.Red;
+                    }
+                    break;
+                case GameModel.Boss模式:
+                    myTeam = TeamType.Blue;
+                    break;
             }
-            else
+            //
+
+            RoomActor actor = new RoomActor(RoomInfo.RoomID, UniqueID, userToken.userInfo.Register, myTeam);
+            actor.MyModelInfo.pos = (NetVector3)GameTypeManager.BackStandPos(RoomInfo.RoomType, UniqueID);
+            actor.MyModelInfo.rotate = new NetVector3(0, GameTypeManager.BackLookAt(RoomInfo.RoomType, UniqueID), 0);
+            actor.MyModelInfo.animation = 0;
+
+            userToken.userInfo = actor;
+            lock (UserTokenInfo)
             {
-                return false;
+                UserTokenInfo[UniqueID] = userToken;
             }
+            lock (ActorList)
+            {
+                ActorList[UniqueID] = actor;
+            }
+            BoardcastActorInfo(UniqueID);
+            return true;
+        }
+        else
+        {
+            return false;
         }
     }
 
@@ -394,15 +420,6 @@ public class SingleRoom
                         update = (int)RoomActorState.Dead + ""
                     };
                     UpdateState(dead);
-                    //
-                    //GameModelData dead = new GameModelData()
-                    //{
-                    //    userIndex = shootedIndex,
-                    //    pos = (NetVector3)GameTypeManager.BackStandPos(RoomType, shootedIndex),
-                    //    rotate = new NetVector3(0, GameTypeManager.BackLookAt(RoomType, shootedIndex), 0),
-                    //    animation = 0
-                    //};
-                    //SetRecondFrame(SerializeHelper.Serialize<GameModelData>(dead), FrameIndex);
                 }
                 else if (ActorList[shootedIndex].CurState == RoomActorState.Invincible)
                 {
@@ -482,6 +499,11 @@ public class SingleRoom
     /// <param name="index">保存在指定帧内</param>
     public void SetRecondFrame(byte[] message)
     {
+        if (message == null)
+        {
+            Log4Debug("检查为什么存值为null");
+            return;
+        }
         int curIndex = RoomInfo.FrameIndex;
         if (curIndex >= FrameCount)
         {
@@ -490,7 +512,7 @@ public class SingleRoom
         //Log4Debug("存储帧：" + curIndex);
         if (RoomInfo.CurState == RoomActorState.Gaming)
         {
-            lock (FrameGroup[curIndex])
+            lock (FrameGroup[curIndex].frameData)
             {
                 FrameGroup[curIndex].frameData.Add(message);
             }
@@ -829,7 +851,8 @@ public class SingleRoom
                 //保存帧同步
                 RoomInfo.FrameIndex = 0;
                 FrameCount = (int)(RoomInfo.GameTime / RoomInfo.frameTime);
-                FrameGroup = new Dictionary<int, FrameInfo>();
+                frameGroup = new Dictionary<int, FrameInfo>();
+                //FrameGroup = new Dictionary<int, FrameInfo>();
                 for (int i = 0; i < FrameCount; i++)
                 {
                     FrameGroup.Add(i, new FrameInfo() { frameIndex = i, frameData = new List<byte[]>() });
@@ -871,10 +894,7 @@ public class SingleRoom
                 actor = allRA[i];
                 userToken.userInfo = actor;
                 userToken.userInfo.CurState = RoomActorState.Online;
-                lock (UserTokenInfo)
-                {
-                    UserTokenInfo[userToken.userInfo.UniqueID] = userToken;
-                }
+                UserTokenInfo[userToken.userInfo.UniqueID] = userToken;
                 break;
             }
         }

@@ -138,6 +138,7 @@ public class SocketConnectUI : MonoBehaviour
                 myReLogin.uiBtn.SetActive(false);
                 if (!string.IsNullOrEmpty(DataController.instance.myInfo.Register.userID))
                 {
+                    UIManager.instance.ShowPanel(UILogin.Name);
                     SocketManager.instance.Login();
                 }
                 else
@@ -176,8 +177,7 @@ public class SocketConnectUI : MonoBehaviour
     {
         if (
             SocketManager.instance.MyUserToken != null
-            && SocketManager.instance.MyUserToken.ConnectSocket != null
-            && !SocketManager.instance.isConnected
+            && SocketManager.instance.MyUserToken.ConnectSocket.Connected == false
             )
         {
             if (CurState != NetState.断线重连)

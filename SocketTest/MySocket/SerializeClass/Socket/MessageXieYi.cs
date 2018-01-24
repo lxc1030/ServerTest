@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 /// <summary>
-/// 【消息协议】=【协议一级标志】+【协议二级标志】+【实际消息长度】+【实际消息内容】+【多于消息内容】
+/// 【消息协议】=【协议开始标志】+【消息类型】+【实际消息长度】+【实际消息内容】
 /// http://www.cnblogs.com/sungong1987/p/5267011.html
 /// </summary>
 [Serializable]
@@ -39,7 +39,7 @@ public class MessageXieYi
     public const int XieYiLength = 6;
     #endregion
 
-    #region 协议开始结束标识
+    #region 协议开始标识
 
     public const byte markStart = 60;//<;
     public const byte markEnd = 62;//>;

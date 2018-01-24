@@ -22,9 +22,6 @@ public class BulletGrity : MonoBehaviour
     {
         isSendTrigger = isTrigger;
         pos = orgPos;
-        if (isTrigger)
-        {
-        }
         DoAnimation();
     }
 
@@ -65,52 +62,55 @@ public class BulletGrity : MonoBehaviour
         if (isMove)
         {
             isMove = false;
-            GameObject obj = other.gameObject;
-            BulletInfo bulletInfo = new BulletInfo();
-            switch (obj.tag)
-            {
-                case nameof(Tag.Box):
-                    Box box = obj.GetComponent<Box>();
-                    bulletInfo.shootTag = ShootTag.Box;
-                    bulletInfo.shootInfo = box.myInfo.myIndex + "";
-                    if (isSendTrigger)//本人射击
-                    {
-                        TeamType type = DataController.instance.ActorList[DataController.instance.MyLocateIndex].MyTeam;
-                        box.ChangeTexture(type);
-                    }
-                    break;
-                case nameof(Tag.Member):
-                    CharacterCommon member = obj.GetComponent<CharacterCommon>();
-                    bulletInfo.shootTag = ShootTag.Character;
-                    bulletInfo.shootInfo = member.myIndex + "";
-                    RoomActorState state = DataController.instance.ActorList[member.myIndex].CurState;
-                    string tip = "";
-                    switch (state)
-                    {
-                        case RoomActorState.Dead:
-                            tip = "该玩家已死亡";
-                            break;
-                        case RoomActorState.Invincible:
-                            tip = "该玩家当前无敌";
-                            break;
-                    }
-                    if (!string.IsNullOrEmpty(tip))
-                    {
-                        UIManager.instance.ShowAlertTip(tip);
-                        isSendTrigger = false;
-                    }
-                    break;
-                default://墙体及障碍物
-                    isSendTrigger = false;
-                    break;
-            }
             if (isSendTrigger)
             {
-                Debug.Log("射中：" + bulletInfo.shootTag);
-                bulletInfo.userIndex = DataController.instance.MyLocateIndex;
-                //发送
-                byte[] message = SerializeHelper.Serialize<BulletInfo>(bulletInfo);
-                SocketManager.instance.SendSave((byte)MessageConvention.bulletInfo, message, false);
+                GameObject obj = other.gameObject;
+                BulletInfo bulletInfo = new BulletInfo();
+                switch (obj.tag)
+                {
+                    case nameof(Tag.Box):
+                        Box box = obj.GetComponent<Box>();
+                        bulletInfo.shootTag = ShootTag.Box;
+                        bulletInfo.shootInfo = box.myInfo.myIndex + "";
+                        if (isSendTrigger)//本人射击
+                        {
+                            TeamType type = DataController.instance.ActorList[DataController.instance.MyLocateIndex].MyTeam;
+                            box.ChangeTexture(type);
+                        }
+                        break;
+                    case nameof(Tag.Member):
+                        CharacterCommon member = obj.GetComponent<CharacterCommon>();
+                        bulletInfo.shootTag = ShootTag.Character;
+                        bulletInfo.shootInfo = member.myIndex + "";
+                        RoomActorState state = DataController.instance.ActorList[member.myIndex].CurState;
+                        string tip = "";
+                        switch (state)
+                        {
+                            case RoomActorState.Dead:
+                                tip = "该玩家已死亡";
+                                break;
+                            case RoomActorState.Invincible:
+                                tip = "该玩家当前无敌";
+                                break;
+                        }
+                        if (!string.IsNullOrEmpty(tip))
+                        {
+                            UIManager.instance.ShowAlertTip(tip);
+                            isSendTrigger = false;
+                        }
+                        break;
+                    default://墙体及障碍物
+                        isSendTrigger = false;
+                        break;
+                }
+                if (isSendTrigger)
+                {
+                    Debug.Log("射中：" + bulletInfo.shootTag);
+                    bulletInfo.userIndex = DataController.instance.MyLocateIndex;
+                    //发送
+                    byte[] message = SerializeHelper.Serialize<BulletInfo>(bulletInfo);
+                    SocketManager.instance.SendSave((byte)MessageConvention.bulletInfo, message, false);
+                }
             }
             PoolDestory();
         }

@@ -4,7 +4,6 @@ using UnityEngine;
 
 public class AnimationEvent : MonoBehaviour
 {
-    public MyController my;
     public CharacterCommon member;
     void Shoot()
     {

@@ -1,14 +1,8 @@
-﻿using NetFrame.Net;
-using Newtonsoft.Json.Linq;
-using System;
-using System.Collections;
+﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net;
 using System.Net.Sockets;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 using UnityEngine;
 
 public class SocketManager : MonoBehaviour
@@ -49,7 +43,7 @@ public class SocketManager : MonoBehaviour
     public AsyncUserToken MyUserToken;
 
     // Flag for connected socket.
-    public bool isConnected = false;
+    //public bool isConnected = false;
 
 
 
@@ -106,8 +100,6 @@ public class SocketManager : MonoBehaviour
     {
         Dispose();
     }
-
-    Thread dealReceive = null;
 
 
     public void Init(Action<SocketError> callback = null)
@@ -188,8 +180,8 @@ public class SocketManager : MonoBehaviour
     {
         // Signals the end of connection.
         autoConnectEvent.Set(); //释放阻塞.
-        // Set the flag for socket connected.
-        isConnected = (e.SocketError == SocketError.Success);
+                                // Set the flag for socket connected.
+        bool isConnected = (e.SocketError == SocketError.Success);
         if (isConnected)
         {
             Debug.Log("Socket连接成功");
@@ -210,7 +202,7 @@ public class SocketManager : MonoBehaviour
     }
     #endregion
 
-   
+
 
 
     #region Receive
@@ -274,6 +266,10 @@ public class SocketManager : MonoBehaviour
                         completeMessage = userToken.ReceiveBuffer.GetRange(sizeof(int), packageLen).ToArray();
                         userToken.ReceiveBuffer.RemoveRange(0, packageLen + sizeof(int));
                     }
+                    else//数据不够长
+                    {
+                        continue;
+                    }
                 }
                 //处理Complete
                 MessageXieYi xieyi = MessageXieYi.FromBytes(completeMessage);
@@ -320,10 +316,11 @@ public class SocketManager : MonoBehaviour
         {
 
         }
-        else
+        else if (e.SocketError == SocketError.Shutdown)
         {
-            isConnected = false;
-            Log4Debug("发送未成功，回调：" + e.SocketError);
+            AsyncUserToken userToken = (AsyncUserToken)e.UserToken;
+            CloseClientSocket(userToken);
+            Log4Debug("Socket已断线");
         }
     }
     private void Send(AsyncUserToken userToken, byte[] send)
@@ -351,6 +348,7 @@ public class SocketManager : MonoBehaviour
                 sendArgs.IsUsing = true;
             }
             sendArgs.SetBuffer(buffer, 0, buffer.Length);
+            sendArgs.UserToken = userToken;
 
             Socket s = userToken.ConnectSocket;
             if (!s.SendAsync(sendArgs))//投递发送请求，这个函数有可能同步发送出去，这时返回false，并且不会引发SocketAsyncEventArgs.Completed事件  
@@ -470,7 +468,7 @@ public class SocketManager : MonoBehaviour
     /// </summary>
     public void CheckClientHeartbeat()
     {
-        if (isConnected)
+        if (MyUserToken.ConnectSocket != null)
         {
             Debug.Log("发送心跳协议。");
             SendSave((byte)MessageConvention.heartBeat, new byte[] { }, false);
@@ -570,11 +568,14 @@ public class SocketManager : MonoBehaviour
                         {
                             DataController.instance.ActorList = new Dictionary<int, RoomActor>();
                         }
-                        if (!DataController.instance.ActorList.ContainsKey(rActors[i].UniqueID))
+                        lock (DataController.instance.ActorList)
                         {
-                            DataController.instance.ActorList.Add(rActors[i].UniqueID, null);
+                            if (!DataController.instance.ActorList.ContainsKey(rActors[i].UniqueID))
+                            {
+                                DataController.instance.ActorList.Add(rActors[i].UniqueID, null);
+                            }
+                            DataController.instance.ActorList[rActors[i].UniqueID] = rActors[i];
                         }
-                        DataController.instance.ActorList[rActors[i].UniqueID] = rActors[i];
                     }
                     Debug.Log("得到房间人物列表。");
                     break;
@@ -585,24 +586,27 @@ public class SocketManager : MonoBehaviour
                     messageInfo = SerializeHelper.ConvertToString(xieyi.MessageContent);
                     ActorNetAnimation getNetAnimation = new ActorNetAnimation();
                     getNetAnimation.SetSendInfo(messageInfo);
-                    if (GameManager.instance.memberGroup.ContainsKey(getNetAnimation.userIndex))
-                    {
-                        if (GameManager.instance.memberGroup[getNetAnimation.userIndex] != null)
-                        {
-                            //此处需要修改
-                            //GameManager.instance.memberGroup[getNetAnimation.userIndex].NetAnimation = getNetAnimation;
-                        }
-                        //else if (getNetAnimation.userIndex == DataController.instance.myRoomInfo.MyLocateIndex)//服务器给我设置了
-                        //{
-                        //    MyController.instance.InitNetSaveInfo(null, null, getNetAnimation);
-                        //}
-                    }
+                    //if (GameManager.instance.memberGroup.ContainsKey(getNetAnimation.userIndex))
+                    //{
+                    //    if (GameManager.instance.memberGroup[getNetAnimation.userIndex] != null)
+                    //    {
+                    //        //此处需要修改
+                    //        //GameManager.instance.memberGroup[getNetAnimation.userIndex].NetAnimation = getNetAnimation;
+                    //    }
+                    //    //else if (getNetAnimation.userIndex == DataController.instance.myRoomInfo.MyLocateIndex)//服务器给我设置了
+                    //    //{
+                    //    //    MyController.instance.InitNetSaveInfo(null, null, getNetAnimation);
+                    //    //}
+                    //}
                     break;
                 case MessageConvention.updateActorState:
                     messageInfo = SerializeHelper.ConvertToString(tempMessageContent);
                     roomActorUpdate.SetSendInfo(messageInfo);
                     //Debug.Log("更新用户->" + roomActorUpdate.userIndex + " 状态为:" + (RoomActorState)int.Parse(roomActorUpdate.update));
-                    DataController.instance.ActorList[roomActorUpdate.userIndex].CurState = (RoomActorState)int.Parse(roomActorUpdate.update);
+                    lock (DataController.instance.ActorList)
+                    {
+                        DataController.instance.ActorList[roomActorUpdate.userIndex].CurState = (RoomActorState)int.Parse(roomActorUpdate.update);
+                    }
                     break;
                 case MessageConvention.prepareLocalModel:
                     messageInfo = SerializeHelper.ConvertToString(tempMessageContent);
@@ -730,7 +734,7 @@ public class SocketManager : MonoBehaviour
     //账号登录
     public void Login()
     {
-        if (!isConnected || MyUserToken.ConnectSocket == null)
+        if (MyUserToken == null || MyUserToken.ConnectSocket.Connected == false)
         {
             Init(GetSocketBack);
         }
@@ -761,10 +765,14 @@ public class SocketManager : MonoBehaviour
         }
         UIManager.instance.ShowAlertTip(info);
     }
+    public void QuitUser()
+    {
+        DisConnect();
+        MyUserToken = null;
+    }
 
     public void DisConnect()
     {
-        isConnected = false;
         MyUserToken.ConnectSocket.Shutdown(SocketShutdown.Both);
     }
     public void Log4Debug(string msg)
@@ -777,10 +785,6 @@ public class SocketManager : MonoBehaviour
     // Disposes the instance of SocketClient.
     public void Dispose()
     {
-        if (dealReceive != null)
-        {
-            dealReceive.Abort();
-        }
         if (autoConnectEvent != null)
         {
             autoConnectEvent.Close();

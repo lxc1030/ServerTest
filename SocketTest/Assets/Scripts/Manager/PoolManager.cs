@@ -9,8 +9,8 @@ public class PoolManager : MonoBehaviour
     public static PoolManager instance;
 
     public Dictionary<PreLoadType, PoolInitInfo> poolInfo = new Dictionary<PreLoadType, PoolInitInfo>() {
-        { PreLoadType.Character, new PoolInitInfo() { num = 1, path = DataController.prefPath_Character }},
-        { PreLoadType.Member, new PoolInitInfo() { num = 3, path = DataController.prefPath_Member }},
+        //{ PreLoadType.Character, new PoolInitInfo() { num = 1, path = DataController.prefPath_Character }},
+        { PreLoadType.Member, new PoolInitInfo() { num = 4, path = DataController.prefPath_Member }},
         { PreLoadType.Bullet, new PoolInitInfo() { num = 10, path = DataController.prefabPath_Bullet }},
         { PreLoadType.PeopleInfo, new PoolInitInfo() { num = 10, path = DataController.prefabPath_PeopleInfo }},
         //add
@@ -81,8 +81,11 @@ public class PoolManager : MonoBehaviour
         string path = "";
         if (poolObjs[type].Count > 0)
         {
-            obj = poolObjs[type][0];
-            poolObjs[type].RemoveAt(0);
+            lock (poolObjs)
+            {
+                obj = poolObjs[type][0];
+                poolObjs[type].RemoveAt(0);
+            }
         }
         else
         {
@@ -106,13 +109,16 @@ public class PoolManager : MonoBehaviour
         obj.transform.parent = transform;
         obj.transform.localPosition = Vector3.zero;
         obj.transform.localScale = Vector3.one;
-        if (!poolObjs[type].Contains(obj))
+        lock (poolObjs)
         {
-            poolObjs[type].Add(obj);
-        }
-        else
-        {
-            Debug.Log("E" + type.ToString() + "/已在对象池中，请检查！父物体为：" + obj.transform.parent.name);
+            if (!poolObjs[type].Contains(obj))
+            {
+                poolObjs[type].Add(obj);
+            }
+            else
+            {
+                Debug.Log("E" + type.ToString() + "/已在对象池中，请检查！父物体为：" + obj.transform.parent.name);
+            }
         }
     }
 }

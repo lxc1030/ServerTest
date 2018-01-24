@@ -33,15 +33,6 @@ public class AsyncUserTokenPool
         }
         return true;
     }
-    public void RemoveUsed(AsyncUserToken item)
-    {
-        lock (used)
-        {
-            used.Remove(item);
-        }
-    }
-
-
     // Removes a AsyncUserToken instance from the pool
     // and returns the object removed from the pool
     public AsyncUserToken Pop()
@@ -56,11 +47,21 @@ public class AsyncUserTokenPool
         }
         return temp;
     }
-
+    public void RemoveUsed(AsyncUserToken item)
+    {
+        lock (used)
+        {
+            used.Remove(item);
+        }
+    }
     public void AddUsed(AsyncUserToken userToken)
     {
-        used.Add(userToken);
+        lock (used)
+        {
+            used.Add(userToken);
+        }
     }
+
 
     public int Count()
     {
@@ -69,37 +70,41 @@ public class AsyncUserTokenPool
 
     public void CheckIsConnected(int iCheckInterval, Action<AsyncUserToken> closeAction)
     {
+        AsyncUserToken[] temp = null;
         lock (used)
         {
-            for (int i = used.Count - 1; i >= 0; i--)
+            temp = used.ToArray();
+        }
+        for (int i = 0; i < temp.Length; i++)
+        {
+            if (temp[i].userInfo.heartbeatTime.AddMilliseconds(iCheckInterval).CompareTo(DateTime.Now) < 0)
             {
-                if (used[i].userInfo.heartbeatTime.AddMilliseconds(iCheckInterval).CompareTo(DateTime.Now) < 0)
-                {
-                    closeAction(used[i]);
-                }
+                closeAction(temp[i]);
             }
         }
     }
 
     public AsyncUserToken GetTokenByMemberID(string memberID)
     {
+        AsyncUserToken[] temp = null;
         lock (used)
         {
-            AsyncUserToken userToken = null;
-            for (int i = 0; i < used.Count; i++)
-            {
-                if (used[i].userInfo.Register == null)
-                {
-                    continue;
-                }
-                if (used[i].userInfo.Register.userID == memberID)
-                {
-                    userToken = used[i];
-                    break;
-                }
-            }
-            return userToken;
+            temp = used.ToArray();
         }
+        AsyncUserToken userToken = null;
+        for (int i = 0; i < temp.Length; i++)
+        {
+            if (temp[i].userInfo.Register == null)
+            {
+                continue;
+            }
+            if (temp[i].userInfo.Register.userID == memberID)
+            {
+                userToken = temp[i];
+                break;
+            }
+        }
+        return userToken;
     }
     public void Log4Debug(string msg)
     {

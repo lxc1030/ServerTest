@@ -7,6 +7,7 @@ public class ServerDataManager
     public static ServerDataManager instance;
     public RoomCollection allRoom;
     public Dictionary<string, int> OffLineRooms;
+
     public static void Init()
     {
         if (instance == null)
@@ -16,54 +17,12 @@ public class ServerDataManager
     }
     public ServerDataManager()
     {
-        receiveDealPool = new Queue<AsyncUserToken>();
-        //for (int i = 0; i < 8; i++)
-        //{
-        //    Thread th = new Thread();
-        //    th.IsBackground = true;
-        //    dealThreadPool.Enqueue(th);
-        //}
-
-
-
         //房间初始化
         allRoom = new RoomCollection();
         OffLineRooms = new Dictionary<string, int>();
         //
         Log4Debug("数据处理准备就绪。");
     }
-
-    public Queue<AsyncUserToken> receiveDealPool;
-    public Stack<Thread> dealThreadPool;
-
-
-    //public void CheckReceiveUserToken()
-    //{
-    //    while (dealThreadPool.Count > 0)
-    //    {
-    //        if (receiveDealPool.Count > 0)
-    //        {
-    //            AsyncUserToken userToken = null;
-    //            lock (receiveDealPool)
-    //            {
-    //                userToken = receiveDealPool.Dequeue();
-    //            }
-    //            lock (dealThreadPool)
-    //            {
-    //                Thread th = dealThreadPool.Pop();
-    //                th.Start(userToken);
-    //                ThreadPool.QueueUserWorkItem(new WaitCallback(), userToken);
-    //            }
-    //        }
-    //        else
-    //        {
-    //            Thread.Sleep(1000);
-    //            continue;
-    //        }
-    //    }
-    //}
-
-
 
     #region 处理接收来的协议拆分和判断
 
@@ -233,7 +192,7 @@ public class ServerDataManager
                     if (room.ActorList[netRotation.userIndex].CurState != RoomActorState.Dead)
                     {
                         room.SetRecondFrame(xieyi.ToBytes());
-                        Log4Debug("站位：" + netRotation.userIndex + " 更新了旋转：" + netRotation.rotateY);
+                        //Log4Debug("站位：" + netRotation.userIndex + " 更新了旋转：" + netRotation.rotateY);
                     }
                     else
                     {

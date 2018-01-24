@@ -157,7 +157,7 @@ public class HomeUI : MonoBehaviour
     /// </summary>
     private void BackToMain()
     {
-        SocketManager.instance.DisConnect();
+        SocketManager.instance.QuitUser();
         //清除
         Close();
         MainUI.Show();

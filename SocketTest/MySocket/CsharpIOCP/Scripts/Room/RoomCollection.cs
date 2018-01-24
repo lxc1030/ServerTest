@@ -63,11 +63,14 @@ public class RoomCollection
                 break;
             }
         }
-        if (!roomList.ContainsKey(roomID))
+        lock (roomList)
         {
-            roomList.Add(roomID, null);
+            if (!roomList.ContainsKey(roomID))
+            {
+                roomList.Add(roomID, null);
+            }
+            roomList[roomID] = new SingleRoom(roomID, (string)roomName, roomType);
         }
-        roomList[roomID] = new SingleRoom(roomID, (string)roomName, roomType);
         int localIndex = -1;
         if (roomList[roomID].Join(userToken, out localIndex))
         {
@@ -87,6 +90,7 @@ public class RoomCollection
         byte[] backData = null;
         string roomID = (string)json[nameof(RoomInfo.RoomID)];
         GameModel roomType = (GameModel)(int)json[nameof(RoomInfo.RoomType)];
+
 
         //主逻辑
         if (!string.IsNullOrEmpty(roomID))//加入指定房间
@@ -133,6 +137,7 @@ public class RoomCollection
             }
             //请求加入的游戏模式暂没有房间，生成新房间
             backData = CreateNewRoom(json, userToken);
+
         }
         return backData;
     }
@@ -163,7 +168,7 @@ public class RoomCollection
         return backData;
     }
 
-    
+
 
 
 

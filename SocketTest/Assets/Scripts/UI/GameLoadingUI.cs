@@ -180,7 +180,7 @@ public class GameLoadingUI : MonoBehaviour
                 }
                 else
                 {
-                    Debug.LogError("在自己UI未准备好的时候，收到了其他用户的进度。");
+                    Debug.LogError("在该UI未准备好的时候，收到了该用户的进度。");
                 }
             }
         }

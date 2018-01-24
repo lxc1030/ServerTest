@@ -67,7 +67,7 @@ public class AsyncIOCPServer
             Thread tCheckClientHeartbeat = new Thread(CheckClientHeartbeat);
             tCheckClientHeartbeat.IsBackground = true;
             tCheckClientHeartbeat.Start();
-
+            
             StartAccept(null);
             Log4Debug("初始化服务器。");
         }
@@ -132,7 +132,7 @@ public class AsyncIOCPServer
         }
         else
         {
-            saea_Accept.AcceptSocket = null;  //重用前进行对象清理
+            saea_Accept.AcceptSocket = null;  //重用前进行对象清理--貌似会导致套接字正在使用的bug
         }
         if (!_Socket.AcceptAsync(saea_Accept))
         {
@@ -150,11 +150,11 @@ public class AsyncIOCPServer
         {
             try
             {
+                accept.Dispose();
                 string sClientIP = ((IPEndPoint)s.RemoteEndPoint).Address.ToString();
                 Log4Debug(sClientIP + " Client Accept");
 
                 AsyncUserToken userToken = userTokenPool.Pop();
-
                 if (userToken != null)
                 {
                     userToken.ConnectSocket = s;
@@ -179,7 +179,7 @@ public class AsyncIOCPServer
                 Log4Debug("ProcessAccept:" + e.Message);
             }
         }
-        StartAccept(accept);
+        StartAccept(null);
     }
     #endregion
 
@@ -253,6 +253,10 @@ public class AsyncIOCPServer
                         completeMessage = userToken.ReceiveBuffer.GetRange(sizeof(int), packageLen).ToArray();
                         userToken.ReceiveBuffer.RemoveRange(0, packageLen + sizeof(int));
                     }
+                    else//数据不够长
+                    {
+                        continue;
+                    }
                 }
                 //处理Complete
                 MessageXieYi xieyi = MessageXieYi.FromBytes(completeMessage);
@@ -293,9 +297,11 @@ public class AsyncIOCPServer
         {
 
         }
-        else
+        else if (e.SocketError == SocketError.Shutdown)
         {
-            Log4Debug("发送未成功，回调：" + e.SocketError);
+            AsyncUserToken userToken = (AsyncUserToken)e.UserToken;
+            CloseClientSocket(userToken);
+            Log4Debug("Socket已断线");
         }
     }
     private void Send(AsyncUserToken userToken, byte[] send)
@@ -323,6 +329,7 @@ public class AsyncIOCPServer
                 sendArgs.IsUsing = true;
             }
             sendArgs.SetBuffer(buffer, 0, buffer.Length);
+            sendArgs.UserToken = userToken;
 
             Socket s = userToken.ConnectSocket;
             if (!s.SendAsync(sendArgs))//投递发送请求，这个函数有可能同步发送出去，这时返回false，并且不会引发SocketAsyncEventArgs.Completed事件  
@@ -454,7 +461,7 @@ public class AsyncIOCPServer
             //}
         }
     }
-    
+
     #endregion
 
 

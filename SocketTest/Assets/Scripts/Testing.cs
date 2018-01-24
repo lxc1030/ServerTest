@@ -77,8 +77,8 @@ public class Testing : MonoBehaviour
         //byte[] intBuff = new byte[] { 10, 0, 0, 0 };
         //int index = BitConverter.ToInt32(intBuff, 0);
         //Debug.LogError(index);
-        Dictionary<int, AsyncUserToken> temp = new Dictionary<int, AsyncUserToken>(6);
-        int i = 0;
+        float time = Time.fixedDeltaTime;
+        Debug.LogError(time);
     }
 
 

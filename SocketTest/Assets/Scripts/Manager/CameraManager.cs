@@ -4,9 +4,7 @@ using DG.Tweening;
 public class CameraManager : MonoBehaviour
 {
     public static CameraManager instance;
-
-    public Vector3 position = new Vector3(0, 80, -55);
-    private Vector3 rotation = new Vector3(90, 0, 0);
+    
 
 
     #region  相机震动相关参数
@@ -24,36 +22,42 @@ public class CameraManager : MonoBehaviour
     private float shakeTime = 0.0f;
     private float frameTime = 0.0f;
     private float shakeDelta = 0.005f;
-    private Camera selfCamera;
+    public Camera SelfCamera;
 
     private Rect changeRect;
     #endregion
 
-    public Light dLight;
+
+    public bool isFollow;
+    public Vector3 followPosition;
+    public Vector3 followRotation;
 
 
     private void Awake()
     {
         instance = this;
-        selfCamera = GetComponent<Camera>();
-        changeRect = new Rect(0.0f, 0.0f, 1.0f, 1.0f);
+        instance.Init();
     }
-    private void Start()
+    public void Init()
     {
+        //
+        SelfCamera = GetComponent<Camera>();
+        SetCameraEnable(false);
+        isFollow = false;
+        //
+        changeRect = new Rect(0.0f, 0.0f, 1.0f, 1.0f);
         shakeTime = setShakeTime;
         fps = shakeFps;
         frameTime = 0.03f;
         shakeDelta = 0.005f;
-        if (Application.isEditor)
-        {
-            dLight.intensity = 0.8f;
-        }
     }
-
-    private void OnEnable()
+    public void SetCameraEnable(bool enable)
     {
-        transform.position = position;
-        transform.rotation = Quaternion.Euler(rotation);
+        SelfCamera.enabled = enable;
+    }
+    public void SetCameraFollow(bool enable)
+    {
+        isFollow = enable;
     }
 
 
@@ -65,7 +69,7 @@ public class CameraManager : MonoBehaviour
     {
         changeRect.xMin = 0.0f;
         changeRect.yMin = 0.0f;
-        selfCamera.rect = changeRect;
+        SelfCamera.rect = changeRect;
         isshakeCamera = false;
         shakeTime = setShakeTime;
         fps = shakeFps;
@@ -75,6 +79,11 @@ public class CameraManager : MonoBehaviour
 
     void Update()
     {
+        if (isFollow)
+        {
+            transform.position = GameManager.instance.GetMyControl().transform.position + followPosition;
+            transform.rotation = Quaternion.Euler(followRotation);
+        }
         if (isshakeCamera)
         {
             if (shakeTime > 0)
@@ -93,7 +102,7 @@ public class CameraManager : MonoBehaviour
                         frameTime = 0;
                         changeRect.xMin = shakeDelta * (-1.0f + shakeLevel * Random.value);
                         changeRect.yMin = shakeDelta * (-1.0f + shakeLevel * Random.value);
-                        selfCamera.rect = changeRect;
+                        SelfCamera.rect = changeRect;
                     }
                 }
             }

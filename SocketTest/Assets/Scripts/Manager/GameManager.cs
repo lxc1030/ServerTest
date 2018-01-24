@@ -22,8 +22,9 @@ public class GameManager : MonoBehaviour
     public const int uiRotateIndex = 1;//ui旋转大于该区间才发送数据
 
 
-    public Dictionary<int, CharacterCommon> memberGroup = new Dictionary<int, CharacterCommon>();
+    private Dictionary<int, CharacterCommon> memberGroup = new Dictionary<int, CharacterCommon>();
     public Transform transActor;
+    public Transform transMyNet;
     public Transform transBullet;
 
     #region 帧同步相关变量
@@ -146,6 +147,9 @@ public class GameManager : MonoBehaviour
 
     public void OffLine()
     {
+        DataController.instance.MyRoomInfo = null;
+        DataController.instance.ActorList = null;
+        isOnFrame = false;
         for (int i = 0; i < memberGroup.Count; i++)
         {
             memberGroup[i].BeStop();
@@ -153,6 +157,10 @@ public class GameManager : MonoBehaviour
     }
     public float GetGameTime()
     {
+        if (DataController.instance.MyRoomInfo == null)
+        {
+            return 0;
+        }
         int FrameCount = (int)(DataController.instance.MyRoomInfo.GameTime / RoomInfo.frameTime);
         int leaveFrame = FrameCount - frameIndex;
         float time = leaveFrame * RoomInfo.frameTime;
@@ -160,6 +168,16 @@ public class GameManager : MonoBehaviour
         time = (time < 0) ? 0 : time;
         return time;
     }
+
+    public CharacterCommon GetMyControl()
+    {
+        return GetControl(DataController.instance.MyLocateIndex);
+    }
+    public CharacterCommon GetControl(int index)
+    {
+        return memberGroup[index];
+    }
+
     #endregion
 
 
@@ -248,14 +266,7 @@ public class GameManager : MonoBehaviour
     private void SetPrepareData(GameModelData info)
     {
         CharacterCommon member = null;
-        if (info.userIndex == DataController.instance.MyLocateIndex)
-        {
-            member = MyController.instance;
-        }
-        else
-        {
-            member = GameManager.instance.memberGroup[info.userIndex];
-        }
+        member = GameManager.instance.memberGroup[info.userIndex];
         member.SetPosition(SerializeHelper.BackVector(info.pos));
         member.SetRotate(SerializeHelper.BackVector(info.rotate));
         member.SetAnimation(info.animation);
@@ -329,7 +340,6 @@ public class GameManager : MonoBehaviour
     private void UpdateRoomActor()
     {
         GameObject obj = null;
-        int myIndex = DataController.instance.MyLocateIndex;
 
         for (int i = 0; i < DataController.instance.MyRoomInfo.Limit; i++)
         {
@@ -340,39 +350,22 @@ public class GameManager : MonoBehaviour
                 Debug.Log("初始化其他玩家模型站位：" + i);
                 memberGroup.Add(i, null);
             }
-            if (i == myIndex)
+            CharacterCommon mControl = memberGroup[i];
+            if (mControl == null)//初始化生成
             {
-                CharacterCommon mControl = memberGroup[i];
-                if (MyController.instance == null || !MyController.instance.IsShowHierarchy())//原来没有
-                {
-                    obj = PoolManager.instance.GetPoolObjByType(PreLoadType.Character, transActor);
-                    mControl = obj.GetComponent<CharacterCommon>();
-                    memberGroup[i] = mControl;
-                    obj.SetActive(true);
-
-                    MyController.instance.Init(info.UniqueID);
-                    MyController.instance.ShowTeam(info.MyTeam);
-                }
+                obj = PoolManager.instance.GetPoolObjByType(PreLoadType.Member, transActor);
+                mControl = obj.GetComponent<CharacterCommon>();
+                memberGroup[i] = mControl;
+            }
+            if (DataController.instance.ActorList[i] == null)//该位置玩家退出或不存在
+            {
+                mControl.gameObject.SetActive(false);
             }
             else
             {
-                CharacterCommon mControl = memberGroup[i];
-                if (mControl == null)//初始化生成
-                {
-                    obj = PoolManager.instance.GetPoolObjByType(PreLoadType.Member, transActor);
-                    mControl = obj.GetComponent<CharacterCommon>();
-                    memberGroup[i] = mControl;
-                }
-                if (DataController.instance.ActorList[i] == null)//该位置玩家退出或不存在
-                {
-                    mControl.gameObject.SetActive(false);
-                }
-                else
-                {
-                    mControl.gameObject.SetActive(true);
-                    mControl.Init(info.UniqueID);
-                    mControl.ShowTeam(DataController.instance.ActorList[i].MyTeam);
-                }
+                mControl.gameObject.SetActive(true);
+                mControl.Init(info.UniqueID);
+                mControl.ShowTeam(DataController.instance.ActorList[i].MyTeam);
             }
         }
     }
@@ -393,8 +386,9 @@ public class GameManager : MonoBehaviour
     {
         isOnFrame = false;
         frameIndex = 0;
-        reConnectIndex = 0;//游戏结束的时候未完成复现，怎清除重连记录帧
+        reConnectIndex = 0;//游戏结束的时候未完成复现，则清除重连记录帧
         MyJoystickManager.instance.Close();
+        CameraManager.instance.SetCameraEnable(false);
         Debug.Log("结束游戏");
         foreach (var item in memberGroup)
         {
@@ -568,24 +562,22 @@ public class GameManager : MonoBehaviour
                 ActorRotateDirection rotateDir = SerializeHelper.Deserialize<ActorRotateDirection>(tempMessageContent);
                 //判断用户
                 //Debug.LogError("玩家接收方向移动：" + messageInfo);
-                member = GameManager.instance.memberGroup[rotateDir.userIndex];
-                member.SetNetDirection(rotateDir);
+                if (rotateDir.userIndex != DataController.instance.MyLocateIndex)
+                {
+                    member = GameManager.instance.memberGroup[rotateDir.userIndex];
+                    member.SetNetDirection(rotateDir);
+                }
                 break;
             case MessageConvention.shootBullet:
                 int shootIndex = int.Parse(SerializeHelper.ConvertToString(tempMessageContent));
-                if (shootIndex == DataController.instance.MyLocateIndex)
-                {
-                    MyController.instance.ShowBullet(true);
-                }
-                else
+                if (shootIndex != DataController.instance.MyLocateIndex)
                 {
                     member = GameManager.instance.memberGroup[shootIndex];
-                    member.ShowBullet(false);
+                    member.ShowBullet();
                 }
                 break;
             case MessageConvention.bulletInfo:
                 BulletInfo bulletInfo = SerializeHelper.Deserialize<BulletInfo>(tempMessageContent);
-
                 switch (bulletInfo.shootTag)
                 {
                     case ShootTag.Box:
@@ -635,19 +627,13 @@ public class GameManager : MonoBehaviour
             return;
         }
         //
-        if (shootedIndex != DataController.instance.MyLocateIndex)
-        {
-            //此处需要修改
-            memberGroup[shootedIndex].BeShoot();
-            UIManager.instance.ShowAlertTip("玩家：" + DataController.instance.ActorList[shootedIndex].Register.name + " 被射中。");
-        }
-        else
+        if (shootedIndex == DataController.instance.MyLocateIndex)
         {
             MyJoystickManager.instance.BeShoot();
-            MyController.instance.BeShoot();
             UIManager.instance.ShowAlertTip("我被射中。");
         }
-        memberGroup[bulletMaster].ShowKill(DataController.instance.ActorList[bulletMaster].KillCount);
+        GetControl(shootedIndex).BeShoot();
+        GetControl(bulletMaster).ShowKill(DataController.instance.ActorList[bulletMaster].KillCount);
     }
 
     #endregion
@@ -689,11 +675,13 @@ public class GameManager : MonoBehaviour
                     FrameMainLogic();
                 }
             }
-            if (isReconnect || reConnectIndex == 0)
+            if (/*isReconnect ||*/ reConnectIndex == 0)
             {
                 isReconnect = false;
                 frameIndexTime = Time.realtimeSinceStartup;
                 reConnectIndex = -1;
+                CameraManager.instance.SetCameraEnable(true);
+                CameraManager.instance.SetCameraFollow(true);
                 GameLoadingUI.Close();
                 GameRunUI.Show();
                 ShowModelUIName();

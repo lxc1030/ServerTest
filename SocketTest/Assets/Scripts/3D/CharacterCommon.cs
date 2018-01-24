@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -115,8 +116,13 @@ public class CharacterCommon : MonoBehaviour
         info.Init(this, name);
     }
 
-    public void ShowBullet(bool isTrigger)
+    public void ShowBullet()
     {
+        bool isTrigger = false;
+        if (myIndex == DataController.instance.MyLocateIndex)
+        {
+            isTrigger = true;
+        }
         GameObject obj = null;
         obj = PoolManager.instance.GetPoolObjByType(PreLoadType.Bullet, shootMuzzle);
         obj.transform.localEulerAngles = Vector3.zero;
@@ -192,14 +198,96 @@ public class CharacterCommon : MonoBehaviour
             BeStop();
             return;
         }
-        Vector3 fixG = SerializeHelper.BackVector(lastMoveDirection.direction) * lastMoveDirection.speed * Time.fixedDeltaTime;
-        fixG = new Vector3(fixG.x, 0, fixG.z);
-        if (DataController.instance.ActorList[myIndex].CurState != RoomActorState.Dead)
+        CharacterMove(lastMoveDirection.direction, lastMoveDirection.speed, Time.fixedDeltaTime);
+    }
+
+    #region MyControl
+
+
+    private ActorMoveDirection lastMove;
+
+    public void UIMove(Vector3 moveDirection, float moveSpeed)
+    {
+        if (DataController.instance.ActorList[myIndex].CurState == RoomActorState.Dead)
         {
-            fixG.y = -GameManager.gravity;
+            return;
         }
+        int moveIndex = GameManager.uiMoveIndex;
+
+        float x = (float)Math.Round(moveDirection.x, moveIndex);
+        float y = (float)Math.Round(moveDirection.y, moveIndex);
+        float z = (float)Math.Round(moveDirection.z, moveIndex);
+        float _speed = (float)Math.Round(moveSpeed, GameManager.uiSpeedIndex);
+
+        ActorMoveDirection tempMove = new ActorMoveDirection()
+        {
+            userIndex = DataController.instance.MyLocateIndex,
+            direction = new NetVector3(x, y, z),
+            speed = _speed
+        };
+
+        if (lastMove == null
+         || SerializeHelper.BackVector(tempMove.direction) != SerializeHelper.BackVector(lastMove.direction)
+         || tempMove.speed != lastMove.speed
+         )
+        {
+            lastMove = tempMove;
+            //发送信息
+            SendMoveData(tempMove);
+        }
+    }
+
+    private void SendMoveData(ActorMoveDirection tempMove)
+    {
+        byte[] sendData = SerializeHelper.Serialize<ActorMoveDirection>(tempMove);
+        SocketManager.instance.SendSave((byte)MessageConvention.moveDirection, sendData, false);
+    }
+    private void CharacterMove(NetVector3 direction, float speed, float time)
+    {
+        Vector3 fixG = SerializeHelper.BackVector(direction) * speed * time;
+        fixG = new Vector3(fixG.x, 0, fixG.z);
+        fixG.y = -GameManager.gravity;
         myControl.Move(fixG);
     }
 
 
+
+    private ActorRotateDirection lastRotate;
+    public void UIRotation()
+    {
+        if (DataController.instance.ActorList[myIndex].CurState == RoomActorState.Dead)
+        {
+            return;
+        }
+        int lookAt = (int)myModel.eulerAngles.y;
+        int rotateIndex = GameManager.uiRotateIndex;
+
+        ActorRotateDirection tempRotate = new ActorRotateDirection()
+        {
+            userIndex = DataController.instance.MyLocateIndex,
+            rotateY = lookAt
+        };
+
+        byte[] sendData = SerializeHelper.Serialize<ActorRotateDirection>(tempRotate);
+        if (lastRotate == null || Mathf.Abs(lookAt - lastRotate.rotateY) >= rotateIndex)
+        {
+            lastRotate = tempRotate;
+            SocketManager.instance.SendSave((byte)MessageConvention.rotateDirection, sendData, false);
+        }
+
+    }
+
+    public void UIShot()
+    {
+        if (DataController.instance.ActorList[myIndex].CurState == RoomActorState.Dead)
+        {
+            return;
+        }
+        int userIndex = DataController.instance.MyLocateIndex;
+        byte[] message = SerializeHelper.ConvertToByte(userIndex + "");
+        SocketManager.instance.SendSave((byte)MessageConvention.shootBullet, message, false);
+    }
+
+
+    #endregion
 }

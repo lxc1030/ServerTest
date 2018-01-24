@@ -10,7 +10,6 @@ public class MyJoystickManager : MonoBehaviour
     public static MyJoystickManager instance;
     public ControlPartUI uiControl;
 
-
     private void Awake()
     {
         DontDestroyOnLoad(this);
@@ -19,18 +18,32 @@ public class MyJoystickManager : MonoBehaviour
     }
     public void Init()
     {
+        uiControl.all = new GameObject[transform.childCount];
+        for (int i = 0; i < transform.childCount; i++)
+        {
+            uiControl.all[i] = transform.GetChild(i).gameObject;
+        }
         Close();
     }
     public void Close()
     {
-        uiControl.all.SetActive(false);
+        SetAllEnable(false);
     }
 
     public void Open()
     {
-        uiControl.all.SetActive(true);
+        SetAllEnable(true);
         uiControl.etcMove.gameObject.SetActive(true);
         uiControl.etcRotate.gameObject.SetActive(true);
+    }
+
+    public void SetAllEnable(bool enable)
+    {
+        for (int i = 0; i < uiControl.all.Length; i++)
+        {
+            uiControl.all[i].gameObject.SetActive(enable);
+
+        }
     }
 
     #region 遥杆命令
@@ -62,16 +75,16 @@ public class MyJoystickManager : MonoBehaviour
     {
         Vector3 direction = new Vector3(x, y, z);
         speed = GameManager.myActorMoveSpeed * speed;
-        MyController.instance.UIMove(direction, speed);
+        GameManager.instance.GetMyControl().UIMove(direction, speed);
     }
 
     public void OnClickLookAt(Vector2 move)
     {
         Vector3 moveDir = new Vector3(move.x, 0, move.y);
-        MyController.instance.SetDirectionEnable(true);
+        GameManager.instance.GetMyControl().SetDirectionEnable(true);
         double angleOfLine = Mathf.Atan2(-moveDir.z, moveDir.x) * 180 / Mathf.PI;
         angleOfLine += 90;
-        MyController.instance.SetRotate(new Vector3(0, (float)angleOfLine, 0));
+        GameManager.instance.GetMyControl().SetRotate(new Vector3(0, (float)angleOfLine, 0));
     }
 
     /// <summary>
@@ -81,15 +94,18 @@ public class MyJoystickManager : MonoBehaviour
 
     public void OnClickShoot()
     {
-        MyController.instance.SetDirectionEnable(false);
+        if (DataController.instance.ActorList[DataController.instance.MyLocateIndex].CurState == RoomActorState.Dead)
+            return;
+        GameManager.instance.GetMyControl().SetDirectionEnable(false);
         //
-        MyController.instance.UIRotation();
+        GameManager.instance.GetMyControl().UIRotation();
         //
         if (!IsInvoking("RemoveShootCD"))
         {
             Invoke("RemoveShootCD", shootCDLimet);
             ShowShootCDAnimation();
-            MyController.instance.UIShot();
+            GameManager.instance.GetMyControl().UIShot();
+            GameManager.instance.GetMyControl().ShowBullet();
         }
         else
         {
@@ -99,7 +115,7 @@ public class MyJoystickManager : MonoBehaviour
             uiControl.cdTip.DOColor(new Color(color.r, color.g, color.b, 0), 0.2f);
         }
     }
-    
+
     private void RemoveShootCD()
     {
         //Debug.LogError("");
@@ -120,7 +136,7 @@ public class MyJoystickManager : MonoBehaviour
 
     public void BeShoot()
     {
-        uiControl.all.SetActive(false);
+        SetAllEnable(false);
     }
 
 
@@ -141,7 +157,7 @@ public class MyJoystickManager : MonoBehaviour
 [Serializable]
 public class ControlPartUI
 {
-    public GameObject all;
+    public GameObject[] all;
     public ETCJoystick etcMove;
     public ETCJoystick etcRotate;
     public Image[] cdShoot;
