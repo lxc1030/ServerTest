@@ -2,9 +2,23 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using UnityEngine;
 
 public class ModelCollision
 {
+    public static ModelCollision instance;
+    public static void Init()
+    {
+        if (instance == null)
+        {
+            instance = new ModelCollision();
+        }
+    }
+    public ModelCollision()
+    {
+        instance = this;
+    }
+
     public static bool IsCollider(ModelInfo info1, ModelInfo info2)
     {
         bool result = false;
@@ -34,7 +48,7 @@ public class ModelCollision
             case Model3DType.Ball://球和球碰撞
 
                 break;
-            case Model3DType.Squareness://球和矩形---->和矩形角判断
+            case Model3DType.Squareness://球和矩形---->公式描述：公式中的平面方程为Ax+By+Cz+D=0，点P的坐标(x0,y0,z0)，d为点P到平面的距离。d=|Ax0 + By0 + Cz0 + D|/√￣（A~2+B~2+C~2）----百度点到面距离
 
                 break;
             case Model3DType.Cylinder://球和圆柱体
@@ -86,6 +100,7 @@ public class ModelCollision
         }
         return result;
     }
+
 }
 
 public enum Model3DType
@@ -110,4 +125,17 @@ public class ModelInfo
     /// </summary>
     public float radius;
 
+}
+
+
+public class PlaneFormula
+{
+    public float A;
+    public float B;
+    public float C;
+    public float D;
+    public PlaneFormula(NetVector3 point1, NetVector3 point2, NetVector3 point3)
+    {
+
+    }
 }

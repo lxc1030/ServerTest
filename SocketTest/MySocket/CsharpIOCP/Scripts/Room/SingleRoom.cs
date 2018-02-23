@@ -8,12 +8,13 @@ public class SingleRoom
 
     public int PassedCountDownTime = 0;//倒计时已经过了多久
     public int CountDownTime = 5 * 1000;//倒计时X秒以后开始游戏
+    private int FrameCount;//游戏时长转换成帧以后的长度
 
-
-    public int PassedGameTime = 0;// 游戏已经过了多久
-    private int FrameCount;
-    public RoomInfo RoomInfo { get; set; }//客户端和服务器通用保存房间属性的变量类
-
+  
+    /// <summary>
+    /// 客户端和服务器通用保存房间属性的变量类
+    /// </summary>
+    public RoomInfo RoomInfo { get; set; }
     /// <summary>
     /// 房間中的會員列表
     /// </summary>
@@ -254,8 +255,7 @@ public class SingleRoom
                         break;
                     case RoomActorState.WaitForStart:
                         Log4Debug("模型未准备好的玩家准备好进入游戏了。");
-                        string starttime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
-                        byte[] start = SerializeHelper.ConvertToByte(starttime);
+                        byte[] start = SerializeHelper.ConvertToByte(RoomInfo.CurrentTime);
                         MessageXieYi xieyi = new MessageXieYi((byte)MessageConvention.startGaming, 0, start);
                         AsyncIOCPServer.instance.SendSave(UserTokenInfo[index], xieyi.ToBytes());
 
@@ -487,6 +487,19 @@ public class SingleRoom
             GetRoommateNetData(roomActorUpdate.userIndex, userToken);
         }
     }
+    public void UpdateMove(ActorMoveDirection moveDirection)
+    {
+        RoomActor actor = ActorList[moveDirection.userIndex];
+        if (actor.CurState != RoomActorState.Dead)
+        {
+            //room.SetRecondFrame(xieyi.ToBytes());
+            //Log4Debug("站位：" + moveDirection.userIndex + " 更新了方向：" + SerializeHelper.BackVector(moveDirection.direction) + "/速度:" + moveDirection.speed);
+        }
+        else
+        {
+            Log4Debug("死亡用户不更新移动。");
+        }
+    }
 
     #endregion
 
@@ -499,16 +512,17 @@ public class SingleRoom
     /// <param name="index">保存在指定帧内</param>
     public void SetRecondFrame(byte[] message)
     {
-        if (message == null)
-        {
-            Log4Debug("检查为什么存值为null");
-            return;
-        }
         int curIndex = RoomInfo.FrameIndex;
         if (curIndex >= FrameCount)
         {
             return;
         }
+        if (message == null)
+        {
+            Log4Debug("检查为什么存值为null");
+            return;
+        }
+       
         //Log4Debug("存储帧：" + curIndex);
         if (RoomInfo.CurState == RoomActorState.Gaming)
         {
@@ -857,13 +871,12 @@ public class SingleRoom
                 {
                     FrameGroup.Add(i, new FrameInfo() { frameIndex = i, frameData = new List<byte[]>() });
                 }
+                //
                 FrameTimer = new Timer(new TimerCallback(GameFrameReconding), null, 0, RoomInfo.frameTime);
                 //
-                string starttime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
-                byte[] start = SerializeHelper.ConvertToByte(starttime);
+                byte[] start = SerializeHelper.ConvertToByte(RoomInfo.CurrentTime);
                 BoardcastMessage(MessageConvention.startGaming, start);
                 //发送游戏时间
-                PassedGameTime = 0;
                 break;
             case RoomActorState.GameEnd:
                 Log4Debug("退出计数");
@@ -942,8 +955,18 @@ public class SingleRoom
         Log4Debug("reConnectIndex.");
     }
 
-
-
+    /// <summary>
+    /// 强制客户端校验时间
+    /// </summary>
+    public void CompelCheckTime(int unique)
+    {
+        AsyncUserToken userToken = UserTokenInfo[unique];
+        ProofreadTime time = new ProofreadTime();
+        time.IsNeedCheck = true;
+        byte[] message = SerializeHelper.Serialize<ProofreadTime>(time);
+        MessageXieYi xieyi = new MessageXieYi((byte)MessageConvention.timeCheck, 0, message);
+        AsyncIOCPServer.instance.SendSave(userToken, xieyi.ToBytes());
+    }
 
     public void Log4Debug(string msg)
     {

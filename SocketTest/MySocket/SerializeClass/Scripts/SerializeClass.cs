@@ -98,6 +98,12 @@ public class NetVector3
     public float y;
     [ProtoBuf.ProtoMember(3)]
     public float z;
+    /// <summary>
+    /// 需要初始化，不然为空
+    /// </summary>
+    /// <param name="_x"></param>
+    /// <param name="_y"></param>
+    /// <param name="_z"></param>
     public NetVector3(float _x, float _y, float _z)
     {
         x = _x;
@@ -118,11 +124,15 @@ public class ActorMoveDirection
     [ProtoBuf.ProtoMember(1)]
     public int userIndex;
     [ProtoBuf.ProtoMember(2)]
-    public NetVector3 direction;
+    public NetVector3 position;//位置
     [ProtoBuf.ProtoMember(3)]
-    public float speed;
+    public NetVector3 direction;//移动方向
+    [ProtoBuf.ProtoMember(4)]
+    public float speed;//移动速度
+
     public ActorMoveDirection()
     {
+        position = new NetVector3(0, 0, 0);
         direction = new NetVector3(0, 0, 0);
     }
 }
@@ -169,7 +179,25 @@ public class BulletInfo
     public string shootInfo;
 
 }
+/// <summary>
+/// 校验时间
+/// </summary>
+[ProtoBuf.ProtoContract]
+public class ProofreadTime
+{
+    [ProtoBuf.ProtoMember(1)]
+    public bool IsNeedCheck;
+    [ProtoBuf.ProtoMember(2)]
+    public float UnityRealTime;
+    [ProtoBuf.ProtoMember(3)]
+    public DateTime ClientTime;
+    [ProtoBuf.ProtoMember(4)]
+    public DateTime ServerTime;
+    public ProofreadTime()
+    {
 
+    }
+}
 
 
 //[Serializable]

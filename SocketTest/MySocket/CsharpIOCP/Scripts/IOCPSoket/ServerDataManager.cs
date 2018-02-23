@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json.Linq;
+using System;
 using System.Collections.Generic;
 using System.Threading;
 
@@ -168,7 +169,16 @@ public class ServerDataManager
 
                     break;
                 case MessageConvention.startGaming:
-
+                    break;
+                case MessageConvention.timeCheck:
+                    tempMessageContent = xieyi.MessageContent;
+                    ProofreadTime timeCheck = SerializeHelper.Deserialize<ProofreadTime>(tempMessageContent);
+                    timeCheck.IsNeedCheck = false;
+                    timeCheck.ServerTime = DateTime.Now;
+                    Log4Debug(timeCheck.ClientTime.ToString("yyyy-MM-dd HH:mm:ss.fff"));
+                    Log4Debug(timeCheck.ServerTime.ToString("yyyy-MM-dd HH:mm:ss.fff"));
+                    Log4Debug("误差：" + timeCheck.ServerTime.Subtract(timeCheck.ClientTime).TotalMilliseconds);
+                    newBuffer = SerializeHelper.Serialize<ProofreadTime>(timeCheck);
                     break;
                 case MessageConvention.endGaming:
 
@@ -176,15 +186,7 @@ public class ServerDataManager
                 case MessageConvention.moveDirection:
                     tempMessageContent = xieyi.MessageContent;
                     moveDirection = SerializeHelper.Deserialize<ActorMoveDirection>(tempMessageContent);
-                    if (room.ActorList[moveDirection.userIndex].CurState != RoomActorState.Dead)
-                    {
-                        room.SetRecondFrame(xieyi.ToBytes());
-                        //Log4Debug("站位：" + moveDirection.userIndex + " 更新了方向：" + SerializeHelper.BackVector(moveDirection.direction) + "/速度:" + moveDirection.speed);
-                    }
-                    else
-                    {
-                        Log4Debug("死亡用户不更新移动。");
-                    }
+                    room.UpdateMove(moveDirection);
                     break;
                 case MessageConvention.rotateDirection:
                     tempMessageContent = xieyi.MessageContent;

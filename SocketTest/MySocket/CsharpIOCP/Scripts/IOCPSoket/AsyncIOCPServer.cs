@@ -266,8 +266,9 @@ public class AsyncIOCPServer
                 }
                 else
                 {
-                    object[] all = new object[] { userToken, xieyi };
-                    ThreadPool.QueueUserWorkItem(new WaitCallback(XieYiThrd), all);
+                    DealXieYi(xieyi, userToken);
+                    //object[] all = new object[] { userToken, xieyi };
+                    //ThreadPool.QueueUserWorkItem(new WaitCallback(XieYiThrd), all);
                 }
             }
         }

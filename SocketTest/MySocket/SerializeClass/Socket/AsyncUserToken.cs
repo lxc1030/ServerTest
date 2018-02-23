@@ -33,6 +33,10 @@ public class AsyncUserToken
     }
     public readonly object LockHanding = new object();
     
+    public int HandleIndex { get; set; }
+    public Dictionary<int,MessageXieYi> HandleGroup { get; set; }
+
+
     /// <summary>
     /// 用户数据
     /// </summary>
@@ -62,6 +66,29 @@ public class AsyncUserToken
         Array.Copy(buffer, 0, send, sizeof(int), length);
 
         return send.ToArray();
+    }
+
+    public void LineMessageXieYi(byte[] completeMessage)
+    {
+        int curIndex = HandleIndex;
+        lock (HandleGroup)
+        {
+            HandleGroup.Add(curIndex, null);
+            HandleIndex++;
+        }
+        //处理Complete
+        MessageXieYi xieyi = MessageXieYi.FromBytes(completeMessage);
+        if (xieyi != null)
+        {
+            lock (HandleGroup)
+            {
+                HandleGroup[curIndex] = xieyi;
+            }
+        }
+        else
+        {
+            throw new Exception("完整byte[]转换协议为空");
+        }
     }
 
 }

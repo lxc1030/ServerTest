@@ -27,7 +27,7 @@ public class DataController : MonoBehaviour
         //FPS
         Application.targetFrameRate = 60;
     }
-    
+
     public string UserID
     {
         get
@@ -68,8 +68,16 @@ public class DataController : MonoBehaviour
             myRoomInfo = value;
         }
     }
-    public int FrameCanIndex = 0;
+    public int FrameCanIndex = 0;//可以快进到的帧
     public int MyLocateIndex = -1;
+
+    /// <summary>
+    /// 一帧转换成时间
+    /// </summary>j
+    public static float FrameFixedTime
+    {
+        get { return (float)RoomInfo.frameTime / 1000; }
+    }
 
 
     public const int bulletAutoDestory = 100;
@@ -106,7 +114,7 @@ public class DataController : MonoBehaviour
     /// 看广告奖励的金币
     /// </summary>
     public const int adAddCoin = 5;
-    
+
 
 
     private static string XMLName = "EffectConfig";
@@ -141,24 +149,23 @@ public class DataController : MonoBehaviour
         set { PlayerPref.SetInt("IsFristEnterGame", value ? 1 : 0); }
     }
 
-
-    private float CurPassedTime;
-    private float serverMarkTime;
-    private DateTime serverTime;
-
+    public float checkMarkTime;
+    private DateTime serverTime = DateTime.Now;
     public DateTime ServerTime
     {
         get
         {
-            return serverTime.AddSeconds(CurPassedTime - serverMarkTime);
+            TimeSpan last = TimeSpan.FromSeconds(Time.realtimeSinceStartup - checkMarkTime);
+            return serverTime.Add(last);
         }
         set
         {
-            serverMarkTime = CurPassedTime;
             serverTime = value;
         }
     }
-    
+
+
+
 
 
 
@@ -249,15 +256,7 @@ public class DataController : MonoBehaviour
 
     #endregion
 
-    
 
-
-
-
-    public void Update()
-    {
-        CurPassedTime = Time.realtimeSinceStartup;
-    }
 }
 
 

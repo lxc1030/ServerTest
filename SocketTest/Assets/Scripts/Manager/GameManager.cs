@@ -30,7 +30,9 @@ public class GameManager : MonoBehaviour
     #region 帧同步相关变量
 
     public int frameIndex = 0;//当前复现到哪一帧了
-    public float frameIndexTime;//运行到这帧时的时间
+
+    public float frameEmptyTime;//当前帧数据为空的时间值
+
 
     public bool isReconnect = false;
     public int reConnectIndex = 0;//重连时需要复现到的帧编号----//重连不需要则为-1
@@ -49,7 +51,8 @@ public class GameManager : MonoBehaviour
     private float requestMaxTime = 5f;//等待数据时长
     public int frameEmpty = 0;//判断重连时，服务器广播了哪一帧的数据，用来请求前面的数据
 
-    private float FrameFixedTime;//一帧转换成时间
+
+
     public float timeDeal;//游戏时间存储数值
     #endregion
 
@@ -85,6 +88,7 @@ public class GameManager : MonoBehaviour
         MessageConvention.updateModelInfo,
         MessageConvention.getPreGameData,
         MessageConvention.startGaming,
+        MessageConvention.timeCheck,
         MessageConvention.endGaming,
     };
 
@@ -125,7 +129,7 @@ public class GameManager : MonoBehaviour
 
     public void Init()
     {
-        FrameFixedTime = (float)RoomInfo.frameTime / 1000;//初始化-帧转秒
+        FrameManager.ListenDelegate(true, DoFrameLogin);
     }
 
     public void InitRoom()
@@ -177,6 +181,24 @@ public class GameManager : MonoBehaviour
     {
         return memberGroup[index];
     }
+
+
+    public void CheckServerTime()
+    {
+        ProofreadTime timeCheck = new ProofreadTime();
+        timeCheck.UnityRealTime = Time.realtimeSinceStartup;
+        //Debug.LogError("发送时：" + DataController.instance.ServerTime.ToString("yyyy-MM-dd HH:mm:ss.fff"));
+        timeCheck.ClientTime = DataController.instance.ServerTime;
+        timeCheck.ServerTime = DateTime.Now;
+        CheckServerTime(timeCheck);
+    }
+
+    public void CheckServerTime(ProofreadTime timeCheck)
+    {
+        byte[] newBuffer = SerializeHelper.Serialize<ProofreadTime>(timeCheck);
+        SocketManager.instance.SendSave((byte)MessageConvention.timeCheck, newBuffer, false);
+    }
+
 
     #endregion
 
@@ -376,7 +398,8 @@ public class GameManager : MonoBehaviour
         frameIndex = 0;
         Debug.Log("开始游戏");
         isOnFrame = true;
-        frameIndexTime = Time.realtimeSinceStartup;
+        //frameIndexTime = Time.realtimeSinceStartup;
+        frameEmptyTime = 0;
     }
 
 
@@ -428,33 +451,6 @@ public class GameManager : MonoBehaviour
         SocketManager.instance.SendSave((byte)MessageConvention.frameData, message, false);
     }
 
-    string guiInfo = "0000/0000";
-    //public void OnGUI()
-    //{
-    //    if (DataController.instance.MyRoomInfo != null && DataController.instance.MyRoomInfo.ActorList != null)
-    //    {
-    //        guiInfo = frameIndex + "/" + DataController.instance.MyRoomInfo.FrameIndex;
-    //        int length = (DataController.instance.MyRoomInfo.FrameIndex - frameIndex);
-    //        guiInfo = guiInfo + " = " + length;
-    //        GUIStyle bb = new GUIStyle();
-    //        bb.normal.background = null;    //这是设置背景填充的
-    //        bb.normal.textColor = Color.blue;   //设置字体颜色的
-    //        bb.fontSize = 40;       //当然，这是字体大小
-    //        GUI.Label(new Rect(0, 0, 200, 200), guiInfo, bb);
-    //    }
-    //}
-    //public void OnGUI()
-    //{
-    //    if (DataController.instance.MyRoomInfo != null && DataController.instance.MyRoomInfo.ActorList != null)
-    //    {
-    //        guiInfo ="站位：" + DataController.instance.MyLocateIndex;
-    //        GUIStyle bb = new GUIStyle();
-    //        bb.normal.background = null;    //这是设置背景填充的
-    //        bb.normal.textColor = Color.blue;   //设置字体颜色的
-    //        bb.fontSize = 40;       //当然，这是字体大小
-    //        GUI.Label(new Rect(0, 0, 200, 200), guiInfo, bb);
-    //    }
-    //}
 
 
     /// <summary>
@@ -462,8 +458,15 @@ public class GameManager : MonoBehaviour
     /// </summary>
     private void DoFrameLogin()
     {
+        if (!isOnFrame)
+        {
+            return;
+        }
+        //
         if (FrameInfos.ContainsKey(frameIndex))
         {
+            frameEmptyTime = 0;//得到值的时候，把标记删除
+
             int forwardNum = 1;
             int length = DataController.instance.FrameCanIndex - frameIndex;
             if (length > DataController.instance.MyRoomInfo.FrameDelay)//本地运行帧和接收帧差距超过该值，快进
@@ -480,12 +483,19 @@ public class GameManager : MonoBehaviour
         }
         else
         {
-            float overTime = Time.realtimeSinceStartup - frameIndexTime;
-            if (overTime > requestMaxTime)
+            if (frameEmptyTime == 0)//发现帧数据不在，等待
             {
-                frameIndexTime = Time.realtimeSinceStartup;//将该时间作为处理最后一帧的时间，这样可以重新等待延迟最大时间
-                Debug.LogError("超时：" + overTime + "请求帧：" + frameIndex + "/" + DataController.instance.FrameCanIndex);
-                DoFrameRequest(frameIndex);
+                frameEmptyTime = Time.realtimeSinceStartup;
+            }
+            else
+            {
+                float overTime = Time.realtimeSinceStartup - frameEmptyTime;
+                if (overTime > requestMaxTime)
+                {
+                    frameEmptyTime = 0;//将该时间作为处理最后一帧的时间，这样可以重新等待延迟最大时间
+                    Debug.LogError("超时：" + overTime + "请求帧：" + frameIndex + "/" + DataController.instance.FrameCanIndex);
+                    DoFrameRequest(frameIndex);
+                }
             }
         }
 
@@ -501,7 +511,6 @@ public class GameManager : MonoBehaviour
             Debug.Log("该执行帧不存在：" + frameIndex);
             return;
         }
-        frameIndexTime = Time.realtimeSinceStartup;
 
         FrameInfo info = FrameInfos[frameIndex];
         if (info.frameData != null)//有更新操作，更新数据
@@ -643,54 +652,55 @@ public class GameManager : MonoBehaviour
     {
         if (isOnFrame)
         {
-            if (reConnectIndex <= 0)
-            {
-                if (timeDeal == 0)
-                {
-                    timeDeal = Time.realtimeSinceStartup;
-                }
-                float length = Time.realtimeSinceStartup - timeDeal;
-                //Debug.LogError("本帧:" + Time.realtimeSinceStartup + "与上帧的差距：" + length);
-                int count = (int)(length / FrameFixedTime);
-                //Debug.LogError("需要在本帧运算次数：" + count);
-                for (int i = 0; i < count; i++)
-                {
-                    DoFrameLogin();
-                }
-                timeDeal += count * FrameFixedTime;
-            }
-            else
-            {
-                int length = 0;
-                if (reConnectIndex >= reConnectSpan)
-                {
-                    length = reConnectSpan;
-                }
-                else
-                {
-                    length = reConnectIndex;
-                }
-                for (int i = 0; i < length; i++, reConnectIndex--)
-                {
-                    FrameMainLogic();
-                }
-            }
-            if (/*isReconnect ||*/ reConnectIndex == 0)
-            {
-                isReconnect = false;
-                frameIndexTime = Time.realtimeSinceStartup;
-                reConnectIndex = -1;
-                CameraManager.instance.SetCameraEnable(true);
-                CameraManager.instance.SetCameraFollow(true);
-                GameLoadingUI.Close();
-                GameRunUI.Show();
-                ShowModelUIName();
-            }
+            //if (reConnectIndex <= 0)
+            //{
+            //    if (timeDeal == 0)
+            //    {
+            //        timeDeal = Time.realtimeSinceStartup;
+            //    }
+            //    float length = Time.realtimeSinceStartup - timeDeal;
+            //    //Debug.LogError("本帧:" + Time.realtimeSinceStartup + "与上帧的差距：" + length);
+            //    int count = (int)(length / FrameFixedTime);
+            //    //Debug.LogError("需要在本帧运算次数：" + count);
+            //    for (int i = 0; i < count; i++)
+            //    {
+            //        DoFrameLogin();
+            //    }
+            //    timeDeal += count * FrameFixedTime;
+            //}
+            //else
+            //{
+            //    int length = 0;
+            //    if (reConnectIndex >= reConnectSpan)
+            //    {
+            //        length = reConnectSpan;
+            //    }
+            //    else
+            //    {
+            //        length = reConnectIndex;
+            //    }
+            //    for (int i = 0; i < length; i++, reConnectIndex--)
+            //    {
+            //        FrameMainLogic();
+            //    }
+            //}
+            TrueGaming();
         }
-
-
     }
-
+    private void TrueGaming()
+    {
+        if (/*isReconnect ||*/ reConnectIndex == 0)
+        {
+            isReconnect = false;
+            frameEmptyTime = 0;
+            reConnectIndex = -1;
+            CameraManager.instance.SetCameraEnable(true);
+            CameraManager.instance.SetCameraFollow(true);
+            GameLoadingUI.Close();
+            GameRunUI.Show();
+            ShowModelUIName();
+        }
+    }
 
     public void Update()
     {
@@ -702,131 +712,173 @@ public class GameManager : MonoBehaviour
                 Debug.LogError("有事件操作的协议为空？");
                 return;
             }
-            if (xieyi.XieYiFirstFlag == (byte)MessageConvention.login)
-            {
-                ErrorType error = ClassGroup.CheckIsError(xieyi);
-                if (error != ErrorType.none)
-                {
-                    ErrorShow(error);
-                }
-                else
-                {
-                    SocketManager.instance.GetBeatTime();
-                }
-            }
-            if (xieyi.XieYiFirstFlag == (byte)MessageConvention.getHeartBeatTime)
-            {
-                ErrorType error = ClassGroup.CheckIsError(xieyi);
-                if (error != ErrorType.none)
-                {
-                    Debug.LogError(error);
-                }
-                else
-                {
-                    SocketManager.instance.OpenHeartbeat();
-                    //
-                    UILogin.Close();
-                    HomeUI.Show();
-                    //
-                    Debug.Log("自身检查是否需要重连。");
-                    SocketManager.instance.SendSave((byte)MessageConvention.reConnectCheck, new byte[] { }, false);
-                }
-            }
-            if ((MessageConvention)xieyi.XieYiFirstFlag == MessageConvention.reConnectCheck)
-            {
-                ErrorType error = ClassGroup.CheckIsError(xieyi);
-                if (error != ErrorType.none)
-                {
-                    Debug.LogError(error);
-                }
-                else
-                {
-                    isReconnect = int.Parse(SerializeHelper.ConvertToString(xieyi.MessageContent)) == 1 ? true : false;
-                    if (isReconnect)
-                    {
-                        ReConnectLogin();
-                    }
-                }
-            }
-            if ((MessageConvention)xieyi.XieYiFirstFlag == MessageConvention.quitRoom)//自己退出房间
-            {
-                QuitInfo qInfo = SerializeHelper.Deserialize<QuitInfo>(xieyi.MessageContent);
-                if (qInfo.isQuit)
-                {
-                    UpdateMemberHide();
-                    RoomUI.Close();
-                    HomeUI.Show();
-                    if (qInfo.userIndex != DataController.instance.MyLocateIndex)
-                    {
-                        UIManager.instance.ShowAlertTip("您被踢出房间。");
-                    }
-                }
-                else
-                {
-                    if (qInfo.userIndex == qInfo.quitUnique)
-                    {
-                        UIManager.instance.ShowAlertTip("退出房间失败。");
-                    }
-                }
-            }
-            if ((MessageConvention)xieyi.XieYiFirstFlag == MessageConvention.updateActorState)
-            {
-                ErrorType error = ClassGroup.CheckIsError(xieyi);
-                if (error != ErrorType.none)
-                {
-                    Debug.LogError(error);
-                }
-                else
-                {
-                    CheckState(xieyi);
-                }
-            }
-            if ((MessageConvention)xieyi.XieYiFirstFlag == MessageConvention.updateModelInfo)
-            {
-                GameModelData modelDate = SerializeHelper.Deserialize<GameModelData>(xieyi.MessageContent);
-                SetPrepareData(modelDate);
-            }
-            if ((MessageConvention)xieyi.XieYiFirstFlag == MessageConvention.getPreGameData)
-            {
-                ErrorType error = ClassGroup.CheckIsError(xieyi);
-                if (error != ErrorType.none)
-                {
-                    Debug.LogError(error);
-                }
-                else
-                {
-                    Debug.Log("验证本客户端收到游戏前准备数据。客户端响应已收到:" + xieyi.MessageContentLength);
-                    SendState(RoomActorState.WaitForStart);
-                }
-            }
-            if ((MessageConvention)xieyi.XieYiFirstFlag == MessageConvention.startGaming)
-            {
-                ErrorType error = ClassGroup.CheckIsError(xieyi);
-                if (error != ErrorType.none)
-                {
-                    Debug.LogError(error);
-                }
-                else
-                {
-                    StartGaming();
-                }
-            }
-            if ((MessageConvention)xieyi.XieYiFirstFlag == MessageConvention.endGaming)
-            {
-                ErrorType error = ClassGroup.CheckIsError(xieyi);
-                if (error != ErrorType.none)
-                {
-                    Debug.LogError(error);
-                }
-                else
-                {
-                    EndGaming(xieyi);
-                }
-            }
 
+            ErrorType error = ClassGroup.CheckIsError(xieyi);
+
+            switch ((MessageConvention)xieyi.XieYiFirstFlag)
+            {
+                case MessageConvention.login:
+                    if (error != ErrorType.none)
+                    {
+                        ErrorShow(error);
+                    }
+                    else
+                    {
+                        SocketManager.instance.GetBeatTime();
+                    }
+                    break;
+                case MessageConvention.getHeartBeatTime:
+                    if (error != ErrorType.none)
+                    {
+                        Debug.LogError(error);
+                    }
+                    else
+                    {
+                        SocketManager.instance.OpenHeartbeat();
+                        //
+                        UILogin.Close();
+                        HomeUI.Show();
+                        //
+                        Debug.Log("自身检查是否需要重连。");
+                        SocketManager.instance.SendSave((byte)MessageConvention.reConnectCheck, new byte[] { }, false);
+                    }
+                    break;
+                case MessageConvention.reConnectCheck:
+                    if (error != ErrorType.none)
+                    {
+                        Debug.LogError(error);
+                    }
+                    else
+                    {
+                        isReconnect = int.Parse(SerializeHelper.ConvertToString(xieyi.MessageContent)) == 1 ? true : false;
+                        if (isReconnect)
+                        {
+                            ReConnectLogin();
+                        }
+                    }
+                    break;
+
+                case MessageConvention.quitRoom:
+                    QuitInfo qInfo = SerializeHelper.Deserialize<QuitInfo>(xieyi.MessageContent);
+                    if (qInfo.isQuit)
+                    {
+                        UpdateMemberHide();
+                        RoomUI.Close();
+                        HomeUI.Show();
+                        if (qInfo.userIndex != DataController.instance.MyLocateIndex)
+                        {
+                            UIManager.instance.ShowAlertTip("您被踢出房间。");
+                        }
+                    }
+                    else
+                    {
+                        if (qInfo.userIndex == qInfo.quitUnique)
+                        {
+                            UIManager.instance.ShowAlertTip("退出房间失败。");
+                        }
+                    }
+                    break;
+                case MessageConvention.updateActorState:
+                    if (error != ErrorType.none)
+                    {
+                        Debug.LogError(error);
+                    }
+                    else
+                    {
+                        CheckState(xieyi);
+                    }
+                    break;
+
+                case MessageConvention.updateModelInfo:
+                    GameModelData modelDate = SerializeHelper.Deserialize<GameModelData>(xieyi.MessageContent);
+                    SetPrepareData(modelDate);
+                    break;
+                case MessageConvention.getPreGameData:
+                    if (error != ErrorType.none)
+                    {
+                        Debug.LogError(error);
+                    }
+                    else
+                    {
+                        Debug.Log("验证本客户端收到游戏前准备数据。客户端响应已收到:" + xieyi.MessageContentLength);
+                        SendState(RoomActorState.WaitForStart);
+                    }
+                    break;
+                case MessageConvention.startGaming:
+                    if (error != ErrorType.none)
+                    {
+                        Debug.LogError(error);
+                    }
+                    else
+                    {
+                        StartGaming();
+                    }
+                    break;
+                case MessageConvention.timeCheck:
+                    ProofreadTime timeCheck = SerializeHelper.Deserialize<ProofreadTime>(xieyi.MessageContent);
+                    if (timeCheck.IsNeedCheck)//服务器强制客户端重新校对时间
+                    {
+                        timeCheck.UnityRealTime = Time.realtimeSinceStartup;
+                        GameManager.instance.CheckServerTime(timeCheck);
+                    }
+                    else
+                    {
+                        float curTime = Time.realtimeSinceStartup;
+                        float second = (curTime - timeCheck.UnityRealTime) / 2;//来回的延迟一半作为单次传输延迟
+                        int milliSecond = (int)(second * 1000);
+                        TimeSpan span = TimeSpan.FromMilliseconds(milliSecond);
+                        //client 发现 server 的数据包“提前”到达
+                        if (timeCheck.ServerTime.Subtract(DataController.instance.ServerTime).TotalMilliseconds > 0)//重新校对
+                        {
+                            Debug.LogError("超前");
+                        }
+
+                        DataController.instance.checkMarkTime = curTime;
+                        DataController.instance.ServerTime = timeCheck.ServerTime.Add(span);
+                        if (!IsInvoking(nameof(CheckServerTime)))
+                        {
+                            Invoke(nameof(CheckServerTime), 1);//延迟1秒调用一次校对
+                        }
+                        guiInfo = milliSecond + "ms\n" + DataController.instance.ServerTime.ToString("yyyy-MM-dd HH:mm:ss.fff");
+                    }
+                    break;
+                case MessageConvention.endGaming:
+                    if (error != ErrorType.none)
+                    {
+                        Debug.LogError(error);
+                    }
+                    else
+                    {
+                        EndGaming(xieyi);
+                    }
+                    break;
+            }
         }
     }
 
+    string guiInfo = "";
+    //public void OnGUI()
+    //{
+    //    if (DataController.instance.MyRoomInfo != null && DataController.instance.MyRoomInfo.ActorList != null)
+    //    {
+    //        guiInfo = frameIndex + "/" + DataController.instance.MyRoomInfo.FrameIndex;
+    //        int length = (DataController.instance.MyRoomInfo.FrameIndex - frameIndex);
+    //        guiInfo = guiInfo + " = " + length;
+    //
+    //        GUIStyle bb = new GUIStyle();
+    //        bb.normal.background = null;    //这是设置背景填充的
+    //        bb.normal.textColor = Color.blue;   //设置字体颜色的
+    //        bb.fontSize = 40;       //当然，这是字体大小
+    //        GUI.Label(new Rect(0, 0, 200, 200), guiInfo, bb);
+    //    }
+    //}
+    public void OnGUI()
+    {
 
-
+        GUIStyle bb = new GUIStyle();
+        bb.normal.background = null;    //这是设置背景填充的
+        bb.normal.textColor = Color.blue;   //设置字体颜色的
+        bb.fontSize = 40;       //当然，这是字体大小
+        GUI.Label(new Rect(Screen.width / 2 - 100, 0, 200, 200), guiInfo, bb);
+    }
 }

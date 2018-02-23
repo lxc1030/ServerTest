@@ -71,8 +71,19 @@ public class MyJoystickManager : MonoBehaviour
         UIMove(0, 0, 0, 0);
     }
 
+    private float moveTime;
+
     private void UIMove(float x, float y, float z, float speed)
     {
+        float curTime = Time.realtimeSinceStartup;
+        if (moveTime == 0)
+        {
+            moveTime = curTime;
+        }
+        float time = curTime - moveTime;
+        Debug.LogError("差距时间:" + time);
+        moveTime = curTime;
+        //
         Vector3 direction = new Vector3(x, y, z);
         speed = GameManager.myActorMoveSpeed * speed;
         GameManager.instance.GetMyControl().UIMove(direction, speed);

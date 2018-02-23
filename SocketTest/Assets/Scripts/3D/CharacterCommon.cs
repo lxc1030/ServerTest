@@ -42,8 +42,6 @@ public class CharacterCommon : MonoBehaviour
     public GameObject shootDirection;
 
 
-
-
     void Start()
     {
         cc = GetComponentInChildren<CharacterController>();
@@ -55,6 +53,7 @@ public class CharacterCommon : MonoBehaviour
         myIndex = index;
         SetDirectionEnable(false);
         ShowKill(0);
+        FrameManager.ListenDelegate(true, DoMove);
     }
     public void SetDirectionEnable(bool isShow)
     {
@@ -198,7 +197,22 @@ public class CharacterCommon : MonoBehaviour
             BeStop();
             return;
         }
-        CharacterMove(lastMoveDirection.direction, lastMoveDirection.speed, Time.fixedDeltaTime);
+        if (myIndex != DataController.instance.MyLocateIndex)
+        {
+            DoMove();
+        }
+    }
+
+    private void DoMove()
+    {
+        CharacterMove(lastMoveDirection.direction, lastMoveDirection.speed, Time.deltaTime);
+    }
+    private void CharacterMove(NetVector3 direction, float speed, float time)
+    {
+        Vector3 fixG = SerializeHelper.BackVector(direction) * speed * time;
+        fixG = new Vector3(fixG.x, 0, fixG.z);
+        fixG.y = -GameManager.gravity;
+        myControl.Move(fixG);
     }
 
     #region MyControl
@@ -242,13 +256,7 @@ public class CharacterCommon : MonoBehaviour
         byte[] sendData = SerializeHelper.Serialize<ActorMoveDirection>(tempMove);
         SocketManager.instance.SendSave((byte)MessageConvention.moveDirection, sendData, false);
     }
-    private void CharacterMove(NetVector3 direction, float speed, float time)
-    {
-        Vector3 fixG = SerializeHelper.BackVector(direction) * speed * time;
-        fixG = new Vector3(fixG.x, 0, fixG.z);
-        fixG.y = -GameManager.gravity;
-        myControl.Move(fixG);
-    }
+  
 
 
 

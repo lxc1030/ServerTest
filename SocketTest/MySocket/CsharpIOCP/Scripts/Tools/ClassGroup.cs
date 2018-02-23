@@ -77,6 +77,7 @@ public enum MessageConvention
     updateModelInfo,//发送玩家坐标，旋转和动画当前值
     getPreGameData,
     startGaming,
+    timeCheck,//校验客户端和服务器的时间
     shootBullet,
     bulletInfo,
     endGaming,

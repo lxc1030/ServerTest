@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading;
+using UnityEngine;
 
 [ProtoBuf.ProtoContract]
 public class RoomActor// 因為要多記錄加入房間時間的屬性，因此用繼承的方式建立房間用的會員類別
@@ -35,7 +36,7 @@ public class RoomActor// 因為要多記錄加入房間時間的屬性，因此�
         RoomID = roomID;
         UniqueID = uniqueID;                    //记录加入此房间的站位
         MyTeam = myTeam;
-        
+
         MyModelInfo = new GameModelData()
         {
             userIndex = uniqueID
@@ -88,6 +89,34 @@ public class RoomActor// 因為要多記錄加入房間時間的屬性，因此�
     public static int InvincibleLastTime = 2000;
     public Timer timerInvincible { get; set; }
     #endregion
-    public GameModelData MyModelInfo { get; set; }//模型的相关属性
+
+    private GameModelData myModelInfo;
+    public GameModelData MyModelInfo
+    {
+        get
+        {
+            return myModelInfo;
+        }
+        set
+        {
+            if (myModelInfo == null)
+            {
+                myModelInfo = value;
+                return;
+            }
+            lock (myModelInfo)
+            {
+                myModelInfo = value;
+            }
+            if (InfoChange != null)
+            {
+                InfoChange();
+            }
+        }
+    }//模型的相关属性
+
+  public Action InfoChange { get; set; }
+
 
 }
+

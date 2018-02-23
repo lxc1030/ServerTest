@@ -34,7 +34,7 @@ public class SocketManager : MonoBehaviour
     // Signals a connection.
     private static AutoResetEvent autoConnectEvent = new AutoResetEvent(false);
 
-
+  
     public DateTime startGamTime;
 
     /// <summary>
@@ -279,9 +279,9 @@ public class SocketManager : MonoBehaviour
                 }
                 else
                 {
-                    object[] all = new object[] { userToken, xieyi };
-                    ThreadPool.QueueUserWorkItem(new WaitCallback(XieYiThrd), all);
-                    //DealXieYi(xieyi, userToken);
+                    DealXieYi(xieyi, userToken);
+                    //object[] all = new object[] { userToken, xieyi };
+                    //ThreadPool.QueueUserWorkItem(new WaitCallback(XieYiThrd), all);
                 }
             }
         }
@@ -624,6 +624,8 @@ public class SocketManager : MonoBehaviour
                     startGamTime = DateTime.Parse(time);
                     DataController.instance.MyRoomInfo.CurState = RoomActorState.Gaming;
                     break;
+                case MessageConvention.timeCheck:
+                    break;
                 case MessageConvention.shootBullet:
                     break;
                 case MessageConvention.bulletInfo:
@@ -755,6 +757,7 @@ public class SocketManager : MonoBehaviour
             case SocketError.Success:
                 info = "连接服务器成功。";
                 SendLogin();
+                GameManager.instance.CheckServerTime();
                 break;
             case SocketError.ConnectionRefused:
                 info = "服务器主动拒绝本次请求。";

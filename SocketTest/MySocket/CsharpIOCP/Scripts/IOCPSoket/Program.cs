@@ -11,6 +11,7 @@ class Program
         LogManager.Init();//清除Log文件夹
         SqlManager.Init();
         ServerDataManager.Init();
+        //ModelCollision.Init();
         new AsyncIOCPServer(IP, portNo, 30000);
         while (true)
         {

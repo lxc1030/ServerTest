@@ -55,10 +55,21 @@ public class RoomInfo
     /// </summary>
     public static int frameTime = 15;//是毫秒，检测间隔0.015s
 
+    /// <summary>
+    /// 开始游戏时的标记的服务器时间
+    /// </summary>
+    public static string CurrentTime
+    {
+        get { return DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff"); }
+    }
 
+    /// <summary>
+    /// 校对客户端和服务器的时间
+    /// </summary>
+    public void ProofreadTime()
+    {
 
-
-
+    }
 
 
 
