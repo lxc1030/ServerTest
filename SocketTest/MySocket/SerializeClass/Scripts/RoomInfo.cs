@@ -58,10 +58,8 @@ public class RoomInfo
     /// <summary>
     /// 开始游戏时的标记的服务器时间
     /// </summary>
-    public static string CurrentTime
-    {
-        get { return DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff"); }
-    }
+    public DateTime GameStartTime;
+   
 
     /// <summary>
     /// 校对客户端和服务器的时间

@@ -37,10 +37,10 @@ public class RoomActor// 因為要多記錄加入房間時間的屬性，因此�
         UniqueID = uniqueID;                    //记录加入此房间的站位
         MyTeam = myTeam;
 
-        MyModelInfo = new GameModelData()
-        {
-            userIndex = uniqueID
-        };
+        //MyModelInfo = new GameModelData()
+        //{
+        //    userIndex = uniqueID
+        //};
         timerDead = null;
         this.InitActor();
     }
@@ -90,6 +90,11 @@ public class RoomActor// 因為要多記錄加入房間時間的屬性，因此�
     public Timer timerInvincible { get; set; }
     #endregion
 
+
+
+    public ActorMoveDirection LastMove { get; set; }
+    public ActorRotateDirection LastRotate { get; set; }
+
     private GameModelData myModelInfo;
     public GameModelData MyModelInfo
     {
@@ -115,7 +120,7 @@ public class RoomActor// 因為要多記錄加入房間時間的屬性，因此�
         }
     }//模型的相关属性
 
-  public Action InfoChange { get; set; }
+    public Action InfoChange { get; set; }
 
 
 }

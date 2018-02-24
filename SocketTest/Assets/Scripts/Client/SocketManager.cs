@@ -34,9 +34,6 @@ public class SocketManager : MonoBehaviour
     // Signals a connection.
     private static AutoResetEvent autoConnectEvent = new AutoResetEvent(false);
 
-  
-    public DateTime startGamTime;
-
     /// <summary>
     /// 接收发送数据变量
     /// </summary>
@@ -619,9 +616,9 @@ public class SocketManager : MonoBehaviour
                     //Debug.Log("getPreGameData已收到。");
                     break;
                 case MessageConvention.startGaming:
-                    string time = SerializeHelper.ConvertToString(tempMessageContent);
+                    DateTime time = SerializeHelper.Deserialize<DateTime>(tempMessageContent);
                     Debug.Log("开始游戏时间：" + time);
-                    startGamTime = DateTime.Parse(time);
+                    DataController.instance.gameStartMarkTime = time;
                     DataController.instance.MyRoomInfo.CurState = RoomActorState.Gaming;
                     break;
                 case MessageConvention.timeCheck:
@@ -757,7 +754,7 @@ public class SocketManager : MonoBehaviour
             case SocketError.Success:
                 info = "连接服务器成功。";
                 SendLogin();
-                GameManager.instance.CheckServerTime();
+                ServerTimeManager.instance.CheckServerTime();
                 break;
             case SocketError.ConnectionRefused:
                 info = "服务器主动拒绝本次请求。";

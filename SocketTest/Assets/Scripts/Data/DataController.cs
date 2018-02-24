@@ -23,7 +23,6 @@ public class DataController : MonoBehaviour
     // Use this for initialization
     void Start()
     {
-        ServerTime = DateTime.Now;
         //FPS
         Application.targetFrameRate = 60;
     }
@@ -149,22 +148,9 @@ public class DataController : MonoBehaviour
         set { PlayerPref.SetInt("IsFristEnterGame", value ? 1 : 0); }
     }
 
-    public float checkMarkTime;
-    private DateTime serverTime = DateTime.Now;
-    public DateTime ServerTime
-    {
-        get
-        {
-            TimeSpan last = TimeSpan.FromSeconds(Time.realtimeSinceStartup - checkMarkTime);
-            return serverTime.Add(last);
-        }
-        set
-        {
-            serverTime = value;
-        }
-    }
+ 
 
-
+    public DateTime gameStartMarkTime;//开始游戏时的本地时间
 
 
 

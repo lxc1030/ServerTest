@@ -225,7 +225,7 @@ public class SingleRoom
     {
         if (ActorList[netAniamtion.userIndex] == null)
             return;
-        ActorList[netAniamtion.userIndex].MyModelInfo.animation = netAniamtion.animationIndex;
+        //ActorList[netAniamtion.userIndex].MyModelInfo.animation = netAniamtion.animationIndex;
         byte[] message = SerializeHelper.ConvertToByte(netAniamtion.GetSendInfo());
         BoardcastMessage(MessageConvention.updateActorAnimation, message, netAniamtion.userIndex);
     }
@@ -255,7 +255,7 @@ public class SingleRoom
                         break;
                     case RoomActorState.WaitForStart:
                         Log4Debug("模型未准备好的玩家准备好进入游戏了。");
-                        byte[] start = SerializeHelper.ConvertToByte(RoomInfo.CurrentTime);
+                        byte[] start = SerializeHelper.Serialize<DateTime>(RoomInfo.GameStartTime);
                         MessageXieYi xieyi = new MessageXieYi((byte)MessageConvention.startGaming, 0, start);
                         AsyncIOCPServer.instance.SendSave(UserTokenInfo[index], xieyi.ToBytes());
 
@@ -492,6 +492,16 @@ public class SingleRoom
         RoomActor actor = ActorList[moveDirection.userIndex];
         if (actor.CurState != RoomActorState.Dead)
         {
+            TimeSpan moveTime = moveDirection.runningTime - actor.LastMove.runningTime;
+            //此处需要判断是否作弊
+
+            //
+            actor.MyModelInfo.pos = moveDirection.position;
+            actor.LastMove = moveDirection;
+            //广播
+            byte[] message = SerializeHelper.Serialize<ActorMoveDirection>(actor.LastMove);
+            BoardcastMessage(MessageConvention.moveDirection, message);
+
             //room.SetRecondFrame(xieyi.ToBytes());
             //Log4Debug("站位：" + moveDirection.userIndex + " 更新了方向：" + SerializeHelper.BackVector(moveDirection.direction) + "/速度:" + moveDirection.speed);
         }
@@ -756,7 +766,7 @@ public class SingleRoom
     /// <param name="convention">广播类型</param>
     /// <param name="message">广播值</param>
     /// <param name="uniqueID">除该用户以外都广播</param>
-    private void BoardcastMessage(MessageConvention convention, byte[] message, int uniqueID = -1, byte xieyiSecond = 0)
+    private void BoardcastMessage(MessageConvention convention, byte[] message, int noCastIndex = -1, byte xieyiSecond = 0)
     {
         MessageXieYi msgXY = new MessageXieYi((byte)convention, xieyiSecond, message);
         for (int i = 0; i < ActorList.Count; i++)//逐个玩家遍历发送消息
@@ -769,7 +779,7 @@ public class SingleRoom
             {
                 continue;
             }
-            if (ActorList[i].UniqueID != uniqueID)
+            if (ActorList[i].UniqueID != noCastIndex)
             {
                 AsyncIOCPServer.instance.SendSave(UserTokenInfo[ActorList[i].UniqueID], msgXY.ToBytes());
             }
@@ -874,7 +884,8 @@ public class SingleRoom
                 //
                 FrameTimer = new Timer(new TimerCallback(GameFrameReconding), null, 0, RoomInfo.frameTime);
                 //
-                byte[] start = SerializeHelper.ConvertToByte(RoomInfo.CurrentTime);
+                RoomInfo.GameStartTime = DateTime.Now;//只有游戏开始的时候，记录一下时间
+                byte[] start = SerializeHelper.Serialize<DateTime>(RoomInfo.GameStartTime);
                 BoardcastMessage(MessageConvention.startGaming, start);
                 //发送游戏时间
                 break;

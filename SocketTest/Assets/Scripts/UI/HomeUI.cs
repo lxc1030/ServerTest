@@ -181,7 +181,7 @@ public class HomeUI : MonoBehaviour
 
     public void OnClickCheckTime()
     {
-        GameManager.instance.CheckServerTime();
+        ServerTimeManager.instance.CheckServerTime();
     }
 
     #endregion
@@ -215,7 +215,7 @@ public class HomeUI : MonoBehaviour
 
     private void Update()
     {
-        txServerTime.text = DataController.instance.ServerTime.ToString("yyyy-MM-dd HH:mm:ss.fff");
+        txServerTime.text = ServerTimeManager.instance.ServerTime.ToString("yyyy-MM-dd HH:mm:ss.fff");
         if (serverEvent.Count > 0)
         {
             MessageXieYi xieyi = serverEvent.Dequeue();

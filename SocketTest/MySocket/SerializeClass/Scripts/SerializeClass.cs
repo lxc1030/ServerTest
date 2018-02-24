@@ -124,10 +124,12 @@ public class ActorMoveDirection
     [ProtoBuf.ProtoMember(1)]
     public int userIndex;
     [ProtoBuf.ProtoMember(2)]
-    public NetVector3 position;//位置
+    public DateTime runningTime;//当前游戏运行时长
     [ProtoBuf.ProtoMember(3)]
-    public NetVector3 direction;//移动方向
+    public NetVector3 position;//位置
     [ProtoBuf.ProtoMember(4)]
+    public NetVector3 direction;//移动方向
+    [ProtoBuf.ProtoMember(5)]
     public float speed;//移动速度
 
     public ActorMoveDirection()

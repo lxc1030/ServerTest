@@ -245,6 +245,7 @@ public class CharacterCommon : MonoBehaviour
          || tempMove.speed != lastMove.speed
          )
         {
+            tempMove.runningTime = ServerTimeManager.instance.ServerTime;
             lastMove = tempMove;
             //发送信息
             SendMoveData(tempMove);
