@@ -35,7 +35,8 @@ public class ServerDataManager
         SingleRoom room = null;
         Register login = null;
         RoomActorUpdate roomActorUpdate = null;
-        ActorMoveDirection moveDirection = null;
+        ActorMoveDirection move = null;
+        ActorRotateDirection rotation = null;
         if (userToken == null)
         {
             Log4Debug("该用户已被清理，不处理接收数据。");
@@ -148,15 +149,16 @@ public class ServerDataManager
                     tempMessageContent = xieyi.MessageContent;
                     string shootIndex = SerializeHelper.ConvertToString(tempMessageContent);
                     //
-                    room.SetRecondFrame(xieyi.ToBytes());
+                    //room.SetRecondFrame(xieyi.ToBytes());
+                    //room.Cast_Shoot();
                     break;
                 case MessageConvention.bulletInfo:
                     tempMessageContent = xieyi.MessageContent;
                     BulletInfo bulletInfo = SerializeHelper.Deserialize<BulletInfo>(tempMessageContent);
                     //Log4Debug("bulletIndex:" + bulletInfo.userIndex + "->" + bulletInfo.shootTag + "/" + bulletInfo.shootInfo);
                     //
-                    room.UpdateBulletInfo(bulletInfo);//更新
-                    room.SetRecondFrame(xieyi.ToBytes());
+                    room.Cast_BulletInfo(bulletInfo);//更新
+                    //room.SetRecondFrame(xieyi.ToBytes());
                     break;
                 case MessageConvention.prepareLocalModel:
                     tempMessageContent = xieyi.MessageContent;
@@ -185,21 +187,25 @@ public class ServerDataManager
                     break;
                 case MessageConvention.moveDirection:
                     tempMessageContent = xieyi.MessageContent;
-                    moveDirection = SerializeHelper.Deserialize<ActorMoveDirection>(tempMessageContent);
-                    room.UpdateMove(moveDirection);
+                    move = SerializeHelper.Deserialize<ActorMoveDirection>(tempMessageContent);
+                    //room.SetRecondFrame(xieyi.ToBytes());
+                    Log4Debug(SerializeHelper.BackVector(move.position) + ",坐标");
+                    room.Cast_Move(move);
                     break;
                 case MessageConvention.rotateDirection:
                     tempMessageContent = xieyi.MessageContent;
-                    ActorRotateDirection netRotation = SerializeHelper.Deserialize<ActorRotateDirection>(tempMessageContent);
-                    if (room.ActorList[netRotation.userIndex].CurState != RoomActorState.Dead)
-                    {
-                        room.SetRecondFrame(xieyi.ToBytes());
-                        //Log4Debug("站位：" + netRotation.userIndex + " 更新了旋转：" + netRotation.rotateY);
-                    }
-                    else
-                    {
-                        Log4Debug("死亡用户不更新旋转。");
-                    }
+                    rotation = SerializeHelper.Deserialize<ActorRotateDirection>(tempMessageContent);
+                    room.Cast_Rotate(rotation);
+
+                    //if (room.ActorList[netRotation.userIndex].CurState != RoomActorState.Dead)
+                    //{
+                    //    room.SetRecondFrame(xieyi.ToBytes());
+                    //    //Log4Debug("站位：" + netRotation.userIndex + " 更新了旋转：" + netRotation.rotateY);
+                    //}
+                    //else
+                    //{
+                    //    Log4Debug("死亡用户不更新旋转。");
+                    //}
                     break;
                 case MessageConvention.frameData:
                     tempMessageContent = xieyi.MessageContent;

@@ -124,7 +124,7 @@ public class ActorMoveDirection
     [ProtoBuf.ProtoMember(1)]
     public int userIndex;
     [ProtoBuf.ProtoMember(2)]
-    public DateTime runningTime;//当前游戏运行时长
+    public DateTime runningTime;//当前操作 客户端的服务器时间
     [ProtoBuf.ProtoMember(3)]
     public NetVector3 position;//位置
     [ProtoBuf.ProtoMember(4)]
@@ -145,6 +145,8 @@ public class ActorRotateDirection
     [ProtoBuf.ProtoMember(1)]
     public int userIndex;
     [ProtoBuf.ProtoMember(2)]
+    public DateTime runningTime;//当前操作 客户端的服务器时间
+    [ProtoBuf.ProtoMember(3)]
     public int rotateY;
 }
 

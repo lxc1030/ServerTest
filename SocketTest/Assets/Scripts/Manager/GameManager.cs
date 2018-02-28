@@ -89,6 +89,8 @@ public class GameManager : MonoBehaviour
         MessageConvention.getPreGameData,
         MessageConvention.startGaming,
         MessageConvention.endGaming,
+
+        MessageConvention.moveDirection,
     };
 
     private void Start()
@@ -180,7 +182,7 @@ public class GameManager : MonoBehaviour
     {
         return memberGroup[index];
     }
-    
+
 
     #endregion
 
@@ -607,6 +609,9 @@ public class GameManager : MonoBehaviour
     }
 
 
+
+
+
     public void UpdateMemberShoot(MessageXieYi xieyi)
     {
         BulletInfo bulletInfo = SerializeHelper.Deserialize<BulletInfo>(xieyi.MessageContent);
@@ -686,6 +691,7 @@ public class GameManager : MonoBehaviour
 
     public void Update()
     {
+        AllFrameObj();
         if (serverEvent.Count > 0)
         {
             MessageXieYi xieyi = serverEvent.Dequeue();
@@ -796,6 +802,19 @@ public class GameManager : MonoBehaviour
                         StartGaming();
                     }
                     break;
+                case MessageConvention.moveDirection:
+                    ActorMoveDirection move = SerializeHelper.Deserialize<ActorMoveDirection>(xieyi.MessageContent);
+                    CharacterCommon member = GameManager.instance.memberGroup[move.userIndex];
+                    if (move.userIndex != DataController.instance.MyLocateIndex)//其他成员
+                    {
+                        member.SetPosition(SerializeHelper.BackVector(move.position));
+                        member.lastMoveDirection = move;
+                    }
+                    else//自身--检测是否超长
+                    {
+
+                    }
+                    break;
                 case MessageConvention.endGaming:
                     if (error != ErrorType.none)
                     {
@@ -805,6 +824,9 @@ public class GameManager : MonoBehaviour
                     {
                         EndGaming(xieyi);
                     }
+                    break;
+                default:
+                    Debug.LogError("收到未知协议：" + (MessageConvention)xieyi.XieYiFirstFlag);
                     break;
             }
         }
@@ -826,5 +848,5 @@ public class GameManager : MonoBehaviour
     //        GUI.Label(new Rect(0, 0, 200, 200), guiInfo, bb);
     //    }
     //}
-   
+
 }

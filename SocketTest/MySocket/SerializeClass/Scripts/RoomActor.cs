@@ -36,11 +36,7 @@ public class RoomActor// 因為要多記錄加入房間時間的屬性，因此�
         RoomID = roomID;
         UniqueID = uniqueID;                    //记录加入此房间的站位
         MyTeam = myTeam;
-
-        //MyModelInfo = new GameModelData()
-        //{
-        //    userIndex = uniqueID
-        //};
+        
         timerDead = null;
         this.InitActor();
     }
@@ -52,6 +48,18 @@ public class RoomActor// 因為要多記錄加入房間時間的屬性，因此�
     {
         KillCount = 0;
         CurState = RoomActorState.NoReady;
+        MyModelInfo = new GameModelData()
+        {
+            userIndex = UniqueID
+        };
+        LastMove = new ActorMoveDirection()
+        {
+            userIndex = UniqueID
+        };
+        LastRotate = new ActorRotateDirection()
+        {
+            userIndex = UniqueID
+        };
     }
     /// <summary>
     /// 登录的时候保存用户信息

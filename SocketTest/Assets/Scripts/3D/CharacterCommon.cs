@@ -236,6 +236,7 @@ public class CharacterCommon : MonoBehaviour
         ActorMoveDirection tempMove = new ActorMoveDirection()
         {
             userIndex = DataController.instance.MyLocateIndex,
+            position = new NetVector3(transform.position.x, transform.position.y, transform.position.z),
             direction = new NetVector3(x, y, z),
             speed = _speed
         };
@@ -247,8 +248,10 @@ public class CharacterCommon : MonoBehaviour
         {
             tempMove.runningTime = ServerTimeManager.instance.ServerTime;
             lastMove = tempMove;
+
             //发送信息
             SendMoveData(tempMove);
+            //移动
         }
     }
 
@@ -257,7 +260,7 @@ public class CharacterCommon : MonoBehaviour
         byte[] sendData = SerializeHelper.Serialize<ActorMoveDirection>(tempMove);
         SocketManager.instance.SendSave((byte)MessageConvention.moveDirection, sendData, false);
     }
-  
+
 
 
 
