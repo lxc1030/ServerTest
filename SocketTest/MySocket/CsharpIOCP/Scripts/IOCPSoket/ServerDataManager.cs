@@ -195,17 +195,9 @@ public class ServerDataManager
                 case MessageConvention.rotateDirection:
                     tempMessageContent = xieyi.MessageContent;
                     rotation = SerializeHelper.Deserialize<ActorRotateDirection>(tempMessageContent);
+                    //room.SetRecondFrame(xieyi.ToBytes());  
+                    Log4Debug(rotation.rotateY + ",旋转");
                     room.Cast_Rotate(rotation);
-
-                    //if (room.ActorList[netRotation.userIndex].CurState != RoomActorState.Dead)
-                    //{
-                    //    room.SetRecondFrame(xieyi.ToBytes());
-                    //    //Log4Debug("站位：" + netRotation.userIndex + " 更新了旋转：" + netRotation.rotateY);
-                    //}
-                    //else
-                    //{
-                    //    Log4Debug("死亡用户不更新旋转。");
-                    //}
                     break;
                 case MessageConvention.frameData:
                     tempMessageContent = xieyi.MessageContent;

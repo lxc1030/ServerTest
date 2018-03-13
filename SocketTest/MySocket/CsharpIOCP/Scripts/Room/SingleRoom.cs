@@ -487,6 +487,9 @@ public class SingleRoom
             GetRoommateNetData(roomActorUpdate.userIndex, userToken);
         }
     }
+    
+
+
     public void Cast_Move(ActorMoveDirection moveDirection)
     {
         RoomActor actor = ActorList[moveDirection.userIndex];
@@ -541,28 +544,28 @@ public class SingleRoom
     /// </summary>
     /// <param name="message"></param>
     /// <param name="index">保存在指定帧内</param>
-    //public void SetRecondFrame(byte[] message)
-    //{
-    //    int curIndex = RoomInfo.FrameIndex;
-    //    if (curIndex >= FrameCount)
-    //    {
-    //        return;
-    //    }
-    //    if (message == null)
-    //    {
-    //        Log4Debug("检查为什么存值为null");
-    //        return;
-    //    }
+    public void SetRecondFrame(byte[] message)
+    {
+        int curIndex = RoomInfo.FrameIndex;
+        if (curIndex >= FrameCount)
+        {
+            return;
+        }
+        if (message == null)
+        {
+            Log4Debug("检查为什么存值为null");
+            return;
+        }
 
-    //    //Log4Debug("存储帧：" + curIndex);
-    //    if (RoomInfo.CurState == RoomActorState.Gaming)
-    //    {
-    //        lock (FrameGroup[curIndex].frameData)
-    //        {
-    //            FrameGroup[curIndex].frameData.Add(message);
-    //        }
-    //    }
-    //}
+        //Log4Debug("存储帧：" + curIndex);
+        if (RoomInfo.CurState == RoomActorState.Gaming)
+        {
+            lock (FrameGroup[curIndex].frameData)
+            {
+                FrameGroup[curIndex].frameData.Add(message);
+            }
+        }
+    }
 
     public byte[] GetBoardFrame(int start)
     {
@@ -602,12 +605,12 @@ public class SingleRoom
         {
             int tempIndex = RoomInfo.FrameIndex + 1;
             RoomInfo.FrameIndex = tempIndex;
-            //if (tempIndex % RoomInfo.frameInterval == 0)//广播前面frameInterval间隔的数据
-            //{
-            //    byte[] message = GetBoardFrame(tempIndex - RoomInfo.frameInterval, tempIndex);
-            //    BoardcastMessage(MessageConvention.frameData, message);
-            //    //Log4Debug(tempIndex + "时间：" + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff") + " 长度：" + message.Length);
-            //}
+            if (tempIndex % RoomInfo.frameInterval == 0)//广播前面frameInterval间隔的数据
+            {
+                byte[] message = GetBoardFrame(tempIndex - RoomInfo.frameInterval, tempIndex);
+                //BoardcastMessage(MessageConvention.frameData, message);
+                //Log4Debug(tempIndex + "时间：" + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff") + " 长度：" + message.Length);
+            }
             if (tempIndex == FrameCount)//判断游戏是否结束。
             {
                 FrameTimer.Dispose();
