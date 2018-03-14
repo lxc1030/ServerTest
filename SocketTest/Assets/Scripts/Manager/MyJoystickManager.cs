@@ -99,13 +99,15 @@ public class MyJoystickManager : MonoBehaviour
             return;
         GameManager.instance.GetMyControl().SetDirectionEnable(false);
         //
-        GameManager.instance.GetMyControl().UIRotation();
-        //
         if (!IsInvoking("RemoveShootCD"))
-        {
+        { 
             Invoke("RemoveShootCD", shootCDLimet);
             ShowShootCDAnimation();
+            //发送人物旋转
+            GameManager.instance.GetMyControl().UIRotation();
+            //发送射击
             GameManager.instance.GetMyControl().UIShot();
+            //显示子弹
             GameManager.instance.GetMyControl().ShowBullet();
         }
         else
@@ -113,7 +115,7 @@ public class MyJoystickManager : MonoBehaviour
             uiControl.cdTip.gameObject.SetActive(true);
             Color color = Color.red;
             uiControl.cdTip.color = color;
-            uiControl.cdTip.DOColor(new Color(color.r, color.g, color.b, 0), 0.2f);
+            uiControl.cdTip.DOColor(new Color(color.r, color.g, color.b, 0), 0.2f);//CD时间为0.2秒
         }
     }
 

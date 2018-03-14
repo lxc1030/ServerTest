@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
+using DG.Tweening;
 using System;
 using Newtonsoft.Json.Linq;
 /// <summary>
@@ -16,6 +17,11 @@ public class GameManager : MonoBehaviour
     public const float myActorMoveSpeed = 5;//人物移动速度
     public const float myCameraMoveSpeed = 100;
     public const float gravity = 9.8f;
+    /// <summary>
+    /// 网络位置和本地位置差距超过多少，直接瞬移到网络位置
+    /// </summary>
+    public const float distanceKeep = 2;
+
 
     public const int uiMoveIndex = 1;//ui移动用到的保留小数点位数
     public const int uiSpeedIndex = 1;//ui移动速度用到的保留小数点位数
@@ -91,6 +97,7 @@ public class GameManager : MonoBehaviour
         MessageConvention.endGaming,
 
         MessageConvention.moveDirection,
+        MessageConvention.rotateDirection,
     };
 
     private void Start()
@@ -130,7 +137,7 @@ public class GameManager : MonoBehaviour
 
     public void Init()
     {
-        FrameManager.ListenDelegate(true, DoFrameLogin);
+        //FrameManager.ListenDelegate(true, DoFrameLogin);
     }
 
     public void InitRoom()
@@ -546,10 +553,21 @@ public class GameManager : MonoBehaviour
         {
             case MessageConvention.moveDirection:
                 ActorMoveDirection moveDir = SerializeHelper.Deserialize<ActorMoveDirection>(tempMessageContent);
-
                 //Debug.LogError("玩家接收方向移动：" + messageInfo);
                 member = GameManager.instance.memberGroup[moveDir.userIndex];
-                member.SetNetDirection(moveDir);
+                if (moveDir.userIndex != DataController.instance.MyLocateIndex)
+                {
+                    //用上次移动操作到这次操作的时间，算出当前位置，并移动到该点
+
+
+                    member.SetPosition(SerializeHelper.BackVector(moveDir.position));
+                    member.SetMoveDirection(moveDir);
+                }
+                else
+                {
+                    //member.SetPosition(SerializeHelper.BackVector(moveDir.position));
+                }
+
                 break;
             case MessageConvention.rotateDirection:
                 ActorRotateDirection rotateDir = SerializeHelper.Deserialize<ActorRotateDirection>(tempMessageContent);
@@ -558,7 +576,7 @@ public class GameManager : MonoBehaviour
                 if (rotateDir.userIndex != DataController.instance.MyLocateIndex)
                 {
                     member = GameManager.instance.memberGroup[rotateDir.userIndex];
-                    member.SetNetDirection(rotateDir);
+                    member.SetRotateDirection(rotateDir);
                 }
                 break;
             case MessageConvention.shootBullet:
@@ -634,7 +652,6 @@ public class GameManager : MonoBehaviour
 
     #endregion
 
-
     public void FixedUpdate()
     {
         if (isOnFrame)
@@ -689,9 +706,19 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    private float AccumilatedTime = 0f;
     public void Update()
     {
         AllFrameObj();
+        ////Basically same logic as FixedUpdate, but we can scale it by adjusting FrameLength   
+        //AccumilatedTime = AccumilatedTime + Time.deltaTime;
+        ////in case the FPS is too slow, we may need to update the game multiple times a frame   
+        //while (AccumilatedTime > DataController.FrameFixedTime && isOnFrame)
+        //{
+        //    DoFrameLogin();
+        //    AccumilatedTime = AccumilatedTime - DataController.FrameFixedTime;
+        //}
+        //
         if (serverEvent.Count > 0)
         {
             MessageXieYi xieyi = serverEvent.Dequeue();
@@ -700,6 +727,7 @@ public class GameManager : MonoBehaviour
                 Debug.LogError("有事件操作的协议为空？");
                 return;
             }
+            CharacterCommon member = null;
 
             ErrorType error = ClassGroup.CheckIsError(xieyi);
 
@@ -804,16 +832,36 @@ public class GameManager : MonoBehaviour
                     break;
                 case MessageConvention.moveDirection:
                     ActorMoveDirection move = SerializeHelper.Deserialize<ActorMoveDirection>(xieyi.MessageContent);
-                    CharacterCommon member = GameManager.instance.memberGroup[move.userIndex];
-                    if (move.userIndex != DataController.instance.MyLocateIndex)//其他成员
+                    member = GameManager.instance.memberGroup[move.userIndex];
+                    Vector3 position = SerializeHelper.BackVector(move.position);
+
+                    if (Vector3.Distance(position, member.transform.position) > distanceKeep)//超过限定区域
                     {
-                        member.SetPosition(SerializeHelper.BackVector(move.position));
+                        Debug.LogError("超过限定区域");
+                        member.SetPosition(position);
                         member.lastMoveDirection = move;
                     }
-                    else//自身--检测是否超长
+                    else//平滑移动
                     {
-
+                        if (move.userIndex != DataController.instance.MyLocateIndex)//其他成员
+                        {
+                            float passTime = (int)ServerTimeManager.instance.ServerTime.Subtract(move.runningTime).TotalSeconds;
+                            if (passTime < 0)
+                            {
+                                Debug.LogError("收到了未来的移动数据。");
+                                return;
+                            }
+                            Vector3 moveDistance = SerializeHelper.BackVector(move.direction) * move.speed * passTime;
+                            member.transform.DOMove(position + moveDistance, Time.deltaTime);
+                            //member.SetPosition(position);
+                            member.lastMoveDirection = move;
+                        }
                     }
+                    break;
+                case MessageConvention.rotateDirection:
+                    ActorRotateDirection rotate = SerializeHelper.Deserialize<ActorRotateDirection>(xieyi.MessageContent);
+                    member = GameManager.instance.memberGroup[rotate.userIndex];
+                    member.myModel.DORotate(new Vector3(0, rotate.rotateY, 0), 0.2f);
                     break;
                 case MessageConvention.endGaming:
                     if (error != ErrorType.none)

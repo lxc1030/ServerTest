@@ -576,9 +576,6 @@ public class SocketManager : MonoBehaviour
                     }
                     Debug.Log("得到房间人物列表。");
                     break;
-                case MessageConvention.rotateDirection:
-
-                    break;
                 case MessageConvention.updateActorAnimation:
                     messageInfo = SerializeHelper.ConvertToString(xieyi.MessageContent);
                     ActorNetAnimation getNetAnimation = new ActorNetAnimation();
@@ -632,7 +629,8 @@ public class SocketManager : MonoBehaviour
                     Debug.Log("胜利队伍是：" + (TeamType)int.Parse(messageInfo));
                     break;
                 case MessageConvention.moveDirection://GameManager中处理帧同步相应协议
-
+                    break;
+                case MessageConvention.rotateDirection:
                     break;
                 case MessageConvention.frameData:
                     List<FrameInfo> fInfos = null;

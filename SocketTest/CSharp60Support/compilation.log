@@ -1,5 +1,5 @@
 ********************************************************************************
-*                   Wednesday, February 28, 2018 5:37:41 PM                    *
+*                     Wednesday, March 14, 2018 9:11:49 AM                     *
 ********************************************************************************
 CSharpCompilerWrapper.exe version: 2.0.3.30
 Platform: Windows
@@ -12,40 +12,11 @@ Compiler: Microsoft C# 6.0
 - Compilation -----------------------------------------------
 
 Process: E:\MyGit\ServerTest\SocketTest\CSharp60Support\Roslyn\csc.exe
-Arguments: -nostdlib+ -noconfig -nologo -r:"D:\Unity5.6.1\Unity\Editor\Data\MonoBleedingEdge\lib\mono\2.0-api\mscorlib.dll" -r:"D:\Unity5.6.1\Unity\Editor\Data\MonoBleedingEdge\lib\mono\2.0-api\System.dll" -r:"D:\Unity5.6.1\Unity\Editor\Data\MonoBleedingEdge\lib\mono\2.0-api\System.Core.dll" -r:"D:\Unity5.6.1\Unity\Editor\Data\MonoBleedingEdge\lib\mono\2.0-api\System.Xml.dll" @Temp/UnityTempFile-cb3cd924bb172414685f8e2d80cdbba2 
-Exit code: 0
-Elapsed time: 1.02 sec
+Arguments: -nostdlib+ -noconfig -nologo -r:"D:\Unity5.6.1\Unity\Editor\Data\MonoBleedingEdge\lib\mono\2.0-api\mscorlib.dll" -r:"D:\Unity5.6.1\Unity\Editor\Data\MonoBleedingEdge\lib\mono\2.0-api\System.dll" -r:"D:\Unity5.6.1\Unity\Editor\Data\MonoBleedingEdge\lib\mono\2.0-api\System.Core.dll" -r:"D:\Unity5.6.1\Unity\Editor\Data\MonoBleedingEdge\lib\mono\2.0-api\System.Xml.dll" @Temp/UnityTempFile-ffca75ef8d6448d488b9c6a24f068c92 
+Exit code: 1
+Elapsed time: 1.88 sec
 
 - Compiler output (0 lines):
 
-- Compiler errors (21 lines):
-0: Assets\EasyTouchBundle\EasyTouch\Examples\4.X\LoadExamples.cs(9,3): warning CS0618: 'Application.LoadLevel(string)' is obsolete: 'Use SceneManager.LoadScene'
-1: Assets\EasyTouchBundle\EasyTouchControls\Examples\Version 1.X\LoadLevelScript.cs(13,3): warning CS0618: 'Application.LoadLevel(string)' is obsolete: 'Use SceneManager.LoadScene'
-2: Assets\EasyTouchBundle\EasyTouchControls\Examples\Version 1.X\LoadLevelScript.cs(21,3): warning CS0618: 'Application.LoadLevel(string)' is obsolete: 'Use SceneManager.LoadScene'
-3: Assets\EasyTouchBundle\EasyTouchControls\Examples\Version 1.X\LoadLevelScript.cs(29,3): warning CS0618: 'Application.LoadLevel(string)' is obsolete: 'Use SceneManager.LoadScene'
-4: Assets\EasyTouchBundle\EasyTouchControls\Examples\Version 1.X\LoadLevelScript.cs(37,3): warning CS0618: 'Application.LoadLevel(string)' is obsolete: 'Use SceneManager.LoadScene'
-5: Assets\EasyTouchBundle\EasyTouchControls\Examples\Version 1.X\LoadLevelScript.cs(45,3): warning CS0618: 'Application.LoadLevel(string)' is obsolete: 'Use SceneManager.LoadScene'
-6: Assets\EasyTouchBundle\EasyTouchControls\Examples\Version 1.X\LoadLevelScript.cs(53,3): warning CS0618: 'Application.LoadLevel(string)' is obsolete: 'Use SceneManager.LoadScene'
-7: Assets\EasyTouchBundle\EasyTouchControls\Examples\Version 1.X\LoadLevelScript.cs(61,3): warning CS0618: 'Application.LoadLevel(string)' is obsolete: 'Use SceneManager.LoadScene'
-8: Assets\EasyTouchBundle\EasyTouchControls\Examples\Version 1.X\LoadLevelScript.cs(69,3): warning CS0618: 'Application.LoadLevel(string)' is obsolete: 'Use SceneManager.LoadScene'
-9: Assets\EasyTouchBundle\EasyTouchControls\Examples\Version 1.X\LoadLevelScript.cs(77,3): warning CS0618: 'Application.LoadLevel(string)' is obsolete: 'Use SceneManager.LoadScene'
-10: Assets\EasyTouchBundle\EasyTouchControls\Examples\Version 1.X\LoadLevelScript.cs(85,3): warning CS0618: 'Application.LoadLevel(string)' is obsolete: 'Use SceneManager.LoadScene'
-11: Assets\Scripts\Client\SocketManager.cs(357,26): warning CS0168: The variable 'e' is declared but never used
-12: Assets\Scripts\Manager\GameManager.cs(542,16): warning CS0219: The variable 'messageInfo' is assigned but its value is never used
-13: Assets\Scripts\Manager\GameManager.cs(12,27): warning CS0414: The field 'GameManager.XMLName' is assigned but its value is never used
-14: Assets\Scripts\Client\HttpClient.cs(70,20): warning CS0414: The field 'HttpClient.myRequest' is assigned but its value is never used
-15: Assets\Scripts\Manager\GameManager.cs(47,17): warning CS0414: The field 'GameManager.reConnectSpan' is assigned but its value is never used
-16: Assets\Scripts\uMeng\Analytics.cs(25,15): warning CS0414: The field 'Analytics.hasInit' is assigned but its value is never used
-17: Assets\Scripts\Data\DataController.cs(119,27): warning CS0414: The field 'DataController.XMLName' is assigned but its value is never used
-18: Assets\Scripts\Client\HttpClient.cs(72,12): warning CS0414: The field 'HttpClient.url' is assigned but its value is never used
-19: Assets\Scripts\Client\HttpClient.cs(71,14): warning CS0414: The field 'HttpClient.encode' is assigned but its value is never used
-20: Assets\Scripts\Manager\GameManager.cs(835,12): warning CS0414: The field 'GameManager.guiInfo' is assigned but its value is never used
-
-- PDB to MDB conversion --------------------------------------
-
-Process: E:\MyGit\ServerTest\SocketTest\CSharp60Support\Roslyn\pdb2mdb.exe
-Arguments: Temp\Assembly-CSharp.dll
-Exit code: 0
-Elapsed time: 0.08 sec
-
-- pdb2mdb.exe output (0 lines):
+- Compiler errors (1 line):
+0: Assets\Scripts\3D\CharacterCommon.cs(336,10): error CS1002: ; expected

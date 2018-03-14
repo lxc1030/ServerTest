@@ -1,4 +1,5 @@
-﻿using System;
+﻿using DG.Tweening;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -42,6 +43,8 @@ public class CharacterCommon : MonoBehaviour
     public GameObject shootDirection;
 
 
+
+
     void Start()
     {
         cc = GetComponentInChildren<CharacterController>();
@@ -53,7 +56,9 @@ public class CharacterCommon : MonoBehaviour
         myIndex = index;
         SetDirectionEnable(false);
         ShowKill(0);
-        FrameManager.ListenDelegate(true, DoMove);
+        ShowCharacterControl();
+
+        //FrameManager.ListenDelegate(true, DoMove);
     }
     public void SetDirectionEnable(bool isShow)
     {
@@ -130,6 +135,20 @@ public class CharacterCommon : MonoBehaviour
         BulletGrity b = obj.GetComponent<BulletGrity>();
         b.Init(isTrigger, shootMuzzle.position);
     }
+    public void ShowCharacterControl()
+    {
+        return;
+        if (myIndex == DataController.instance.MyLocateIndex)
+        {
+            myControl.enabled = true;
+        }
+        else
+        {
+            myControl.enabled = false;
+        }
+    }
+
+
     public void BeShoot()
     {
         Debug.Log("播放死亡动画，设置到初始位置.");
@@ -175,12 +194,12 @@ public class CharacterCommon : MonoBehaviour
     /// 外部修改移动方向
     /// </summary>
     /// <param name="dir"></param>
-    public void SetNetDirection(ActorMoveDirection dir)
+    public void SetMoveDirection(ActorMoveDirection dir)
     {
         lastMoveDirection = dir;
     }
 
-    public void SetNetDirection(ActorRotateDirection dir)
+    public void SetRotateDirection(ActorRotateDirection dir)
     {
         lastRotateDirection = dir;
         SetRotate(new Vector3(0, lastRotateDirection.rotateY, 0));//单纯的设置旋转方向就行了
@@ -212,7 +231,10 @@ public class CharacterCommon : MonoBehaviour
         Vector3 fixG = SerializeHelper.BackVector(direction) * speed * time;
         fixG = new Vector3(fixG.x, 0, fixG.z);
         fixG.y = -GameManager.gravity;
-        myControl.Move(fixG);
+        //if (myIndex == DataController.instance.MyLocateIndex)
+        {
+            myControl.Move(fixG);
+        }
     }
 
     #region MyControl
@@ -250,9 +272,10 @@ public class CharacterCommon : MonoBehaviour
             lastMove = tempMove;
 
             //发送信息
-            SendMoveData(tempMove);
-            //移动
+            SendMoveData(lastMove);
         }
+        //移动
+        CharacterMove(lastMove.direction, lastMove.speed, Time.deltaTime);
     }
 
     private void SendMoveData(ActorMoveDirection tempMove)
@@ -295,7 +318,23 @@ public class CharacterCommon : MonoBehaviour
         {
             return;
         }
-        int userIndex = DataController.instance.MyLocateIndex;
+        Vector3 pos = shootMuzzle.position;
+
+        int moveIndex = GameManager.uiMoveIndex;
+        float x = (float)Math.Round(pos.x, moveIndex);
+        float y = (float)Math.Round(pos.y, moveIndex);
+        float z = (float)Math.Round(pos.z, moveIndex);
+
+        int lookAt = (int)myModel.eulerAngles.y;
+        int rotateIndex = GameManager.uiRotateIndex;
+
+        ActorMoveDirection shootDirection = new ActorMoveDirection()
+        {
+            userIndex = DataController.instance.MyLocateIndex,
+            position = new NetVector3(x, y, z),
+             direction = new NetVector3 ()
+        }
+        
         byte[] message = SerializeHelper.ConvertToByte(userIndex + "");
         SocketManager.instance.SendSave((byte)MessageConvention.shootBullet, message, false);
     }
