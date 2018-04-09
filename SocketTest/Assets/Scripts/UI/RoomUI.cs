@@ -207,8 +207,8 @@ public class RoomUI : MonoBehaviour
     {
         uiNoReady.btnReady.SetActive(false);
         //
+        GameManager.instance.SetDataInit();
         GameManager.SendState(RoomActorState.Ready);
-        DataController.instance.FrameCanIndex = 0;
     }
     public void OnClickSetting()
     {

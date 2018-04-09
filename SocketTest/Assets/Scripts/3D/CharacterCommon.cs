@@ -1,5 +1,4 @@
-﻿using DG.Tweening;
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -16,9 +15,6 @@ public class CharacterCommon : MonoBehaviour
     /// 该模型在房间中的站位
     /// </summary>
     public int myIndex;
-
-    public ActorMoveDirection lastMoveDirection = new ActorMoveDirection();
-    public ActorRotateDirection lastRotateDirection = new ActorRotateDirection();
 
 
     private CharacterController cc;
@@ -56,10 +52,56 @@ public class CharacterCommon : MonoBehaviour
         myIndex = index;
         SetDirectionEnable(false);
         ShowKill(0);
-        ShowCharacterControl();
-
-        //FrameManager.ListenDelegate(true, DoMove);
     }
+
+
+    void OnControllerColliderHit(ControllerColliderHit hit)
+    {
+        //Rigidbody body = hit.collider.attachedRigidbody;
+        bool isSend = DataController.instance.MyLocateIndex == myIndex;
+        if (!isSend)
+        {
+            return;
+        }
+
+        GameObject obj = hit.gameObject;
+        BulletInfo bulletInfo = new BulletInfo();
+
+        switch (obj.tag)
+        {
+            case nameof(Tag.Box):
+                Box box = obj.GetComponent<Box>();
+                if (box.myInfo.ownerIndex == myIndex)//碰到自己的领地
+                {
+                    return;
+                }
+                else
+                {
+                    TeamType type = DataController.instance.ActorList[myIndex].MyTeam;
+                    box.ChangeTexture(type);
+                }
+                bulletInfo.shootTag = ShootTag.Box;
+                bulletInfo.shootInfo = box.myInfo.myIndex + "";
+                break;
+            default:
+                bulletInfo = null;
+                break;
+        }
+        if (bulletInfo != null)
+        {
+            Debug.Log("踩中：" + bulletInfo.shootTag);
+            bulletInfo.userIndex = DataController.instance.MyLocateIndex;
+            //发送
+            byte[] message = SerializeHelper.Serialize<BulletInfo>(bulletInfo);
+            //SocketManager.instance.SendSave((byte)MessageConvention.bulletInfo, message, false);
+            UDPManager.instance.SendSave((byte)MessageConvention.bulletInfo, message);
+        }
+    }
+
+
+
+
+
     public void SetDirectionEnable(bool isShow)
     {
         shootDirection.SetActive(isShow);
@@ -120,35 +162,16 @@ public class CharacterCommon : MonoBehaviour
         info.Init(this, name);
     }
 
-    public void ShowBullet()
+    public void ShowBullet(ShootInfo info)
     {
-        bool isTrigger = false;
-        if (myIndex == DataController.instance.MyLocateIndex)
-        {
-            isTrigger = true;
-        }
         GameObject obj = null;
         obj = PoolManager.instance.GetPoolObjByType(PreLoadType.Bullet, shootMuzzle);
         obj.transform.localEulerAngles = Vector3.zero;
         obj.transform.parent = GameManager.instance.transBullet;
         //
-        BulletGrity b = obj.GetComponent<BulletGrity>();
-        b.Init(isTrigger, shootMuzzle.position);
+        MagicFireball b = obj.GetComponent<MagicFireball>();
+        b.Init(info, myIndex);
     }
-    public void ShowCharacterControl()
-    {
-        return;
-        if (myIndex == DataController.instance.MyLocateIndex)
-        {
-            myControl.enabled = true;
-        }
-        else
-        {
-            myControl.enabled = false;
-        }
-    }
-
-
     public void BeShoot()
     {
         Debug.Log("播放死亡动画，设置到初始位置.");
@@ -165,8 +188,8 @@ public class CharacterCommon : MonoBehaviour
     }
     public void BeStop()
     {
-        lastMoveDirection = new ActorMoveDirection();
-        lastRotateDirection = new ActorRotateDirection();
+        netMove = new ActorMoveDirection();
+        lastMove = new ActorMoveDirection();
     }
 
     public bool IsShowHierarchy()
@@ -174,11 +197,11 @@ public class CharacterCommon : MonoBehaviour
         return gameObject.activeInHierarchy;
     }
 
-
     public void SetPosition(Vector3 pos)
     {
         transform.position = pos;
     }
+
     public void SetRotate(Vector3 rotate)
     {
         myModel.rotation = Quaternion.Euler(rotate);//单纯的设置旋转方向就行了
@@ -194,17 +217,19 @@ public class CharacterCommon : MonoBehaviour
     /// 外部修改移动方向
     /// </summary>
     /// <param name="dir"></param>
-    public void SetMoveDirection(ActorMoveDirection dir)
+    public void SetNetDirection(ActorMoveDirection dir)
     {
-        lastMoveDirection = dir;
+        float distance = Vector3.Distance(SerializeHelper.BackVector(dir.position), transform.position);
+        //Debug.LogError("相差长度：" + distance);
+        netMove = dir;
     }
 
-    public void SetRotateDirection(ActorRotateDirection dir)
+    public void SetNetDirection(ActorRotateDirection dir)
     {
-        lastRotateDirection = dir;
-        SetRotate(new Vector3(0, lastRotateDirection.rotateY, 0));//单纯的设置旋转方向就行了
+        if (myIndex == DataController.instance.MyLocateIndex)//自身在收到服务器消息之前已旋转
+            return;
+        SetRotate(new Vector3(0, dir.rotateY, 0));//单纯的设置旋转方向就行了
     }
-
 
     /// <summary>
     /// 这个是每隔0.015s运行一次
@@ -216,78 +241,71 @@ public class CharacterCommon : MonoBehaviour
             BeStop();
             return;
         }
-        if (myIndex != DataController.instance.MyLocateIndex)
-        {
-            DoMove();
-        }
+        DoMove();
     }
 
     private void DoMove()
     {
-        CharacterMove(lastMoveDirection.direction, lastMoveDirection.speed, Time.deltaTime);
+        CharacterMove();
     }
-    private void CharacterMove(NetVector3 direction, float speed, float time)
+
+    private float moveSpeed = 80;
+    private void CharacterMove()
     {
-        Vector3 fixG = SerializeHelper.BackVector(direction) * speed * time;
-        fixG = new Vector3(fixG.x, 0, fixG.z);
-        fixG.y = -GameManager.gravity;
-        //if (myIndex == DataController.instance.MyLocateIndex)
-        {
-            myControl.Move(fixG);
-        }
+        Vector3 main = transform.forward * netMove.direction.z + transform.right * netMove.direction.x;
+        myControl.SimpleMove(main * moveSpeed * netMove.speed * DataController.FrameFixedTime);
+    }
+
+    private float rotateSpeed = 100;
+    private void CharacterRotate()
+    {
+        float length = Mathf.Abs(netMove.direction.x);
+        float side = netMove.direction.x < 0 ? -1 : 1;
+        Vector3 main = Vector3.up;
+        myControl.transform.Rotate(main * side * length * rotateSpeed * DataController.FrameFixedTime);
     }
 
     #region MyControl
 
-
-    private ActorMoveDirection lastMove;
-
+    private ActorMoveDirection netMove;//服务器的值，本地用来复现移动
+    private ActorMoveDirection lastMove;//记录上一次发送给服务器的移动值
     public void UIMove(Vector3 moveDirection, float moveSpeed)
     {
         if (DataController.instance.ActorList[myIndex].CurState == RoomActorState.Dead)
         {
             return;
         }
-        int moveIndex = GameManager.uiMoveIndex;
-
-        float x = (float)Math.Round(moveDirection.x, moveIndex);
-        float y = (float)Math.Round(moveDirection.y, moveIndex);
-        float z = (float)Math.Round(moveDirection.z, moveIndex);
-        float _speed = (float)Math.Round(moveSpeed, GameManager.uiSpeedIndex);
+        NetVector3 move = DataController.BackNetLimetByType(moveDirection);
+        float _speed = DataController.BackNetLimetByType(moveSpeed);
+        NetVector3 pos = DataController.BackNetLimetByType(transform.position);
 
         ActorMoveDirection tempMove = new ActorMoveDirection()
         {
             userIndex = DataController.instance.MyLocateIndex,
-            position = new NetVector3(transform.position.x, transform.position.y, transform.position.z),
-            direction = new NetVector3(x, y, z),
+            frameIndex = GameManager.instance.frameIndex,
+            position = pos,
+            direction = move,
             speed = _speed
         };
 
-        if (lastMove == null
-         || SerializeHelper.BackVector(tempMove.direction) != SerializeHelper.BackVector(lastMove.direction)
-         || tempMove.speed != lastMove.speed
+        if (
+            lastMove == null
+            || move.x != lastMove.direction.x
+            || move.y != lastMove.direction.y
+            || move.z != lastMove.direction.z
+            || _speed != lastMove.speed
          )
         {
-            tempMove.runningTime = ServerTimeManager.instance.ServerTime;
             lastMove = tempMove;
-
-            //发送信息
-            SendMoveData(lastMove);
+            byte[] sendData = SerializeHelper.Serialize<ActorMoveDirection>(tempMove);
+            //SocketManager.instance.SendSave((byte)MessageConvention.moveDirection, sendData, false);
+            UDPManager.instance.SendSave((byte)MessageConvention.moveDirection, sendData);
         }
-        //移动
-        CharacterMove(lastMove.direction, lastMove.speed, Time.deltaTime);
     }
-
-    private void SendMoveData(ActorMoveDirection tempMove)
-    {
-        byte[] sendData = SerializeHelper.Serialize<ActorMoveDirection>(tempMove);
-        SocketManager.instance.SendSave((byte)MessageConvention.moveDirection, sendData, false);
-    }
-
-
 
 
     private ActorRotateDirection lastRotate;
+    private static int eulerLimet = 5;
     public void UIRotation()
     {
         if (DataController.instance.ActorList[myIndex].CurState == RoomActorState.Dead)
@@ -295,7 +313,7 @@ public class CharacterCommon : MonoBehaviour
             return;
         }
         int lookAt = (int)myModel.eulerAngles.y;
-        int rotateIndex = GameManager.uiRotateIndex;
+        int rotateIndex = eulerLimet;
 
         ActorRotateDirection tempRotate = new ActorRotateDirection()
         {
@@ -303,13 +321,13 @@ public class CharacterCommon : MonoBehaviour
             rotateY = lookAt
         };
 
-        byte[] sendData = SerializeHelper.Serialize<ActorRotateDirection>(tempRotate);
         if (lastRotate == null || Mathf.Abs(lookAt - lastRotate.rotateY) >= rotateIndex)
         {
             lastRotate = tempRotate;
-            SocketManager.instance.SendSave((byte)MessageConvention.rotateDirection, sendData, false);
+            byte[] sendData = SerializeHelper.Serialize<ActorRotateDirection>(tempRotate);
+            //SocketManager.instance.SendSave((byte)MessageConvention.rotateDirection, sendData, false);
+            UDPManager.instance.SendSave((byte)MessageConvention.rotateDirection, sendData);
         }
-
     }
 
     public void UIShot()
@@ -318,25 +336,16 @@ public class CharacterCommon : MonoBehaviour
         {
             return;
         }
-        Vector3 pos = shootMuzzle.position;
+        //旋转
+        ShootInfo info = new ShootInfo();
+        info.userIndex = DataController.instance.MyLocateIndex;
+        info.bulletType = 0;
+        info.position = DataController.BackNetLimetByType(shootMuzzle.position);
+        info.direction = DataController.BackNetLimetByType(myModel.eulerAngles);
 
-        int moveIndex = GameManager.uiMoveIndex;
-        float x = (float)Math.Round(pos.x, moveIndex);
-        float y = (float)Math.Round(pos.y, moveIndex);
-        float z = (float)Math.Round(pos.z, moveIndex);
-
-        int lookAt = (int)myModel.eulerAngles.y;
-        int rotateIndex = GameManager.uiRotateIndex;
-
-        ActorMoveDirection shootDirection = new ActorMoveDirection()
-        {
-            userIndex = DataController.instance.MyLocateIndex,
-            position = new NetVector3(x, y, z),
-             direction = new NetVector3 ()
-        }
-        
-        byte[] message = SerializeHelper.ConvertToByte(userIndex + "");
-        SocketManager.instance.SendSave((byte)MessageConvention.shootBullet, message, false);
+        byte[] sendData = SerializeHelper.Serialize<ShootInfo>(info);
+        //SocketManager.instance.SendSave((byte)MessageConvention.shootBullet, message, false);
+        UDPManager.instance.SendSave((byte)MessageConvention.shootBullet, sendData);
     }
 
 

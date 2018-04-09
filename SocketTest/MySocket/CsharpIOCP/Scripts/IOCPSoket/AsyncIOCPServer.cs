@@ -58,6 +58,7 @@ public class AsyncIOCPServer
         {
             maxClient = _maxClient;
             _Socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            _Socket.NoDelay = true;
             hostEndPoint = new IPEndPoint(IPAddress.Parse(IP), portNo);
             _Socket.Bind(hostEndPoint);
             _Socket.Listen(maxClient);
@@ -151,7 +152,7 @@ public class AsyncIOCPServer
             try
             {
                 accept.Dispose();
-                string sClientIP = ((IPEndPoint)s.RemoteEndPoint).Address.ToString();
+                string sClientIP = ((IPEndPoint)s.RemoteEndPoint).ToString();
                 Log4Debug(sClientIP + " Client Accept");
 
                 AsyncUserToken userToken = userTokenPool.Pop();
@@ -266,9 +267,8 @@ public class AsyncIOCPServer
                 }
                 else
                 {
-                    DealXieYi(xieyi, userToken);
-                    //object[] all = new object[] { userToken, xieyi };
-                    //ThreadPool.QueueUserWorkItem(new WaitCallback(XieYiThrd), all);
+                    object[] all = new object[] { userToken, xieyi };
+                    ThreadPool.QueueUserWorkItem(new WaitCallback(XieYiThrd), all);
                 }
             }
         }

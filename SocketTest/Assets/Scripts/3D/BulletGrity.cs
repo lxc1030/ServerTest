@@ -103,13 +103,16 @@ public class BulletGrity : MonoBehaviour
                         isSendTrigger = false;
                         break;
                 }
+                if (GameManager.instance.CurrentPlayType == FramePlayType.游戏未开始)
+                    return;
                 if (isSendTrigger)
                 {
                     Debug.Log("射中：" + bulletInfo.shootTag);
                     bulletInfo.userIndex = DataController.instance.MyLocateIndex;
                     //发送
                     byte[] message = SerializeHelper.Serialize<BulletInfo>(bulletInfo);
-                    SocketManager.instance.SendSave((byte)MessageConvention.bulletInfo, message, false);
+                    //SocketManager.instance.SendSave((byte)MessageConvention.bulletInfo, message, false);
+                    UDPManager.instance.SendSave((byte)MessageConvention.bulletInfo, message);
                 }
             }
             PoolDestory();

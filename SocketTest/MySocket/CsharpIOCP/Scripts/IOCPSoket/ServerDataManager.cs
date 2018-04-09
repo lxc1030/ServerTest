@@ -1,5 +1,4 @@
 ﻿using Newtonsoft.Json.Linq;
-using System;
 using System.Collections.Generic;
 using System.Threading;
 
@@ -25,18 +24,17 @@ public class ServerDataManager
         Log4Debug("数据处理准备就绪。");
     }
 
-    #region 处理接收来的协议拆分和判断
 
+    #region 处理接收来的协议拆分和判断
     public byte[] SelectMessage(MessageXieYi xieyi, AsyncUserToken userToken)
     {
         JObject json = null;
         byte[] newBuffer = null;
-        byte[] tempMessageContent = null;
+        byte[] tempMessageContent = xieyi.MessageContent;
         SingleRoom room = null;
         Register login = null;
         RoomActorUpdate roomActorUpdate = null;
-        ActorMoveDirection move = null;
-        ActorRotateDirection rotation = null;
+        ActorMoveDirection moveDirection = null;
         if (userToken == null)
         {
             Log4Debug("该用户已被清理，不处理接收数据。");
@@ -53,17 +51,16 @@ public class ServerDataManager
             switch ((MessageConvention)xieyi.XieYiFirstFlag)
             {
                 case MessageConvention.login:
-                    tempMessageContent = xieyi.MessageContent;
                     login = SerializeHelper.Deserialize<Register>(tempMessageContent);
                     newBuffer = Login(login, userToken);
                     break;
                 case MessageConvention.getHeartBeatTime:
-                    newBuffer = SerializeHelper.Serialize<HeartbeatTime>(new HeartbeatTime() { time = AsyncIOCPServer.HeartbeatSecondTime });
+                    HeartbeatTime hbTime = new HeartbeatTime() { time = AsyncIOCPServer.HeartbeatSecondTime };
+                    newBuffer = SerializeHelper.Serialize<HeartbeatTime>(hbTime);
                     break;
                 case MessageConvention.reConnectCheck:
                     //检查是否是掉线用户
-                    int isReconnect = 0;
-
+                    ReconnctInfo rcInfo = new ReconnctInfo();
                     if (OffLineRooms.ContainsKey(userToken.userInfo.Register.userID))
                     {
                         int roomID = OffLineRooms[userToken.userInfo.Register.userID];
@@ -73,13 +70,13 @@ public class ServerDataManager
                         {
                             OffLineRooms.Remove(userToken.userInfo.Register.userID);
                         }
-                        isReconnect = 1;
+                        rcInfo.isReconnect = true;
                     }
                     else
                     {
-                        isReconnect = 0;
+                        rcInfo.isReconnect = false;
                     }
-                    newBuffer = SerializeHelper.ConvertToByte("" + isReconnect);
+                    newBuffer = SerializeHelper.Serialize<ReconnctInfo>(rcInfo);
                     break;
                 case MessageConvention.reConnectIndex:
                     room.GetReConnectFrameData(userToken.userInfo.UniqueID);
@@ -91,7 +88,6 @@ public class ServerDataManager
                     //newBuffer = SerializeHelper.Serialize<HeartbeatTime>(new HeartbeatTime() { time = AsyncIOCPServer.HeartbeatSecondTime });
                     break;
                 case MessageConvention.updateName:
-                    tempMessageContent = xieyi.MessageContent;
                     string updateName = SerializeHelper.ConvertToString(tempMessageContent);
                     Log4Debug("修改人物信息：" + updateName);
                     newBuffer = UpdateName(userToken, updateName);
@@ -113,7 +109,6 @@ public class ServerDataManager
                     newBuffer = SerializeHelper.Serialize<RoomInfo>(room.RoomInfo);
                     break;
                 case MessageConvention.getRoommateInfo:
-                    tempMessageContent = xieyi.MessageContent;
                     Log4Debug("请求房间人物信息：" + SerializeHelper.ConvertToString(tempMessageContent));
                     roomActorUpdate = new RoomActorUpdate();
                     roomActorUpdate.SetSendInfo(SerializeHelper.ConvertToString(tempMessageContent));
@@ -121,7 +116,6 @@ public class ServerDataManager
                     newBuffer = SerializeHelper.Serialize<List<RoomActor>>(new List<RoomActor>(room.ActorList.Values));
                     break;
                 case MessageConvention.quitRoom:
-                    tempMessageContent = xieyi.MessageContent;
                     QuitInfo qInfo = SerializeHelper.Deserialize<QuitInfo>(tempMessageContent);
                     if (room != null)
                     {
@@ -129,14 +123,12 @@ public class ServerDataManager
                     }
                     break;
                 case MessageConvention.updateActorAnimation:
-                    tempMessageContent = xieyi.MessageContent;
                     ActorNetAnimation netAnimation = new ActorNetAnimation();
                     netAnimation.SetSendInfo(SerializeHelper.ConvertToString(tempMessageContent));
                     //Log4Debug("set->" + netAnimation.animationIndex + "");
                     room.UpdateAnimation(netAnimation);//更新
                     break;
                 case MessageConvention.updateActorState:
-                    tempMessageContent = xieyi.MessageContent;
                     roomActorUpdate = new RoomActorUpdate();
                     roomActorUpdate.SetSendInfo(SerializeHelper.ConvertToString(tempMessageContent));
                     Log4Debug("站位：" + userToken.userInfo.UniqueID + "/" + userToken.userInfo.Register.name
@@ -145,23 +137,7 @@ public class ServerDataManager
                     //
                     room.UpdateState(roomActorUpdate);//更新
                     break;
-                case MessageConvention.shootBullet:
-                    tempMessageContent = xieyi.MessageContent;
-                    string shootIndex = SerializeHelper.ConvertToString(tempMessageContent);
-                    //
-                    //room.SetRecondFrame(xieyi.ToBytes());
-                    //room.Cast_Shoot();
-                    break;
-                case MessageConvention.bulletInfo:
-                    tempMessageContent = xieyi.MessageContent;
-                    BulletInfo bulletInfo = SerializeHelper.Deserialize<BulletInfo>(tempMessageContent);
-                    //Log4Debug("bulletIndex:" + bulletInfo.userIndex + "->" + bulletInfo.shootTag + "/" + bulletInfo.shootInfo);
-                    //
-                    room.Cast_BulletInfo(bulletInfo);//更新
-                    //room.SetRecondFrame(xieyi.ToBytes());
-                    break;
                 case MessageConvention.prepareLocalModel:
-                    tempMessageContent = xieyi.MessageContent;
                     roomActorUpdate = new RoomActorUpdate();
                     roomActorUpdate.SetSendInfo(SerializeHelper.ConvertToString(tempMessageContent));
                     //
@@ -171,51 +147,23 @@ public class ServerDataManager
 
                     break;
                 case MessageConvention.startGaming:
-                    break;
-                case MessageConvention.timeCheck:
-                    tempMessageContent = xieyi.MessageContent;
-                    ProofreadTime timeCheck = SerializeHelper.Deserialize<ProofreadTime>(tempMessageContent);
-                    timeCheck.IsNeedCheck = false;
-                    timeCheck.ServerTime = DateTime.Now;
-                    Log4Debug(timeCheck.ClientTime.ToString("yyyy-MM-dd HH:mm:ss.fff"));
-                    Log4Debug(timeCheck.ServerTime.ToString("yyyy-MM-dd HH:mm:ss.fff"));
-                    Log4Debug("误差：" + timeCheck.ServerTime.Subtract(timeCheck.ClientTime).TotalMilliseconds);
-                    newBuffer = SerializeHelper.Serialize<ProofreadTime>(timeCheck);
+
                     break;
                 case MessageConvention.endGaming:
 
                     break;
-                case MessageConvention.moveDirection:
-                    tempMessageContent = xieyi.MessageContent;
-                    move = SerializeHelper.Deserialize<ActorMoveDirection>(tempMessageContent);
-                    //room.SetRecondFrame(xieyi.ToBytes());
-                    Log4Debug(SerializeHelper.BackVector(move.position) + ",坐标");
-                    room.Cast_Move(move);
-                    break;
-                case MessageConvention.rotateDirection:
-                    tempMessageContent = xieyi.MessageContent;
-                    rotation = SerializeHelper.Deserialize<ActorRotateDirection>(tempMessageContent);
-                    //room.SetRecondFrame(xieyi.ToBytes());  
-                    Log4Debug(rotation.rotateY + ",旋转");
-                    room.Cast_Rotate(rotation);
-                    break;
                 case MessageConvention.frameData:
-                    tempMessageContent = xieyi.MessageContent;
                     FrameInfo frame = SerializeHelper.Deserialize<FrameInfo>(tempMessageContent);
                     newBuffer = room.GetBoardFrame(frame.frameIndex);
-                    Log4Debug("用户" + userToken.userInfo.Register.name + "/请求帧数据：" + frame.frameIndex + "/" + room.RoomInfo.FrameIndex + "数据总长：" + newBuffer.Length);
+                    //Log4Debug("用户" + userToken.userInfo.Register.name + "/请求帧数据：" + frame.frameIndex + "/" + room.RoomInfo.FrameIndex + "数据总长：" + newBuffer.Length);
                     break;
-                case MessageConvention.testConnect:
-                    tempMessageContent = xieyi.MessageContent;
-                    string con = "-";
-                    //for (int i = 1; i < tempMessageContent.Length; i++)
-                    //{
-                    //    con += tempMessageContent[i] + ",";
-                    //}
-                    Log4Debug(con);
+                case MessageConvention.setUDP:
+                    UDPLogin loginUDP = SerializeHelper.Deserialize<UDPLogin>(tempMessageContent);
+                    Log4Debug("收到登录UDP账号：" + loginUDP.login);
+                    room.UpdateUDP(userToken.userInfo.UniqueID, loginUDP);
                     break;
                 default:
-                    Log4Debug("该协议是否需要判断：" + xieyi.XieYiFirstFlag);
+                    Log4Debug("TCP是否判断该协议：" + (MessageConvention)xieyi.XieYiFirstFlag);
                     break;
             }
         }
@@ -308,6 +256,7 @@ public class ServerDataManager
                     userIndex = userToken.userInfo.UniqueID,
                     update = (int)RoomActorState.Offline + ""
                 };
+                room.ClearUDP(userToken.userInfo.UniqueID);
                 room.UpdateState(roomActorUpdate);
             }
             else

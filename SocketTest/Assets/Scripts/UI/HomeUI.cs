@@ -1,6 +1,4 @@
-﻿using Newtonsoft.Json.Linq;
-using System;
-using System.Collections;
+﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -19,8 +17,6 @@ public class HomeUI : MonoBehaviour
 
     public Text txName;
     public InputField inputName;
-
-    public Text txServerTime;
 
     #region 注册Socket处理
 
@@ -178,12 +174,7 @@ public class HomeUI : MonoBehaviour
     {
         CreateRoomUI.Show(RoomControl.创建房间, GameModel.组队模式);
     }
-
-    public void OnClickCheckTime()
-    {
-        ServerTimeManager.instance.CheckServerTime();
-    }
-
+    
     #endregion
 
 
@@ -215,7 +206,6 @@ public class HomeUI : MonoBehaviour
 
     private void Update()
     {
-        txServerTime.text = ServerTimeManager.instance.ServerTime.ToString("yyyy-MM-dd HH:mm:ss.fff");
         if (serverEvent.Count > 0)
         {
             MessageXieYi xieyi = serverEvent.Dequeue();
@@ -237,4 +227,3 @@ public class HomeUI : MonoBehaviour
     }
 
 }
-

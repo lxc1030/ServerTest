@@ -130,7 +130,7 @@ public class PoolInitInfo
 }
 public enum PreLoadType
 {
-    Character,
+    //Character,
     Member,
     Bullet,
     PeopleInfo,

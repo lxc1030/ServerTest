@@ -14,8 +14,6 @@ public class Box : MonoBehaviour
     public void Init(BoxInfo info)
     {
         myInfo = info;
-        transform.position = myInfo.position;
-        transform.localScale = myInfo.scale;
         ChangeTexture(TeamType.Both);
     }
     /// <summary>

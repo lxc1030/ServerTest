@@ -61,7 +61,7 @@ public class GameLoadingUI : MonoBehaviour
     }
     public static void Close()
     {
-        UIManager.instance.HidePanel(Name);
+        UIManager.instance.HidePanel(Name, true);
         MyJoystickManager.instance.Open();
     }
 
@@ -77,7 +77,6 @@ public class GameLoadingUI : MonoBehaviour
         Common.Clear(transTeamRed);
 
         ChangeState(CheckLoading.房间信息);
-
     }
 
     private void ChangeState(CheckLoading state)
@@ -92,7 +91,7 @@ public class GameLoadingUI : MonoBehaviour
                 }
                 else
                 {
-                    ChangeState(CheckLoading.人物信息);
+                    Have_RoomInfo();
                 }
                 break;
             case CheckLoading.人物信息:
@@ -102,20 +101,58 @@ public class GameLoadingUI : MonoBehaviour
                 }
                 else
                 {
-                    GenerateUserUI();
-                    GameManager.instance.PrepareLocalModel();
+                    Have_MateInfo();
+                }
+                break;
+            case CheckLoading.注册UDP:
+                if (!UDPManager.instance.IsConnect)
+                {
+                    InvokeRepeating("MakeUDPEnable", 0, 0.1f);
+                }
+                else
+                {
+                    Have_UDPInfo();
                 }
                 break;
             case CheckLoading.取重连帧:
-                if (GameManager.instance.isReconnect)
+                if (GameManager.instance.CurrentPlayType == FramePlayType.断线重连)
                 {
-                    Debug.Log("重连时，取重连帧。");
+                    Debug.LogError("重连时，取重连帧。");
                     GameManager.GetReconnectIndex();
-                    GameManager.instance.PrepareLocalModel();
                 }
                 break;
         }
+    }
 
+    private void Have_RoomInfo()
+    {
+        ChangeState(CheckLoading.人物信息);
+    }
+    private void Have_MateInfo()
+    {
+        ChangeState(CheckLoading.注册UDP);
+    }
+    private void Have_UDPInfo()
+    {
+        GenerateUserUI();
+        GameManager.instance.PrepareLocalModel();
+        ChangeState(CheckLoading.取重连帧);
+    }
+    /// <summary>
+    /// Invoke
+    /// </summary>
+    private void MakeUDPEnable()
+    {
+        Debug.LogError("udp 连接状态:" + UDPManager.instance.IsConnect);
+        if (!UDPManager.instance.IsConnect)
+        {
+            UDPManager.instance.InitSocket();
+        }
+        else
+        {
+            CancelInvoke("MakeUDPEnable");
+            Have_UDPInfo();
+        }
     }
 
 
@@ -164,12 +201,13 @@ public class GameLoadingUI : MonoBehaviour
             MessageXieYi xieyi = serverEvent.Dequeue();
             if ((MessageConvention)xieyi.XieYiFirstFlag == MessageConvention.getRoomInfo)//房间信息
             {
-                ChangeState(CheckLoading.人物信息);
+                Have_RoomInfo();
             }
             if ((MessageConvention)xieyi.XieYiFirstFlag == MessageConvention.getRoommateInfo)//房间中人物信息
             {
-                ChangeState(CheckLoading.取重连帧);
+                Have_MateInfo();
             }
+
             if ((MessageConvention)xieyi.XieYiFirstFlag == MessageConvention.prepareLocalModel)
             {
                 RoomActorUpdate roomActorUpdate = new RoomActorUpdate();
@@ -184,6 +222,7 @@ public class GameLoadingUI : MonoBehaviour
                 }
             }
         }
+
     }
 }
 
@@ -191,5 +230,6 @@ public enum CheckLoading
 {
     房间信息,
     人物信息,
+    注册UDP,
     取重连帧,
 }

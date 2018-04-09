@@ -23,6 +23,7 @@ public class DataController : MonoBehaviour
     // Use this for initialization
     void Start()
     {
+        ServerTime = DateTime.Now;
         //FPS
         Application.targetFrameRate = 60;
     }
@@ -67,7 +68,7 @@ public class DataController : MonoBehaviour
             myRoomInfo = value;
         }
     }
-    public int FrameCanIndex = 0;//可以快进到的帧
+    public int FrameMaxIndex = 0;
     public int MyLocateIndex = -1;
 
     /// <summary>
@@ -77,6 +78,7 @@ public class DataController : MonoBehaviour
     {
         get { return (float)RoomInfo.frameTime / 1000; }
     }
+
 
 
     public const int bulletAutoDestory = 100;
@@ -148,9 +150,23 @@ public class DataController : MonoBehaviour
         set { PlayerPref.SetInt("IsFristEnterGame", value ? 1 : 0); }
     }
 
- 
 
-    public DateTime gameStartMarkTime;//开始游戏时的本地时间
+    private float CurPassedTime;
+    private float serverMarkTime;
+    private DateTime serverTime;
+
+    public DateTime ServerTime
+    {
+        get
+        {
+            return serverTime.AddSeconds(CurPassedTime - serverMarkTime);
+        }
+        set
+        {
+            serverMarkTime = CurPassedTime;
+            serverTime = value;
+        }
+    }
 
 
 
@@ -241,13 +257,61 @@ public class DataController : MonoBehaviour
     }
 
     #endregion
+    
+    public static float BackBulletSpeed(int index)
+    {
+        float speed = 0;
+        if (index == 0)
+        {
+            speed = 10;
+        }
+        if (index == 1)
+        {
+            speed = 40;
+        }
+        return speed;
+    }
 
 
+    /// <summary>
+    /// 多位浮点转换成网络传输的少量浮点
+    /// </summary>
+    /// <param name="org"></param>
+    /// <param name="type"></param>
+    /// <returns></returns>
+    public static NetVector3 BackNetLimetByType(Vector3 org, NetLimetType type = NetLimetType.保留2位)
+    {
+        NetVector3 back = new NetVector3(0, 0, 0);
+        float x = BackNetLimetByType(org.x, type);
+        float y = BackNetLimetByType(org.y, type);
+        float z = BackNetLimetByType(org.z, type);
+        back = new NetVector3(x, y, z);
+        return back;
+    }
+    public static float BackNetLimetByType(float f, NetLimetType type = NetLimetType.保留2位)
+    {
+        float temp = 0;
+        int index = (int)type;
+        temp = (float)Math.Round(f, index);
+        return temp;
+    }
+
+
+    public void Update()
+    {
+        CurPassedTime = Time.realtimeSinceStartup;
+    }
 }
 
 
 
-
+public enum NetLimetType
+{
+    保留0位,
+    保留1位,
+    保留2位,
+    保留3位,
+}
 
 
 

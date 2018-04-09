@@ -1,18 +1,22 @@
 ﻿using System;
+using System.Threading;
 
 class Program
 {
     //public const string IP = "192.168.0.110";
     //public const int portNo = 500;
     public const string IP = "192.168.1.110";
-    public const int portNo = 500;
+    public const int portTCP = 500;
+
+    public const int portUDP = 12000;
     static void Main(string[] args)
     {
         LogManager.Init();//清除Log文件夹
         SqlManager.Init();
         ServerDataManager.Init();
-        //ModelCollision.Init();
-        new AsyncIOCPServer(IP, portNo, 30000);
+        new AsyncIOCPServer(IP, portTCP, 30000);
+        new UdpServer(portUDP);
+        
         while (true)
         {
             string msg = Console.ReadLine();
@@ -27,5 +31,12 @@ class Program
             }
         }
     }
+
+
+    public static void Log4Debug(string msg)
+    {
+        LogManager.instance.WriteLog(":" + msg);
+    }
+
 }
 

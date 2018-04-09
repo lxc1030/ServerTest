@@ -1,10 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data.SqlClient;
-using System.IO.Packaging;
-using System.Runtime.InteropServices;
-using System.Runtime.Remoting.Messaging;
-using System.Runtime.Serialization;
 using UnityEngine;
 
 
@@ -98,12 +94,12 @@ public class NetVector3
     public float y;
     [ProtoBuf.ProtoMember(3)]
     public float z;
-    /// <summary>
-    /// 需要初始化，不然为空
-    /// </summary>
-    /// <param name="_x"></param>
-    /// <param name="_y"></param>
-    /// <param name="_z"></param>
+    public NetVector3()
+    {
+        x = 0;
+        y = 0;
+        z = 0;
+    }
     public NetVector3(float _x, float _y, float _z)
     {
         x = _x;
@@ -117,6 +113,18 @@ public class NetVector3
     }
 }
 
+//[ProtoBuf.ProtoContract]
+//public class RoomNetVector
+//{
+//    [ProtoBuf.ProtoMember(1)]
+//    public int userIndex;
+//    [ProtoBuf.ProtoMember(2)]
+//    public NetVector3 vector;
+//    public RoomNetVector()
+//    {
+//        vector = new NetVector3(0, 0, 0);
+//    }
+//}
 
 [ProtoBuf.ProtoContract]
 public class ActorMoveDirection
@@ -124,7 +132,7 @@ public class ActorMoveDirection
     [ProtoBuf.ProtoMember(1)]
     public int userIndex;
     [ProtoBuf.ProtoMember(2)]
-    public DateTime runningTime;//当前操作 客户端的服务器时间
+    public int frameIndex;//
     [ProtoBuf.ProtoMember(3)]
     public NetVector3 position;//位置
     [ProtoBuf.ProtoMember(4)]
@@ -145,8 +153,6 @@ public class ActorRotateDirection
     [ProtoBuf.ProtoMember(1)]
     public int userIndex;
     [ProtoBuf.ProtoMember(2)]
-    public DateTime runningTime;//当前操作 客户端的服务器时间
-    [ProtoBuf.ProtoMember(3)]
     public int rotateY;
 }
 
@@ -170,6 +176,19 @@ public class GameModelData
     }
 }
 
+[ProtoBuf.ProtoContract]
+public class ShootInfo
+{
+    [ProtoBuf.ProtoMember(1)]
+    public int userIndex;
+    [ProtoBuf.ProtoMember(2)]
+    public NetVector3 position;
+    [ProtoBuf.ProtoMember(3)]
+    public NetVector3 direction;
+    [ProtoBuf.ProtoMember(4)]
+    public int bulletType;
+
+}
 
 
 [ProtoBuf.ProtoContract]
@@ -183,25 +202,36 @@ public class BulletInfo
     public string shootInfo;
 
 }
-/// <summary>
-/// 校验时间
-/// </summary>
+
 [ProtoBuf.ProtoContract]
-public class ProofreadTime
+public class UDPLogin
 {
     [ProtoBuf.ProtoMember(1)]
-    public bool IsNeedCheck;
+    public string login;
     [ProtoBuf.ProtoMember(2)]
-    public float UnityRealTime;
+    public int roomID;
     [ProtoBuf.ProtoMember(3)]
-    public DateTime ClientTime;
-    [ProtoBuf.ProtoMember(4)]
-    public DateTime ServerTime;
-    public ProofreadTime()
-    {
-
-    }
+    public int unique;
 }
+
+[ProtoBuf.ProtoContract]
+public class ReconnctInfo
+{
+    [ProtoBuf.ProtoMember(1)]
+    public bool isReconnect;
+
+}
+
+[ProtoBuf.ProtoContract]
+public class BoxInfo
+{
+    [ProtoBuf.ProtoMember(1)]
+    public int myIndex;
+    [ProtoBuf.ProtoMember(2)]
+    public int ownerIndex;
+
+}
+
 
 
 //[Serializable]

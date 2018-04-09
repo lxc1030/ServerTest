@@ -58,10 +58,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ProtoBuf\ProtoBuffData.cs" />
-    <Compile Include="Scripts\BoxInfo.cs" />
     <Compile Include="Scripts\GameTypeManager.cs" />
     <Compile Include="Scripts\MessageOperation.cs" />
-    <Compile Include="Scripts\ModelCollision.cs" />
     <Compile Include="Scripts\RoomActor.cs" />
     <Compile Include="Scripts\RoomInfo.cs" />
     <Compile Include="Scripts\SerializeClass.cs" />

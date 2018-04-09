@@ -18,6 +18,7 @@ public class GameRunUI : MonoBehaviour
     public ShowNumImage showRed;
     public ShowNumImage showTime;
 
+    public Toggle showFireType;
 
     #region 注册Socket处理
 
@@ -60,6 +61,7 @@ public class GameRunUI : MonoBehaviour
     private void Init()
     {
         SetNameUIPool();
+        showFireType.isOn = MyJoystickManager.instance.isAutomatic;
     }
     public void OnClose()
     {
@@ -101,6 +103,20 @@ public class GameRunUI : MonoBehaviour
             PoolManager.instance.SetPoolObjByType(PreLoadType.PeopleInfo, transName.GetChild(i).gameObject);
         }
     }
+
+
+    public void OnClickFireType()
+    {
+        MyJoystickManager.instance.ChangeFireType();
+        showFireType.isOn = MyJoystickManager.instance.isAutomatic;
+    }
+
+    public void OnClickTestRay()
+    {
+        CameraManager.instance.RayShoot();
+    }
+
+
     
     public void Update()
     {

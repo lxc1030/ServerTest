@@ -57,6 +57,7 @@ public class CameraManager : MonoBehaviour
     }
     public void SetCameraFollow(bool enable)
     {
+        return;
         isFollow = enable;
     }
 
@@ -76,6 +77,21 @@ public class CameraManager : MonoBehaviour
         frameTime = 0.03f;
         shakeDelta = 0.005f;
     }
+
+
+    public void RayShoot()
+    {
+        Ray ray = new Ray(transform.position, transform.forward);
+        RaycastHit hit;
+        if (Physics.Raycast(ray, out hit, Mathf.Infinity))
+        {
+            // 如果射线与平面碰撞，打印碰撞物体信息  
+            Debug.Log("碰撞对象: " + hit.collider.name);
+            // 在场景视图中绘制射线  
+            Debug.DrawLine(ray.origin, hit.point, Color.red);
+        }
+    }
+
 
     void Update()
     {

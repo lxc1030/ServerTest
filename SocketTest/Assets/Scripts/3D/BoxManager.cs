@@ -7,7 +7,6 @@ public class BoxManager : MonoBehaviour
     public static BoxManager instance;
 
     private Dictionary<int, Box> allBox = new Dictionary<int, Box>();
-    private Dictionary<int, BoxInfo> allBoxInfo = new Dictionary<int, BoxInfo>();
     /// <summary>
     /// 位置排布方向
     /// </summary>
@@ -106,7 +105,6 @@ public class BoxManager : MonoBehaviour
         switch (model)
         {
             case GameModel.组队模式:
-                allBoxInfo = GameTypeManager.BackBoxInfosByType(model);
                 map = Common.Generate(DataController.prefabPath_Ground + (int)model, transform);//根据游戏模式生成地图
                 Box[] getBoxes = map.GetComponentsInChildren<Box>();
                 for (int i = 0; i < getBoxes.Length; i++)
@@ -115,8 +113,9 @@ public class BoxManager : MonoBehaviour
                     {
                         allBox.Add(i, null);
                     }
+                    getBoxes[i].Init(new BoxInfo() { myIndex = i, ownerIndex = -1 });
                     allBox[i] = getBoxes[i];
-                    getBoxes[i].Init(allBoxInfo[i]);
+                    //getBoxes[i].Init(allBoxInfo[i]);
                 }
                 break;
             case GameModel.Boss模式:

@@ -34,6 +34,9 @@ public class SocketManager : MonoBehaviour
     // Signals a connection.
     private static AutoResetEvent autoConnectEvent = new AutoResetEvent(false);
 
+
+    public DateTime startGamTime;
+
     /// <summary>
     /// 接收发送数据变量
     /// </summary>
@@ -103,7 +106,7 @@ public class SocketManager : MonoBehaviour
     {
         hostEndPoint = new IPEndPoint(IPAddress.Parse(IP), portNo);
         _Socket = new Socket(hostEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-
+        _Socket.NoDelay = true;
         //SocketError error = Connect(SendLogin);
         SocketError error = Connect();
         if (callback != null)
@@ -191,6 +194,7 @@ public class SocketManager : MonoBehaviour
             {
                 ProcessReceive(MyUserToken);
             }
+
         }
         else
         {
@@ -276,9 +280,9 @@ public class SocketManager : MonoBehaviour
                 }
                 else
                 {
-                    DealXieYi(xieyi, userToken);
-                    //object[] all = new object[] { userToken, xieyi };
-                    //ThreadPool.QueueUserWorkItem(new WaitCallback(XieYiThrd), all);
+                    object[] all = new object[] { userToken, xieyi };
+                    ThreadPool.QueueUserWorkItem(new WaitCallback(XieYiThrd), all);
+                    //DealXieYi(xieyi, userToken);
                 }
             }
         }
@@ -547,7 +551,7 @@ public class SocketManager : MonoBehaviour
                     break;
                 case MessageConvention.getRoomInfo:
                     DataController.instance.MyRoomInfo = SerializeHelper.Deserialize<RoomInfo>(tempMessageContent);
-                    Debug.Log("得到房间信息。");
+                    Debug.LogError("得到房间号:" + DataController.instance.MyRoomInfo.RoomID);
                     break;
                 case MessageConvention.quitRoom:
                     QuitInfo qInfo = SerializeHelper.Deserialize<QuitInfo>(xieyi.MessageContent);
@@ -575,6 +579,9 @@ public class SocketManager : MonoBehaviour
                         }
                     }
                     Debug.Log("得到房间人物列表。");
+                    break;
+                case MessageConvention.rotateDirection:
+
                     break;
                 case MessageConvention.updateActorAnimation:
                     messageInfo = SerializeHelper.ConvertToString(xieyi.MessageContent);
@@ -613,12 +620,10 @@ public class SocketManager : MonoBehaviour
                     //Debug.Log("getPreGameData已收到。");
                     break;
                 case MessageConvention.startGaming:
-                    DateTime time = SerializeHelper.Deserialize<DateTime>(tempMessageContent);
+                    string time = SerializeHelper.ConvertToString(tempMessageContent);
                     Debug.Log("开始游戏时间：" + time);
-                    DataController.instance.gameStartMarkTime = time;
+                    startGamTime = DateTime.Parse(time);
                     DataController.instance.MyRoomInfo.CurState = RoomActorState.Gaming;
-                    break;
-                case MessageConvention.timeCheck:
                     break;
                 case MessageConvention.shootBullet:
                     break;
@@ -629,53 +634,10 @@ public class SocketManager : MonoBehaviour
                     Debug.Log("胜利队伍是：" + (TeamType)int.Parse(messageInfo));
                     break;
                 case MessageConvention.moveDirection://GameManager中处理帧同步相应协议
-                    break;
-                case MessageConvention.rotateDirection:
+
                     break;
                 case MessageConvention.frameData:
-                    List<FrameInfo> fInfos = null;
-                    try
-                    {
-                        fInfos = SerializeHelper.Deserialize<List<FrameInfo>>(tempMessageContent);
-                    }
-                    catch (Exception e)
-                    {
-                        string frameError = "帧出错：" + e.Message + "：" + tempMessageContent.Length + "\n";
-                        for (int i = 0; i < tempMessageContent.Length; i++)
-                        {
-                            frameError += tempMessageContent[i] + ",";
-                        }
-                        Debug.LogError(frameError);
-                        return;
-                    }
-                    if (fInfos == null)
-                    {
-                        Debug.LogError("请检查，该逻辑不能为空。");
-                    }
-                    for (int i = 0; i < fInfos.Count; i++)
-                    {
-                        FrameInfo fInfo = fInfos[i];
-                        if (fInfos == null)
-                        {
-                            Debug.LogError("解析后的数据有空值：" + fInfo.frameIndex);
-                        }
-                        lock (GameManager.instance.FrameInfos)
-                        {
-                            if (!GameManager.instance.FrameInfos.ContainsKey(fInfo.frameIndex))
-                            {
-                                GameManager.instance.FrameInfos.Add(fInfo.frameIndex, fInfo);
-                                //Debug.Log("成功保存帧：" + fInfo.frameIndex);
-                                while (GameManager.instance.FrameInfos.ContainsKey(DataController.instance.FrameCanIndex + 1))
-                                {
-                                    DataController.instance.FrameCanIndex++;
-                                }
-                            }
-                            else
-                            {
-                                //Debug.Log("重复保存帧数据：" + fInfo.frameIndex);
-                            }
-                        }
-                    }
+
                     break;
                 default:
                     Debug.LogError("没有协议：" + xieyi.XieYiFirstFlag + "/MesageLength:" + xieyi.MessageContentLength);
@@ -752,7 +714,6 @@ public class SocketManager : MonoBehaviour
             case SocketError.Success:
                 info = "连接服务器成功。";
                 SendLogin();
-                ServerTimeManager.instance.CheckServerTime();
                 break;
             case SocketError.ConnectionRefused:
                 info = "服务器主动拒绝本次请求。";

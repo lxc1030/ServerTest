@@ -298,7 +298,7 @@ public class CreateRoomUI : MonoBehaviour
                 }
                 else
                 {
-                    GameManager.GetRoomInfo();
+                    //GameManager.GetRoomInfo();
                 }
             }
             if ((MessageConvention)xieyi.XieYiFirstFlag == MessageConvention.getRoomInfo)

@@ -20,6 +20,8 @@ public class RoomInfo
     [ProtoBuf.ProtoMember(7)]
     public int FrameDelay { get; set; }
 
+
+
     public RoomInfo()
     {
 
@@ -33,9 +35,8 @@ public class RoomInfo
         {
             case GameModel.组队模式:
                 Limit = 2;
-                frameInterval = 8;
-                FrameDelay = 10;
-                GameTime = 2 * 60 * 1000;//分钟
+                FrameDelay = 17;
+                GameTime = 2 * 60 * 1000;//游戏时长
                 //GameTime = 1 * 30 * 1000;
                 break;
         }
@@ -47,27 +48,15 @@ public class RoomInfo
 
     public int FrameIndex { get; set; }
     /// <summary>
-    /// 用户操作数据存储后，间隔该帧返回
-    /// </summary>
-    public int frameInterval;
-    /// <summary>
     /// 一帧对应的时间
     /// </summary>
     public static int frameTime = 15;//是毫秒，检测间隔0.015s
 
-    /// <summary>
-    /// 开始游戏时的标记的服务器时间
-    /// </summary>
-    public DateTime GameStartTime;
-   
+    public static int frameInterval = 2;//udp每帧发送的总共帧
 
-    /// <summary>
-    /// 校对客户端和服务器的时间
-    /// </summary>
-    public void ProofreadTime()
-    {
 
-    }
+
+
 
 
 

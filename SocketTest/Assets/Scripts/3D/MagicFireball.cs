@@ -2,28 +2,34 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Bullet : MonoBehaviour
+public class MagicFireball : MonoBehaviour
 {
     ShootInfo info;
     private int ownIndex;
     private bool isDestroy = true;
 
+    private void Awake()
+    {
+
+    }
+
     public void Init(ShootInfo _info, int index)
     {
-        isDestroy = false;
         info = _info;
         ownIndex = index;
         DoAnimation();
+        //
+        isDestroy = false;
     }
 
     [ContextMenu("射击动画")]
     private void DoAnimation()
     {
-        transform.position = GameManager.instance.GetControl(ownIndex).shootMuzzle.position;
-        transform.rotation = Quaternion.Euler(SerializeHelper.BackVector(info.direction));
+        transform.position = SerializeHelper.BackVector(info.position);
+        transform.rotation = Quaternion.Euler(SerializeHelper.BackVector(info.direction) + new Vector3(15, 0, 0));
     }
-    
-    public void OnTriggerEnter(Collider other)
+
+    private void OnTriggerEnter(Collider other)
     {
         CharacterCommon checkSelf = other.GetComponent<CharacterCommon>();
         if (checkSelf != null)
@@ -86,6 +92,7 @@ public class Bullet : MonoBehaviour
                 //SocketManager.instance.SendSave((byte)MessageConvention.bulletInfo, message, false);
                 UDPManager.instance.SendSave((byte)MessageConvention.bulletInfo, message);
             }
+            //
             PoolDestory();
         }
 
@@ -109,15 +116,7 @@ public class Bullet : MonoBehaviour
     //    shoot.bulletType = bulletType;
     //    Init(shoot);
     //}
-
-
-
-
-    private void Update()
-    {
-        Debug.LogError("myPos:" + transform.position);
-    }
-
+    
 
 
 
@@ -126,7 +125,15 @@ public class Bullet : MonoBehaviour
     {
         if (!isDestroy)
         {
-            transform.Translate(transform.forward * DataController.BackBulletSpeed(info.bulletType) * Time.fixedDeltaTime, Space.World);
+            if (transform.position.y < -100)
+            {
+                isDestroy = true;
+                PoolDestory();
+            }
+            else
+            {
+                transform.Translate(transform.forward * DataController.BackBulletSpeed(info.bulletType) * Time.fixedDeltaTime, Space.World);
+            }
         }
     }
 

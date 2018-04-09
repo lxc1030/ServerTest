@@ -13,20 +13,9 @@ public class GameManager : MonoBehaviour
     private static string XMLName = "EndlessHardConfig";
     //public Dictionary<int, EndlessHardConfig> config = new Dictionary<int, EndlessHardConfig>();
 
-    public const float timeActorMoveSpan = 0.03f; //每隔30帧发送一次坐标
     public const float myActorMoveSpeed = 5;//人物移动速度
     public const float myCameraMoveSpeed = 100;
     public const float gravity = 9.8f;
-    /// <summary>
-    /// 网络位置和本地位置差距超过多少，直接瞬移到网络位置
-    /// </summary>
-    public const float distanceKeep = 2;
-
-
-    public const int uiMoveIndex = 1;//ui移动用到的保留小数点位数
-    public const int uiSpeedIndex = 1;//ui移动速度用到的保留小数点位数
-    public const int uiRotateIndex = 1;//ui旋转大于该区间才发送数据
-
 
     private Dictionary<int, CharacterCommon> memberGroup = new Dictionary<int, CharacterCommon>();
     public Transform transActor;
@@ -35,12 +24,14 @@ public class GameManager : MonoBehaviour
 
     #region 帧同步相关变量
 
+    public FramePlayType CurrentPlayType;
+
     public int frameIndex = 0;//当前复现到哪一帧了
+    private int frameWaitCount = 0;//数据缓存等待了帧数
 
-    public float frameEmptyTime;//当前帧数据为空的时间值
 
 
-    public bool isReconnect = false;
+
     public int reConnectIndex = 0;//重连时需要复现到的帧编号----//重连不需要则为-1
 
 
@@ -51,15 +42,15 @@ public class GameManager : MonoBehaviour
     /// 重连时客户端一帧复现X帧的数据
     /// </summary>
     private int reConnectSpan = 50;
+    /// <summary>
+    /// 等待数据时长
+    /// </summary>
+    private float requestMaxTime = 5f;
+    /// <summary>
+    /// 判断重连时，服务器广播了哪一帧的数据，用来请求前面的数据
+    /// </summary>
+    public int frameEmpty = 0;
 
-
-    public bool isOnFrame;//是否正在处理帧逻辑
-    private float requestMaxTime = 5f;//等待数据时长
-    public int frameEmpty = 0;//判断重连时，服务器广播了哪一帧的数据，用来请求前面的数据
-
-
-
-    public float timeDeal;//游戏时间存储数值
     #endregion
 
     /// <summary>
@@ -80,14 +71,15 @@ public class GameManager : MonoBehaviour
     /// <summary>
     /// 待处理的Socket信息
     /// </summary>
-    private Queue<MessageXieYi> serverEvent = new Queue<MessageXieYi>();
+    private Queue<MessageXieYi> serverEventTCP = new Queue<MessageXieYi>();
     /// <summary>
     /// 该脚本要处理的socket数据类型----每个脚本自己定义自己要侦听的消息类型，只会接收已定义的协议数据
     /// </summary>
-    private List<MessageConvention> messageHandle = new List<MessageConvention>()
+    private List<MessageConvention> messageHandleTCP = new List<MessageConvention>()
     {
         MessageConvention.login,
         MessageConvention.getHeartBeatTime,
+        MessageConvention.getRoomInfo,
         MessageConvention.reConnectCheck,
         MessageConvention.quitRoom,
         MessageConvention.updateActorState,
@@ -95,27 +87,38 @@ public class GameManager : MonoBehaviour
         MessageConvention.getPreGameData,
         MessageConvention.startGaming,
         MessageConvention.endGaming,
-
-        MessageConvention.moveDirection,
-        MessageConvention.rotateDirection,
+        MessageConvention.frameData,
+    };
+    //
+    private Queue<MessageXieYi> serverEventUDP = new Queue<MessageXieYi>();
+    private List<MessageConvention> messageHandleUDP = new List<MessageConvention>()
+    {
+        MessageConvention.setUDP,
     };
 
     private void Start()
     {
-        SocketManager.ListenDelegate(true, messageHandle, OperationListenInfo);
+        SocketManager.ListenDelegate(true, messageHandleTCP, OperationListenInfoTCP);
+        UDPManager.ListenDelegate(true, messageHandleUDP, OperationListenInfoUDP);
     }
     private void OnDisable()
     {
-        SocketManager.ListenDelegate(false, messageHandle, OperationListenInfo);
+        SocketManager.ListenDelegate(false, messageHandleTCP, OperationListenInfoTCP);
+        UDPManager.ListenDelegate(false, messageHandleUDP, OperationListenInfoUDP);
     }
     /// <summary>
     /// 添加Socket管理类分发来的需要处理的数据
     /// </summary>
     /// <param name="xieyi"></param>
-    public void OperationListenInfo(MessageXieYi xieyi)
+    public void OperationListenInfoTCP(MessageXieYi xieyi)
     {
-        serverEvent.Enqueue(xieyi);
+        serverEventTCP.Enqueue(xieyi);
     }
+    public void OperationListenInfoUDP(MessageXieYi xieyi)
+    {
+        serverEventUDP.Enqueue(xieyi);
+    }
+
     #endregion
 
 
@@ -137,7 +140,7 @@ public class GameManager : MonoBehaviour
 
     public void Init()
     {
-        //FrameManager.ListenDelegate(true, DoFrameLogin);
+
     }
 
     public void InitRoom()
@@ -161,7 +164,7 @@ public class GameManager : MonoBehaviour
     {
         DataController.instance.MyRoomInfo = null;
         DataController.instance.ActorList = null;
-        isOnFrame = false;
+        CurrentPlayType = FramePlayType.游戏未开始;
         for (int i = 0; i < memberGroup.Count; i++)
         {
             memberGroup[i].BeStop();
@@ -190,7 +193,6 @@ public class GameManager : MonoBehaviour
         return memberGroup[index];
     }
 
-
     #endregion
 
 
@@ -214,17 +216,6 @@ public class GameManager : MonoBehaviour
         }
         UIManager.instance.ShowAlertTip(info);
     }
-
-    /// <summary>
-    /// 重连逻辑
-    /// </summary>
-    /// <param name="state"></param>
-    private void ReConnectLogin()
-    {
-        Debug.Log("重连：" + isReconnect);
-        GameLoadingUI.Show();
-    }
-
 
     /// <summary>
     ///  请求房间中人物的信息
@@ -281,7 +272,7 @@ public class GameManager : MonoBehaviour
         CharacterCommon member = null;
         member = GameManager.instance.memberGroup[info.userIndex];
         member.SetPosition(SerializeHelper.BackVector(info.pos));
-        member.SetRotate(SerializeHelper.BackVector(info.rotate));
+        //member.SetRotate(SerializeHelper.BackVector(info.rotate));
         member.SetAnimation(info.animation);
     }
 
@@ -383,33 +374,58 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    public void SetDataInit()
+    {
+        frameIndex = 0;
+        DataController.instance.FrameMaxIndex = 0;
+        FrameInfos.Clear();
+    }
+
     private void StartGaming()
     {
         HomeUI.Close();
-        frameIndex = 0;
-        Debug.Log("开始游戏");
-        isOnFrame = true;
-        //frameIndexTime = Time.realtimeSinceStartup;
-        frameEmptyTime = 0;
+        if (CurrentPlayType == FramePlayType.游戏未开始)
+        {
+            Debug.Log("开始游戏");
+            frameIndex = 0;
+            CurrentPlayType = FramePlayType.准备UI;
+        }
+        else
+        {
+            //这个应该是udp断线重连
+        }
     }
 
-
-
-
+    /// <summary>
+    /// 断线重连和正常游戏都走这，开始游戏
+    /// </summary>
+    private void TrueGaming()
+    {
+        if (reConnectIndex == 0)
+        {
+            reConnectIndex = -1;
+            CurrentPlayType = FramePlayType.游戏中;
+            CameraManager.instance.SetCameraEnable(true);
+            CameraManager.instance.SetCameraFollow(true);
+            GameRunUI.Show();
+            ShowModelUIName();
+            //最后关闭loading
+            GameLoadingUI.Close();
+        }
+    }
     private void EndGaming(MessageXieYi xieyi)
     {
-        isOnFrame = false;
+        Debug.Log("结束游戏");
+        CurrentPlayType = FramePlayType.游戏未开始;
         frameIndex = 0;
         reConnectIndex = 0;//游戏结束的时候未完成复现，则清除重连记录帧
         MyJoystickManager.instance.Close();
         CameraManager.instance.SetCameraEnable(false);
-        Debug.Log("结束游戏");
         foreach (var item in memberGroup)
         {
             item.Value.Init(item.Key);
         }
         GameRunUI.Close();
-        FrameInfos = new Dictionary<int, FrameInfo>();
         TeamType winTeam = (TeamType)int.Parse(SerializeHelper.ConvertToString(xieyi.MessageContent));
         RoomUI.Show();
         GameOverUI.Show(winTeam);
@@ -442,6 +458,33 @@ public class GameManager : MonoBehaviour
         SocketManager.instance.SendSave((byte)MessageConvention.frameData, message, false);
     }
 
+    string guiInfo = "0000/0000";
+    //public void OnGUI()
+    //{
+    //    if (DataController.instance.MyRoomInfo != null && DataController.instance.MyRoomInfo.ActorList != null)
+    //    {
+    //        guiInfo = frameIndex + "/" + DataController.instance.MyRoomInfo.FrameIndex;
+    //        int length = (DataController.instance.MyRoomInfo.FrameIndex - frameIndex);
+    //        guiInfo = guiInfo + " = " + length;
+    //        GUIStyle bb = new GUIStyle();
+    //        bb.normal.background = null;    //这是设置背景填充的
+    //        bb.normal.textColor = Color.blue;   //设置字体颜色的
+    //        bb.fontSize = 40;       //当然，这是字体大小
+    //        GUI.Label(new Rect(0, 0, 200, 200), guiInfo, bb);
+    //    }
+    //}
+    public void OnGUI()
+    {
+        if (DataController.instance.MyRoomInfo != null && DataController.instance.ActorList != null)
+        {
+            string guiInfo2 = "帧比： " + guiInfo;
+            GUIStyle bb = new GUIStyle();
+            bb.normal.background = null;    //这是设置背景填充的
+            bb.normal.textColor = Color.blue;   //设置字体颜色的
+            bb.fontSize = 40;       //当然，这是字体大小
+            GUI.Label(new Rect(0, 0, 200, 200), guiInfo2, bb);
+        }
+    }
 
 
     /// <summary>
@@ -449,66 +492,133 @@ public class GameManager : MonoBehaviour
     /// </summary>
     private void DoFrameLogin()
     {
-        if (!isOnFrame)
+        switch (CurrentPlayType)
         {
-            return;
-        }
-        //
-        if (FrameInfos.ContainsKey(frameIndex))
-        {
-            frameEmptyTime = 0;//得到值的时候，把标记删除
+            case FramePlayType.游戏未开始:
+                return;
+            case FramePlayType.准备UI:
+                TrueGaming();
+                break;
+            case FramePlayType.游戏中:
+                if (reConnectIndex == -1)
+                {
+                    guiInfo = frameIndex + " / " + DataController.instance.FrameMaxIndex;
+                    DealFrameByMax(DataController.instance.FrameMaxIndex, false);
+                }
 
-            int forwardNum = 1;
-            int length = DataController.instance.FrameCanIndex - frameIndex;
-            if (length > DataController.instance.MyRoomInfo.FrameDelay)//本地运行帧和接收帧差距超过该值，快进
-            {
-                forwardNum = length;
-                string info = "快进：" + frameIndex + "/" + DataController.instance.FrameCanIndex;
-                //Debug.LogError(info);
-                UIManager.instance.ShowAlertTip(info);
-            }
-            for (int i = 0; i < forwardNum; i++)//快进延迟帧的一般数值
+                //if (FrameInfos.ContainsKey(frameIndex))
+                //{
+                //    int forwardNum = 1;
+                //    int length = DataController.instance.FrameMaxIndex - frameIndex;
+                //    if (length > DataController.instance.MyRoomInfo.FrameDelay)//本地运行帧和接收帧差距超过该值，快进
+                //    {
+                //        forwardNum = length - DataController.instance.MyRoomInfo.FrameDelay;
+                //        string info = "快进：" + frameIndex + "/" + DataController.instance.FrameMaxIndex;
+                //        UIManager.instance.ShowAlertTip(info);
+                //        Debug.LogError(info);
+                //    }
+                //    for (int i = 0; i < forwardNum; i++)//快进延迟帧的一般数值
+                //    {
+                //        FrameMainLogic();
+                //    }
+                //}
+                //else
+                //{
+                //    CurrentPlayType = FramePlayType.空帧缓冲;
+                //    //UIManager.instance.ShowAlertTip("等待帧数据：" + frameIndex);
+                //    //float overTime = Time.realtimeSinceStartup - frameIndexTime;
+                //    //if (overTime > requestMaxTime)
+                //    //{
+                //    //    frameIndexTime = Time.realtimeSinceStartup;//将该时间作为处理最后一帧的时间，这样可以重新等待延迟最大时间
+                //    //    Debug.LogError("超时：" + overTime + "请求帧：" + frameIndex + "/" + DataController.instance.FrameCanIndex);
+                //    //    DoFrameRequest(frameIndex);
+                //    //}
+                //}
+                break;
+            case FramePlayType.空帧缓冲:
+                if (FrameInfos.ContainsKey(frameIndex))//该帧存在则执行
+                {
+                    CurrentPlayType = FramePlayType.游戏中;
+                }
+                else//没有该帧，用TCP主动请求
+                {
+                    frameWaitCount++;
+                    if (frameWaitCount >= DataController.instance.MyRoomInfo.FrameDelay)
+                    {
+                        frameWaitCount = 0;
+                        DoFrameRequest(frameIndex);
+                    }
+                    else
+                    {
+                        string info = "正在缓存帧：" + frameIndex + "/" + DataController.instance.FrameMaxIndex;
+                        UIManager.instance.ShowAlertTip(info);
+                        //Debug.LogError(info);
+                    }
+                }
+                break;
+            case FramePlayType.断线重连:
+                //正在断线重连
+                break;
+        }
+
+
+    }
+
+    private void DealFrameByMax(int max, bool isReShow)
+    {
+        int forwardNum = 1;
+        int length = max - frameIndex;
+        if (length > DataController.instance.MyRoomInfo.FrameDelay)//本地运行帧和接收帧
+        {
+            forwardNum = length - DataController.instance.MyRoomInfo.FrameDelay / 2;
+            string info = "从：" + frameIndex + "->" + max + ",总长：" + length + " 快进-> " + forwardNum;
+            UIManager.instance.ShowAlertTip(info);
+            Debug.LogError(info + "->" + isReShow);
+        }
+        for (int i = 0; i < forwardNum; i++)//快进延迟帧的一般数值
+        {
+            if (FrameInfos.ContainsKey(frameIndex))
             {
                 FrameMainLogic();
             }
-        }
-        else
-        {
-            if (frameEmptyTime == 0)//发现帧数据不在，等待
-            {
-                frameEmptyTime = Time.realtimeSinceStartup;
-            }
             else
             {
-                float overTime = Time.realtimeSinceStartup - frameEmptyTime;
-                if (overTime > requestMaxTime)
+                if (!isReShow)//非断线重连才能进入缓存状态
                 {
-                    frameEmptyTime = 0;//将该时间作为处理最后一帧的时间，这样可以重新等待延迟最大时间
-                    Debug.LogError("超时：" + overTime + "请求帧：" + frameIndex + "/" + DataController.instance.FrameCanIndex);
-                    DoFrameRequest(frameIndex);
+                    Debug.LogError("处理帧为空：" + frameIndex);
+                    CurrentPlayType = FramePlayType.空帧缓冲;
                 }
+                //else应该在断线重连的时候会走到
+                return;
             }
         }
-
+        if (isReShow)
+        {
+            //Debug.LogError("重设重连帧为0");
+            reConnectIndex = 0;
+            TrueGaming();
+        }
     }
+
+
 
     /// <summary>
     /// 处理接收数据的主要逻辑（快进也是调该逻辑）
     /// </summary>
     private void FrameMainLogic()
     {
-        if (!FrameInfos.ContainsKey(frameIndex))
-        {
-            Debug.Log("该执行帧不存在：" + frameIndex);
-            return;
-        }
-
+        //if (!FrameInfos.ContainsKey(frameIndex))
+        //{
+        //    Debug.LogError("该执行帧不存在：" + frameIndex);
+        //    return;
+        //}
+        //Debug.LogError("执行：" + frameIndex);
         FrameInfo info = FrameInfos[frameIndex];
         if (info.frameData != null)//有更新操作，更新数据
         {
             if (info.frameData.Count == 0)
             {
-                Debug.LogError("检查长度为0的情况。");
+                Debug.LogError("检查指令数据长度为0的情况。");
             }
             for (int i = 0; i < info.frameData.Count; i++)
             {
@@ -530,13 +640,12 @@ public class GameManager : MonoBehaviour
         }
         //子件需要每帧判断的逻辑
         AllFrameObj();
-
         //
         lock (FrameInfos)
         {
-            FrameInfos.Remove(frameIndex);
-            frameIndex++;
+            //FrameInfos.Remove(frameIndex);
         }
+        frameIndex++;
     }
 
     /// <summary>
@@ -553,39 +662,23 @@ public class GameManager : MonoBehaviour
         {
             case MessageConvention.moveDirection:
                 ActorMoveDirection moveDir = SerializeHelper.Deserialize<ActorMoveDirection>(tempMessageContent);
-                //Debug.LogError("玩家接收方向移动：" + messageInfo);
                 member = GameManager.instance.memberGroup[moveDir.userIndex];
-                if (moveDir.userIndex != DataController.instance.MyLocateIndex)
-                {
-                    //用上次移动操作到这次操作的时间，算出当前位置，并移动到该点
-
-
-                    member.SetPosition(SerializeHelper.BackVector(moveDir.position));
-                    member.SetMoveDirection(moveDir);
-                }
-                else
-                {
-                    //member.SetPosition(SerializeHelper.BackVector(moveDir.position));
-                }
-
+                //用上次移动操作到这次操作的时间，算出当前位置，并移动到该点
+                //member.transform.DOMove(SerializeHelper.BackVector(moveDir.position), DataController.FrameFixedTime);
+                //member.SetPosition(SerializeHelper.BackVector(moveDir.position));
+                member.SetNetDirection(moveDir);
                 break;
             case MessageConvention.rotateDirection:
                 ActorRotateDirection rotateDir = SerializeHelper.Deserialize<ActorRotateDirection>(tempMessageContent);
                 //判断用户
                 //Debug.LogError("玩家接收方向移动：" + messageInfo);
-                if (rotateDir.userIndex != DataController.instance.MyLocateIndex)
-                {
-                    member = GameManager.instance.memberGroup[rotateDir.userIndex];
-                    member.SetRotateDirection(rotateDir);
-                }
+                member = GameManager.instance.memberGroup[rotateDir.userIndex];
+                member.SetNetDirection(rotateDir);
                 break;
             case MessageConvention.shootBullet:
-                int shootIndex = int.Parse(SerializeHelper.ConvertToString(tempMessageContent));
-                if (shootIndex != DataController.instance.MyLocateIndex)
-                {
-                    member = GameManager.instance.memberGroup[shootIndex];
-                    member.ShowBullet();
-                }
+                ShootInfo shootInfo = SerializeHelper.Deserialize<ShootInfo>(tempMessageContent);
+                member = GameManager.instance.memberGroup[shootInfo.userIndex];
+                member.ShowBullet(shootInfo);
                 break;
             case MessageConvention.bulletInfo:
                 BulletInfo bulletInfo = SerializeHelper.Deserialize<BulletInfo>(tempMessageContent);
@@ -627,9 +720,6 @@ public class GameManager : MonoBehaviour
     }
 
 
-
-
-
     public void UpdateMemberShoot(MessageXieYi xieyi)
     {
         BulletInfo bulletInfo = SerializeHelper.Deserialize<BulletInfo>(xieyi.MessageContent);
@@ -652,249 +742,212 @@ public class GameManager : MonoBehaviour
 
     #endregion
 
-    public void FixedUpdate()
+
+    #region 游戏模型清理
+
+    private void ClearModels()
     {
-        if (isOnFrame)
-        {
-            //if (reConnectIndex <= 0)
-            //{
-            //    if (timeDeal == 0)
-            //    {
-            //        timeDeal = Time.realtimeSinceStartup;
-            //    }
-            //    float length = Time.realtimeSinceStartup - timeDeal;
-            //    //Debug.LogError("本帧:" + Time.realtimeSinceStartup + "与上帧的差距：" + length);
-            //    int count = (int)(length / FrameFixedTime);
-            //    //Debug.LogError("需要在本帧运算次数：" + count);
-            //    for (int i = 0; i < count; i++)
-            //    {
-            //        DoFrameLogin();
-            //    }
-            //    timeDeal += count * FrameFixedTime;
-            //}
-            //else
-            //{
-            //    int length = 0;
-            //    if (reConnectIndex >= reConnectSpan)
-            //    {
-            //        length = reConnectSpan;
-            //    }
-            //    else
-            //    {
-            //        length = reConnectIndex;
-            //    }
-            //    for (int i = 0; i < length; i++, reConnectIndex--)
-            //    {
-            //        FrameMainLogic();
-            //    }
-            //}
-            TrueGaming();
-        }
-    }
-    private void TrueGaming()
-    {
-        if (/*isReconnect ||*/ reConnectIndex == 0)
-        {
-            isReconnect = false;
-            frameEmptyTime = 0;
-            reConnectIndex = -1;
-            CameraManager.instance.SetCameraEnable(true);
-            CameraManager.instance.SetCameraFollow(true);
-            GameLoadingUI.Close();
-            GameRunUI.Show();
-            ShowModelUIName();
-        }
+        ////清除人物
+        //for (int i = transActor.childCount - 1; i >= 0; i--)
+        //{
+        //    PoolManager.instance.SetPoolObjByType(PreLoadType.Member, transActor.GetChild(i).gameObject);
+        //}
+        ////
+
     }
 
-    private float AccumilatedTime = 0f;
+
+    #endregion
+
+
+
+    public float AccumilatedTime = 0f;
+    public void FixedUpdate()
+    {
+        //Basically same logic as FixedUpdate, but we can scale it by adjusting FrameLength   
+        AccumilatedTime = AccumilatedTime + Time.fixedDeltaTime;
+        //in case the FPS is too slow, we may need to update the game multiple times a frame   
+        while (AccumilatedTime >= DataController.FrameFixedTime)
+        {
+            DoFrameLogin();
+            AccumilatedTime = AccumilatedTime - DataController.FrameFixedTime;
+        }
+    }
+    
     public void Update()
     {
-        AllFrameObj();
-        ////Basically same logic as FixedUpdate, but we can scale it by adjusting FrameLength   
-        //AccumilatedTime = AccumilatedTime + Time.deltaTime;
-        ////in case the FPS is too slow, we may need to update the game multiple times a frame   
-        //while (AccumilatedTime > DataController.FrameFixedTime && isOnFrame)
-        //{
-        //    DoFrameLogin();
-        //    AccumilatedTime = AccumilatedTime - DataController.FrameFixedTime;
-        //}
-        //
-        if (serverEvent.Count > 0)
+        if (serverEventTCP.Count > 0)
         {
-            MessageXieYi xieyi = serverEvent.Dequeue();
+            MessageXieYi xieyi = serverEventTCP.Dequeue();
             if (xieyi == null)
             {
                 Debug.LogError("有事件操作的协议为空？");
                 return;
             }
-            CharacterCommon member = null;
-
-            ErrorType error = ClassGroup.CheckIsError(xieyi);
-
-            switch ((MessageConvention)xieyi.XieYiFirstFlag)
+            if ((MessageConvention)xieyi.XieYiFirstFlag == MessageConvention.login)
             {
-                case MessageConvention.login:
-                    if (error != ErrorType.none)
+                ErrorType error = ClassGroup.CheckIsError(xieyi);
+                if (error != ErrorType.none)
+                {
+                    ErrorShow(error);
+                }
+                else
+                {
+                    SocketManager.instance.GetBeatTime();
+                }
+            }
+            if ((MessageConvention)xieyi.XieYiFirstFlag == MessageConvention.getHeartBeatTime)
+            {
+                ErrorType error = ClassGroup.CheckIsError(xieyi);
+                if (error != ErrorType.none)
+                {
+                    Debug.LogError(error);
+                }
+                else
+                {
+                    SocketManager.instance.OpenHeartbeat();
+                    //
+                    UILogin.Close();
+                    HomeUI.Show();
+                    //
+                    Debug.Log("自身检查是否需要重连。");
+                    SocketManager.instance.SendSave((byte)MessageConvention.reConnectCheck, new byte[] { }, false);
+                }
+            }
+            if ((MessageConvention)xieyi.XieYiFirstFlag == MessageConvention.reConnectCheck)
+            {
+                ErrorType error = ClassGroup.CheckIsError(xieyi);
+                if (error != ErrorType.none)
+                {
+                    Debug.LogError(error);
+                }
+                else
+                {
+                    ReconnctInfo rcInfo = SerializeHelper.Deserialize<ReconnctInfo>(xieyi.MessageContent);
+                    if (rcInfo.isReconnect)
                     {
-                        ErrorShow(error);
+                        CurrentPlayType = FramePlayType.断线重连;
+                        ReConnectUI.Show();
                     }
                     else
                     {
-                        SocketManager.instance.GetBeatTime();
+                        CurrentPlayType = FramePlayType.游戏未开始;
                     }
-                    break;
-                case MessageConvention.getHeartBeatTime:
-                    if (error != ErrorType.none)
+                }
+            }
+            if ((MessageConvention)xieyi.XieYiFirstFlag == MessageConvention.quitRoom)//自己退出房间
+            {
+                QuitInfo qInfo = SerializeHelper.Deserialize<QuitInfo>(xieyi.MessageContent);
+                if (qInfo.isQuit)
+                {
+                    UpdateMemberHide();
+                    RoomUI.Close();
+                    HomeUI.Show();
+                    if (qInfo.userIndex != DataController.instance.MyLocateIndex)
                     {
-                        Debug.LogError(error);
+                        UIManager.instance.ShowAlertTip("您被踢出房间。");
                     }
-                    else
+                }
+                else
+                {
+                    if (qInfo.userIndex == qInfo.quitUnique)
                     {
-                        SocketManager.instance.OpenHeartbeat();
-                        //
-                        UILogin.Close();
-                        HomeUI.Show();
-                        //
-                        Debug.Log("自身检查是否需要重连。");
-                        SocketManager.instance.SendSave((byte)MessageConvention.reConnectCheck, new byte[] { }, false);
+                        UIManager.instance.ShowAlertTip("退出房间失败。");
                     }
-                    break;
-                case MessageConvention.reConnectCheck:
-                    if (error != ErrorType.none)
-                    {
-                        Debug.LogError(error);
-                    }
-                    else
-                    {
-                        isReconnect = int.Parse(SerializeHelper.ConvertToString(xieyi.MessageContent)) == 1 ? true : false;
-                        if (isReconnect)
-                        {
-                            ReConnectLogin();
-                        }
-                    }
-                    break;
+                }
+            }
+            if ((MessageConvention)xieyi.XieYiFirstFlag == MessageConvention.updateActorState)
+            {
+                ErrorType error = ClassGroup.CheckIsError(xieyi);
+                if (error != ErrorType.none)
+                {
+                    Debug.LogError(error);
+                }
+                else
+                {
+                    CheckState(xieyi);
+                }
+            }
+            if ((MessageConvention)xieyi.XieYiFirstFlag == MessageConvention.updateModelInfo)
+            {
+                GameModelData modelDate = SerializeHelper.Deserialize<GameModelData>(xieyi.MessageContent);
+                SetPrepareData(modelDate);
+            }
+            if ((MessageConvention)xieyi.XieYiFirstFlag == MessageConvention.getPreGameData)
+            {
+                ErrorType error = ClassGroup.CheckIsError(xieyi);
+                if (error != ErrorType.none)
+                {
+                    Debug.LogError(error);
+                }
+                else
+                {
+                    Debug.Log("验证本客户端收到游戏前准备数据。客户端响应已收到:" + xieyi.MessageContentLength);
+                    SendState(RoomActorState.WaitForStart);
+                }
+            }
+            if ((MessageConvention)xieyi.XieYiFirstFlag == MessageConvention.startGaming)
+            {
+                ErrorType error = ClassGroup.CheckIsError(xieyi);
+                if (error != ErrorType.none)
+                {
+                    Debug.LogError(error);
+                }
+                else
+                {
+                    StartGaming();
+                }
+            }
+            if ((MessageConvention)xieyi.XieYiFirstFlag == MessageConvention.endGaming)
+            {
+                ErrorType error = ClassGroup.CheckIsError(xieyi);
+                if (error != ErrorType.none)
+                {
+                    Debug.LogError(error);
+                }
+                else
+                {
+                    EndGaming(xieyi);
+                }
+            }
+            if ((MessageConvention)xieyi.XieYiFirstFlag == MessageConvention.frameData)
+            {
+                Debug.LogError("断线重连收到整串操作数据");
+                UDPManager.instance.DealFrameData(xieyi);
+                if (CurrentPlayType == FramePlayType.断线重连)
+                {
+                    DealFrameByMax(reConnectIndex, true);
+                }
+            }
+        }
 
-                case MessageConvention.quitRoom:
-                    QuitInfo qInfo = SerializeHelper.Deserialize<QuitInfo>(xieyi.MessageContent);
-                    if (qInfo.isQuit)
-                    {
-                        UpdateMemberHide();
-                        RoomUI.Close();
-                        HomeUI.Show();
-                        if (qInfo.userIndex != DataController.instance.MyLocateIndex)
-                        {
-                            UIManager.instance.ShowAlertTip("您被踢出房间。");
-                        }
-                    }
-                    else
-                    {
-                        if (qInfo.userIndex == qInfo.quitUnique)
-                        {
-                            UIManager.instance.ShowAlertTip("退出房间失败。");
-                        }
-                    }
-                    break;
-                case MessageConvention.updateActorState:
-                    if (error != ErrorType.none)
-                    {
-                        Debug.LogError(error);
-                    }
-                    else
-                    {
-                        CheckState(xieyi);
-                    }
-                    break;
-
-                case MessageConvention.updateModelInfo:
-                    GameModelData modelDate = SerializeHelper.Deserialize<GameModelData>(xieyi.MessageContent);
-                    SetPrepareData(modelDate);
-                    break;
-                case MessageConvention.getPreGameData:
-                    if (error != ErrorType.none)
-                    {
-                        Debug.LogError(error);
-                    }
-                    else
-                    {
-                        Debug.Log("验证本客户端收到游戏前准备数据。客户端响应已收到:" + xieyi.MessageContentLength);
-                        SendState(RoomActorState.WaitForStart);
-                    }
-                    break;
-                case MessageConvention.startGaming:
-                    if (error != ErrorType.none)
-                    {
-                        Debug.LogError(error);
-                    }
-                    else
-                    {
-                        StartGaming();
-                    }
-                    break;
-                case MessageConvention.moveDirection:
-                    ActorMoveDirection move = SerializeHelper.Deserialize<ActorMoveDirection>(xieyi.MessageContent);
-                    member = GameManager.instance.memberGroup[move.userIndex];
-                    Vector3 position = SerializeHelper.BackVector(move.position);
-
-                    if (Vector3.Distance(position, member.transform.position) > distanceKeep)//超过限定区域
-                    {
-                        Debug.LogError("超过限定区域");
-                        member.SetPosition(position);
-                        member.lastMoveDirection = move;
-                    }
-                    else//平滑移动
-                    {
-                        if (move.userIndex != DataController.instance.MyLocateIndex)//其他成员
-                        {
-                            float passTime = (int)ServerTimeManager.instance.ServerTime.Subtract(move.runningTime).TotalSeconds;
-                            if (passTime < 0)
-                            {
-                                Debug.LogError("收到了未来的移动数据。");
-                                return;
-                            }
-                            Vector3 moveDistance = SerializeHelper.BackVector(move.direction) * move.speed * passTime;
-                            member.transform.DOMove(position + moveDistance, Time.deltaTime);
-                            //member.SetPosition(position);
-                            member.lastMoveDirection = move;
-                        }
-                    }
-                    break;
-                case MessageConvention.rotateDirection:
-                    ActorRotateDirection rotate = SerializeHelper.Deserialize<ActorRotateDirection>(xieyi.MessageContent);
-                    member = GameManager.instance.memberGroup[rotate.userIndex];
-                    member.myModel.DORotate(new Vector3(0, rotate.rotateY, 0), 0.2f);
-                    break;
-                case MessageConvention.endGaming:
-                    if (error != ErrorType.none)
-                    {
-                        Debug.LogError(error);
-                    }
-                    else
-                    {
-                        EndGaming(xieyi);
-                    }
-                    break;
-                default:
-                    Debug.LogError("收到未知协议：" + (MessageConvention)xieyi.XieYiFirstFlag);
-                    break;
+        //UDP
+        if (serverEventUDP.Count > 0)
+        {
+            MessageXieYi xieyi = serverEventUDP.Dequeue();
+            if (xieyi == null)
+            {
+                Debug.LogError("有UDP事件操作的协议为空？");
+                return;
+            }
+            if (xieyi.XieYiFirstFlag == (byte)MessageConvention.setUDP)
+            {
+                UDPManager.instance.IsConnect = true;
+                Debug.LogError("用tcp 设置房间 udp");
+                SocketManager.instance.SendSave((byte)MessageConvention.setUDP, xieyi.MessageContent, false);
             }
         }
     }
 
-    string guiInfo = "";
-    //public void OnGUI()
-    //{
-    //    if (DataController.instance.MyRoomInfo != null && DataController.instance.MyRoomInfo.ActorList != null)
-    //    {
-    //        guiInfo = frameIndex + "/" + DataController.instance.MyRoomInfo.FrameIndex;
-    //        int length = (DataController.instance.MyRoomInfo.FrameIndex - frameIndex);
-    //        guiInfo = guiInfo + " = " + length;
-    //
-    //        GUIStyle bb = new GUIStyle();
-    //        bb.normal.background = null;    //这是设置背景填充的
-    //        bb.normal.textColor = Color.blue;   //设置字体颜色的
-    //        bb.fontSize = 40;       //当然，这是字体大小
-    //        GUI.Label(new Rect(0, 0, 200, 200), guiInfo, bb);
-    //    }
-    //}
 
+
+}
+
+public enum FramePlayType
+{
+    游戏未开始,
+    准备UI,
+    游戏中,
+    空帧缓冲,
+    断线重连,
 }
