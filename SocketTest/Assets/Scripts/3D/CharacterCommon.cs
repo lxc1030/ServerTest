@@ -9,7 +9,7 @@ public class CharacterCommon : MonoBehaviour
     public GameObject teamRed;
 
     public Transform myModel;
-    public Transform modelHead;
+    public Transform cameraParent;
 
     /// <summary>
     /// 该模型在房间中的站位
@@ -52,6 +52,7 @@ public class CharacterCommon : MonoBehaviour
         myIndex = index;
         SetDirectionEnable(false);
         ShowKill(0);
+        SetOriginal();
     }
 
 
@@ -154,13 +155,13 @@ public class CharacterCommon : MonoBehaviour
             }
         }
     }
-    public void ShowMyName(string name)
-    {
-        GameObject obj = PoolManager.instance.GetPoolObjByType(PreLoadType.PeopleInfo, GameRunUI.instance.transName);
-        obj.transform.position = Vector3.zero;
-        PeopleInfo info = obj.GetComponent<PeopleInfo>();
-        info.Init(this, name);
-    }
+    //public void ShowMyName(string name)
+    //{
+    //    GameObject obj = PoolManager.instance.GetPoolObjByType(PreLoadType.PeopleInfo, GameRunUI.instance.transName);
+    //    obj.transform.position = Vector3.zero;
+    //    PeopleInfo info = obj.GetComponent<PeopleInfo>();
+    //    info.Init(this, name);
+    //}
 
     public void ShowBullet(ShootInfo info)
     {
@@ -172,7 +173,7 @@ public class CharacterCommon : MonoBehaviour
         MagicFireball b = obj.GetComponent<MagicFireball>();
         b.Init(info, myIndex);
     }
-    public void BeShoot()
+    public void SetOriginal()
     {
         Debug.Log("播放死亡动画，设置到初始位置.");
         GameModelData info = new GameModelData()
@@ -204,7 +205,7 @@ public class CharacterCommon : MonoBehaviour
 
     public void SetRotate(Vector3 rotate)
     {
-        myModel.rotation = Quaternion.Euler(rotate);//单纯的设置旋转方向就行了
+        transform.rotation = Quaternion.Euler(rotate);//单纯的设置旋转方向就行了
     }
     public void SetAnimation(int animation)
     {

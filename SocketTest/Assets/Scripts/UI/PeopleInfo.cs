@@ -18,7 +18,7 @@ public class PeopleInfo : MonoBehaviour
     public void Init(CharacterCommon target, string name)
     {
         txName.text = name;
-        Head = target.modelHead;
+        Head = target.cameraParent;
         UI = this.transform;
     }
 

@@ -70,7 +70,6 @@ public class SocketConnectUI : MonoBehaviour
         ChangeUIByState(NetState.断线重连);
         //
         GameManager.instance.OffLine();
-        MyJoystickManager.instance.OffLine();
     }
 
     #region Invoke调用函数

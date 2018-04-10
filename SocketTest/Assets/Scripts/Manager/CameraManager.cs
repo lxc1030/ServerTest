@@ -27,8 +27,7 @@ public class CameraManager : MonoBehaviour
     private Rect changeRect;
     #endregion
 
-
-    public bool isFollow;
+    
     public Vector3 followPosition;
     public Vector3 followRotation;
 
@@ -43,7 +42,6 @@ public class CameraManager : MonoBehaviour
         //
         SelfCamera = GetComponent<Camera>();
         SetCameraEnable(false);
-        isFollow = false;
         //
         changeRect = new Rect(0.0f, 0.0f, 1.0f, 1.0f);
         shakeTime = setShakeTime;
@@ -55,10 +53,11 @@ public class CameraManager : MonoBehaviour
     {
         SelfCamera.enabled = enable;
     }
-    public void SetCameraFollow(bool enable)
+    public void SetCameraFollow(Transform parent)
     {
-        return;
-        isFollow = enable;
+        transform.SetParent(parent);
+        transform.localPosition = Vector3.zero;
+        transform.localRotation = Quaternion.identity;
     }
 
 
@@ -91,15 +90,11 @@ public class CameraManager : MonoBehaviour
             Debug.DrawLine(ray.origin, hit.point, Color.red);
         }
     }
+    
 
 
     void Update()
     {
-        if (isFollow)
-        {
-            transform.position = GameManager.instance.GetMyControl().transform.position + followPosition;
-            transform.rotation = Quaternion.Euler(followRotation);
-        }
         if (isshakeCamera)
         {
             if (shakeTime > 0)

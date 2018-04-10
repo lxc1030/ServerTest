@@ -62,7 +62,7 @@ public class GameLoadingUI : MonoBehaviour
     public static void Close()
     {
         UIManager.instance.HidePanel(Name, true);
-        MyJoystickManager.instance.Open();
+        //MyJoystickManager.instance.Open();
     }
 
     public static void Show()

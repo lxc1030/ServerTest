@@ -9,7 +9,9 @@ public class GameRunUI : MonoBehaviour
     public static GameRunUI instance;
     public static string Name = "GameRunUI";
 
-    public Transform transName;
+
+    public ControlPartUI uiControl;
+
     /// <summary>
     /// 比赛时的进度条
     /// </summary>
@@ -17,8 +19,6 @@ public class GameRunUI : MonoBehaviour
     public ShowNumImage showBlue;
     public ShowNumImage showRed;
     public ShowNumImage showTime;
-
-    public Toggle showFireType;
 
     #region 注册Socket处理
 
@@ -60,8 +60,9 @@ public class GameRunUI : MonoBehaviour
     }
     private void Init()
     {
-        SetNameUIPool();
-        showFireType.isOn = MyJoystickManager.instance.isAutomatic;
+        uiControl.Show(true);
+        //
+        //SetNameUIPool();
     }
     public void OnClose()
     {
@@ -96,28 +97,118 @@ public class GameRunUI : MonoBehaviour
         showBlue.Show(BoxManager.instance.teamBlue + "");
         showRed.Show(BoxManager.instance.teamRed + "");
     }
-    private void SetNameUIPool()
-    {
-        for (int i = transName.childCount - 1; i >= 0; i--)
-        {
-            PoolManager.instance.SetPoolObjByType(PreLoadType.PeopleInfo, transName.GetChild(i).gameObject);
-        }
-    }
+    //private void SetNameUIPool()
+    //{
+    //    for (int i = transName.childCount - 1; i >= 0; i--)
+    //    {
+    //        PoolManager.instance.SetPoolObjByType(PreLoadType.PeopleInfo, transName.GetChild(i).gameObject);
+    //    }
+    //}
 
-
-    public void OnClickFireType()
-    {
-        MyJoystickManager.instance.ChangeFireType();
-        showFireType.isOn = MyJoystickManager.instance.isAutomatic;
-    }
 
     public void OnClickTestRay()
     {
         CameraManager.instance.RayShoot();
     }
 
+    #region 遥杆
+    public void Open()
+    {
+        uiControl.Show(true);
+    }
+    public void BeShoot()
+    {
+        uiControl.Show(false);
+    }
 
-    
+    #endregion
+
+
+
+    #region Move
+    public void OnMove(Vector2 move)
+    {
+        Vector3 moveDirection = new Vector3(move.x, 0, move.y);
+        Vector3 thumbPos = uiControl.etcMove.thumb.localPosition;
+        float speed = thumbPos.magnitude / uiControl.etcMove.GetRadius();//vector2 move计算出的速度不准确，斜角不为1
+        UIMove(moveDirection.x, 0, moveDirection.z, speed);
+    }
+
+    public void OnMoveEnd()
+    {
+        UIMove(0, 0, 0, 0);
+    }
+
+    private void UIMove(float x, float y, float z, float speed)
+    {
+        //
+        Vector3 direction = new Vector3(x, y, z);
+        speed = GameManager.myActorMoveSpeed * speed;
+        GameManager.instance.GetMyControl().UIMove(direction, speed);
+    }
+
+    #endregion
+
+
+
+    #region Touch
+
+
+    private float ySpeed = 0.2f;
+    public void OnTouchRotate(Vector2 move)
+    {
+        NetVector3 memberRotate = DataController.BackNetLimetByType(new Vector3(0, move.x, 0), NetLimetType.保留0位);
+        Vector3 memberEnd = SerializeHelper.BackVector(memberRotate) + GameManager.instance.GetMyControl().transform.eulerAngles;
+        GameManager.instance.GetMyControl().SetRotate(memberEnd);
+        //
+        UIRotate();
+        //
+        NetVector3 cameraRotate = DataController.BackNetLimetByType(new Vector3(-move.y * ySpeed, 0, 0), NetLimetType.保留1位);
+        Vector3 angle = new Vector3(GameManager.instance.GetMyControl().cameraParent.localEulerAngles.x, 0, 0);
+        if (angle.x > 90)//转换成-30
+        {
+            angle.x -= 360;
+        }
+        Vector3 cameraEnd = SerializeHelper.BackVector(cameraRotate) + angle;
+        if (Mathf.Abs(cameraEnd.x) <= 30)
+        {
+            GameManager.instance.GetMyControl().cameraParent.localEulerAngles = cameraEnd;
+        }
+    }
+
+    private void UIRotate()
+    {
+        //发送人物旋转
+        GameManager.instance.GetMyControl().UIRotation();
+    }
+
+    public void OnFightUp()
+    {
+        CancelInvoke("ShootSpan");
+    }
+
+    public void OnFightDown()
+    {
+        InvokeRepeating("ShootSpan", 0, DataController.FrameFixedTime);
+        //Debug.LogError("Press" + Time.realtimeSinceStartup);
+    }
+
+    private void ShootSpan()
+    {
+        Debug.LogError("Shoot" + Time.realtimeSinceStartup);
+        GameManager.instance.GetMyControl().UIShot();
+    }
+
+
+    #endregion
+
+
+
+
+
+
+
+
     public void Update()
     {
         SetShowTime(GameManager.instance.GetGameTime());
@@ -126,3 +217,17 @@ public class GameRunUI : MonoBehaviour
 
 }
 
+[Serializable]
+public class ControlPartUI
+{
+    public ETCJoystick etcMove;
+    public ETCTouchPad etcRotate;
+    public ETCTouchPad etcShoot;
+
+    public void Show(bool isEnable)
+    {
+        etcMove.gameObject.SetActive(isEnable);
+        etcRotate.gameObject.SetActive(isEnable);
+        etcShoot.gameObject.SetActive(isEnable);
+    }
+}

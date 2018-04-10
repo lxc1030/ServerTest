@@ -295,7 +295,8 @@ public class GameManager : MonoBehaviour
                 case RoomActorState.ModelPrepared:
                     break;
                 case RoomActorState.Invincible:
-                    MyJoystickManager.instance.Open();
+                    GameRunUI.instance.Open();
+                    //MyJoystickManager.instance.Open();
                     break;
             }
         }
@@ -330,13 +331,16 @@ public class GameManager : MonoBehaviour
         byte[] message = SerializeHelper.ConvertToByte(info);
         SocketManager.instance.SendSave((byte)MessageConvention.prepareLocalModel, message, false);
     }
-    private void ShowModelUIName()
-    {
-        foreach (var item in DataController.instance.ActorList)
-        {
-            memberGroup[item.Value.UniqueID].ShowMyName(item.Value.Register.name);
-        }
-    }
+    //private void ShowModelUIName()
+    //{
+    //    foreach (var item in DataController.instance.ActorList)
+    //    {
+    //        if (item.Key != DataController.instance.MyLocateIndex)
+    //        {
+    //            memberGroup[item.Value.UniqueID].ShowMyName(item.Value.Register.name);
+    //        }
+    //    }
+    //}
 
     /// <summary>
     /// 刷新3D模型的显示
@@ -406,9 +410,9 @@ public class GameManager : MonoBehaviour
             reConnectIndex = -1;
             CurrentPlayType = FramePlayType.游戏中;
             CameraManager.instance.SetCameraEnable(true);
-            CameraManager.instance.SetCameraFollow(true);
+            CameraManager.instance.SetCameraFollow(GameManager.instance.GetMyControl().cameraParent);
             GameRunUI.Show();
-            ShowModelUIName();
+            //ShowModelUIName();
             //最后关闭loading
             GameLoadingUI.Close();
         }
@@ -419,8 +423,8 @@ public class GameManager : MonoBehaviour
         CurrentPlayType = FramePlayType.游戏未开始;
         frameIndex = 0;
         reConnectIndex = 0;//游戏结束的时候未完成复现，则清除重连记录帧
-        MyJoystickManager.instance.Close();
         CameraManager.instance.SetCameraEnable(false);
+        CameraManager.instance.SetCameraFollow(transform);
         foreach (var item in memberGroup)
         {
             item.Value.Init(item.Key);
@@ -733,10 +737,11 @@ public class GameManager : MonoBehaviour
         //
         if (shootedIndex == DataController.instance.MyLocateIndex)
         {
-            MyJoystickManager.instance.BeShoot();
+            GameRunUI.instance.BeShoot();
+            //MyJoystickManager.instance.BeShoot();
             UIManager.instance.ShowAlertTip("我被射中。");
         }
-        GetControl(shootedIndex).BeShoot();
+        GetControl(shootedIndex).SetOriginal();
         GetControl(bulletMaster).ShowKill(DataController.instance.ActorList[bulletMaster].KillCount);
     }
 
@@ -773,7 +778,7 @@ public class GameManager : MonoBehaviour
             AccumilatedTime = AccumilatedTime - DataController.FrameFixedTime;
         }
     }
-    
+
     public void Update()
     {
         if (serverEventTCP.Count > 0)
