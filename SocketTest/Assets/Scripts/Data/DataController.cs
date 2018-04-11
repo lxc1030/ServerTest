@@ -167,11 +167,7 @@ public class DataController : MonoBehaviour
             serverTime = value;
         }
     }
-
-
-
-
-
+    
 
 
     /// <summary>
@@ -263,13 +259,18 @@ public class DataController : MonoBehaviour
         float speed = 0;
         if (index == 0)
         {
-            speed = 10;
-        }
-        if (index == 1)
-        {
-            speed = 40;
+            speed = 50;
         }
         return speed;
+    }
+    public static float BackShootSpan(int index)
+    {
+        float span = 0;
+        if (index == 0)
+        {
+            span = 0.4f;
+        }
+        return span;
     }
 
 

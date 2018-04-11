@@ -4,7 +4,7 @@ using DG.Tweening;
 public class CameraManager : MonoBehaviour
 {
     public static CameraManager instance;
-    
+
 
 
     #region  相机震动相关参数
@@ -27,7 +27,7 @@ public class CameraManager : MonoBehaviour
     private Rect changeRect;
     #endregion
 
-    
+
     public Vector3 followPosition;
     public Vector3 followRotation;
 
@@ -55,8 +55,9 @@ public class CameraManager : MonoBehaviour
     }
     public void SetCameraFollow(Transform parent)
     {
+        Vector3 fixPos = new Vector3(0, 0, -1.5f);
         transform.SetParent(parent);
-        transform.localPosition = Vector3.zero;
+        transform.localPosition = Vector3.zero + fixPos;
         transform.localRotation = Quaternion.identity;
     }
 
@@ -78,8 +79,9 @@ public class CameraManager : MonoBehaviour
     }
 
 
-    public void RayShoot()
+    public BulletInfo RayShoot()
     {
+        BulletInfo bulletInfo = new BulletInfo();
         Ray ray = new Ray(transform.position, transform.forward);
         RaycastHit hit;
         if (Physics.Raycast(ray, out hit, Mathf.Infinity))
@@ -88,9 +90,28 @@ public class CameraManager : MonoBehaviour
             Debug.Log("碰撞对象: " + hit.collider.name);
             // 在场景视图中绘制射线  
             Debug.DrawLine(ray.origin, hit.point, Color.red);
+            GameObject obj = hit.transform.gameObject;
+
+            switch (obj.tag)
+            {
+                case nameof(Tag.Box):
+                    Box box = obj.GetComponent<Box>();
+                    bulletInfo.shootTag = ShootTag.Box;
+                    bulletInfo.shootInfo = box.myInfo.myIndex + "";
+                    break;
+                case nameof(Tag.Member):
+                    CharacterCommon member = obj.GetComponent<CharacterCommon>();
+                    bulletInfo.shootTag = ShootTag.Character;
+                    bulletInfo.shootInfo = member.myIndex + "";
+                    break;
+                default://墙体及障碍物
+                    bulletInfo.shootTag = ShootTag.Wall;
+                    break;
+            }
+
         }
+        return null;
     }
-    
 
 
     void Update()

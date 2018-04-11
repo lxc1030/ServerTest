@@ -105,12 +105,6 @@ public class GameRunUI : MonoBehaviour
     //    }
     //}
 
-
-    public void OnClickTestRay()
-    {
-        CameraManager.instance.RayShoot();
-    }
-
     #region 遥杆
     public void Open()
     {
@@ -153,11 +147,11 @@ public class GameRunUI : MonoBehaviour
 
     #region Touch
 
-
+    private float xSpeed = 0.5f;
     private float ySpeed = 0.2f;
     public void OnTouchRotate(Vector2 move)
     {
-        NetVector3 memberRotate = DataController.BackNetLimetByType(new Vector3(0, move.x, 0), NetLimetType.保留0位);
+        NetVector3 memberRotate = DataController.BackNetLimetByType(new Vector3(0, move.x * xSpeed, 0), NetLimetType.保留0位);
         Vector3 memberEnd = SerializeHelper.BackVector(memberRotate) + GameManager.instance.GetMyControl().transform.eulerAngles;
         GameManager.instance.GetMyControl().SetRotate(memberEnd);
         //
@@ -170,7 +164,7 @@ public class GameRunUI : MonoBehaviour
             angle.x -= 360;
         }
         Vector3 cameraEnd = SerializeHelper.BackVector(cameraRotate) + angle;
-        if (Mathf.Abs(cameraEnd.x) <= 30)
+        if (Mathf.Abs(cameraEnd.x) <= 20)
         {
             GameManager.instance.GetMyControl().cameraParent.localEulerAngles = cameraEnd;
         }
@@ -182,21 +176,22 @@ public class GameRunUI : MonoBehaviour
         GameManager.instance.GetMyControl().UIRotation();
     }
 
-    public void OnFightUp()
-    {
-        CancelInvoke("ShootSpan");
-    }
+
 
     public void OnFightDown()
     {
-        InvokeRepeating("ShootSpan", 0, DataController.FrameFixedTime);
-        //Debug.LogError("Press" + Time.realtimeSinceStartup);
+        InvokeRepeating("ShootSpan", 0, DataController.BackShootSpan(0));
     }
+    public void OnFightUp()
+    {
+        CancelInvoke("ShootSpan");
+        //GameManager.instance.UIShot();
+    }
+
 
     private void ShootSpan()
     {
-        Debug.LogError("Shoot" + Time.realtimeSinceStartup);
-        GameManager.instance.GetMyControl().UIShot();
+        GameManager.instance.UIShot();
     }
 
 

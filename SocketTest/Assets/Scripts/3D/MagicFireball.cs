@@ -26,7 +26,7 @@ public class MagicFireball : MonoBehaviour
     private void DoAnimation()
     {
         transform.position = SerializeHelper.BackVector(info.position);
-        transform.rotation = Quaternion.Euler(SerializeHelper.BackVector(info.direction) + new Vector3(15, 0, 0));
+        transform.rotation = Quaternion.Euler(SerializeHelper.BackVector(info.direction));
     }
 
     private void OnTriggerEnter(Collider other)
@@ -45,7 +45,7 @@ public class MagicFireball : MonoBehaviour
             isDestroy = true;
             bool isSend = (ownIndex == DataController.instance.MyLocateIndex);
             GameObject obj = other.gameObject;
-            BulletInfo bulletInfo = new BulletInfo();
+            BulletInfo bulletInfo = new BulletInfo() { userIndex = DataController.instance.MyLocateIndex };
             switch (obj.tag)
             {
                 case nameof(Tag.Box):
@@ -86,11 +86,7 @@ public class MagicFireball : MonoBehaviour
             if (isSend)
             {
                 Debug.Log("射中：" + bulletInfo.shootTag);
-                bulletInfo.userIndex = DataController.instance.MyLocateIndex;
-                //发送
-                byte[] message = SerializeHelper.Serialize<BulletInfo>(bulletInfo);
-                //SocketManager.instance.SendSave((byte)MessageConvention.bulletInfo, message, false);
-                UDPManager.instance.SendSave((byte)MessageConvention.bulletInfo, message);
+                GameManager.instance.SendNetInfo(bulletInfo);
             }
             //
             PoolDestory();
@@ -116,7 +112,7 @@ public class MagicFireball : MonoBehaviour
     //    shoot.bulletType = bulletType;
     //    Init(shoot);
     //}
-    
+
 
 
 
@@ -125,7 +121,7 @@ public class MagicFireball : MonoBehaviour
     {
         if (!isDestroy)
         {
-            if (transform.position.y < -100)
+            if (Vector3.Distance(transform.position, Vector3.zero) > 100)
             {
                 isDestroy = true;
                 PoolDestory();

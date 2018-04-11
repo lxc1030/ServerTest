@@ -331,23 +331,7 @@ public class CharacterCommon : MonoBehaviour
         }
     }
 
-    public void UIShot()
-    {
-        if (DataController.instance.ActorList[myIndex].CurState == RoomActorState.Dead)
-        {
-            return;
-        }
-        //旋转
-        ShootInfo info = new ShootInfo();
-        info.userIndex = DataController.instance.MyLocateIndex;
-        info.bulletType = 0;
-        info.position = DataController.BackNetLimetByType(shootMuzzle.position);
-        info.direction = DataController.BackNetLimetByType(myModel.eulerAngles);
-
-        byte[] sendData = SerializeHelper.Serialize<ShootInfo>(info);
-        //SocketManager.instance.SendSave((byte)MessageConvention.shootBullet, message, false);
-        UDPManager.instance.SendSave((byte)MessageConvention.shootBullet, sendData);
-    }
+  
 
 
     #endregion

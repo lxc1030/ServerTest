@@ -193,6 +193,45 @@ public class GameManager : MonoBehaviour
         return memberGroup[index];
     }
 
+    public void UIShot()
+    {
+        int index = DataController.instance.MyLocateIndex;
+        if (DataController.instance.ActorList[index].CurState == RoomActorState.Dead)
+        {
+            return;
+        }
+        //旋转
+        ShootInfo info = new ShootInfo();
+        info.userIndex = index;
+        info.bulletType = 0;
+        info.position = DataController.BackNetLimetByType(GameManager.instance.GetControl(index).cameraParent.position);
+        info.direction = DataController.BackNetLimetByType(GameManager.instance.GetControl(index).cameraParent.eulerAngles);
+        //
+        GameManager.instance.GetControl(index).ShowBullet(info);
+        //发送
+        GameManager.instance.SendNetInfo(info);
+    }
+
+    /// <summary>
+    /// 子弹射中谁
+    /// </summary>
+    /// <param name="bulletInfo"></param>
+    public void SendNetInfo(BulletInfo bulletInfo)
+    {
+        //发送
+        byte[] message = SerializeHelper.Serialize<BulletInfo>(bulletInfo);
+        //SocketManager.instance.SendSave((byte)MessageConvention.bulletInfo, message, false);
+        UDPManager.instance.SendSave((byte)MessageConvention.bulletInfo, message);
+    }
+
+    public void SendNetInfo(ShootInfo shootInfo)
+    {
+        byte[] sendData = SerializeHelper.Serialize<ShootInfo>(shootInfo);
+        //SocketManager.instance.SendSave((byte)MessageConvention.shootBullet, message, false);
+        UDPManager.instance.SendSave((byte)MessageConvention.shootBullet, sendData);
+    }
+
+
     #endregion
 
 
@@ -680,9 +719,13 @@ public class GameManager : MonoBehaviour
                 member.SetNetDirection(rotateDir);
                 break;
             case MessageConvention.shootBullet:
+               
                 ShootInfo shootInfo = SerializeHelper.Deserialize<ShootInfo>(tempMessageContent);
                 member = GameManager.instance.memberGroup[shootInfo.userIndex];
-                member.ShowBullet(shootInfo);
+                if (shootInfo.userIndex != DataController.instance.MyLocateIndex)//自身在收到服务器消息之前已旋转
+                {
+                    member.ShowBullet(shootInfo);
+                }
                 break;
             case MessageConvention.bulletInfo:
                 BulletInfo bulletInfo = SerializeHelper.Deserialize<BulletInfo>(tempMessageContent);
