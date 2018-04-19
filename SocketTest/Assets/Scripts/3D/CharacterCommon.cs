@@ -58,44 +58,18 @@ public class CharacterCommon : MonoBehaviour
 
     void OnControllerColliderHit(ControllerColliderHit hit)
     {
-        //Rigidbody body = hit.collider.attachedRigidbody;
-        bool isSend = DataController.instance.MyLocateIndex == myIndex;
-        if (!isSend)
-        {
-            return;
-        }
-
         GameObject obj = hit.gameObject;
-        BulletInfo bulletInfo = new BulletInfo();
-
         switch (obj.tag)
         {
-            case nameof(Tag.Box):
-                Box box = obj.GetComponent<Box>();
-                if (box.myInfo.ownerIndex == myIndex)//碰到自己的领地
-                {
-                    return;
-                }
-                else
-                {
-                    TeamType type = DataController.instance.ActorList[myIndex].MyTeam;
-                    box.ChangeTexture(type);
-                }
-                bulletInfo.shootTag = ShootTag.Box;
-                bulletInfo.shootInfo = box.myInfo.myIndex + "";
+            case nameof(Tag.Buff):
+                MagicBuff buff = obj.GetComponent<MagicBuff>();
+                buff.BePickUp(myIndex);
+                break;
+            case nameof(Tag.Ground):
                 break;
             default:
-                bulletInfo = null;
+                Debug.LogError("人物碰到：" + obj.name + "/" + obj.tag);
                 break;
-        }
-        if (bulletInfo != null)
-        {
-            Debug.Log("踩中：" + bulletInfo.shootTag);
-            bulletInfo.userIndex = DataController.instance.MyLocateIndex;
-            //发送
-            byte[] message = SerializeHelper.Serialize<BulletInfo>(bulletInfo);
-            //SocketManager.instance.SendSave((byte)MessageConvention.bulletInfo, message, false);
-            UDPManager.instance.SendSave((byte)MessageConvention.bulletInfo, message);
         }
     }
 
@@ -167,7 +141,7 @@ public class CharacterCommon : MonoBehaviour
     {
         GameObject obj = null;
         obj = PoolManager.instance.GetPoolObjByType(PreLoadType.Bullet, shootMuzzle);
-        obj.transform.localEulerAngles = Vector3.zero;
+        //obj.transform.localEulerAngles = Vector3.zero;
         obj.transform.parent = GameManager.instance.transBullet;
         //
         MagicFireball b = obj.GetComponent<MagicFireball>();
@@ -191,11 +165,8 @@ public class CharacterCommon : MonoBehaviour
     {
         netMove = new ActorMoveDirection();
         lastMove = new ActorMoveDirection();
-    }
-
-    public bool IsShowHierarchy()
-    {
-        return gameObject.activeInHierarchy;
+        netRotate = new ActorRotateDirection();
+        lastRotate = new ActorRotateDirection();
     }
 
     public void SetPosition(Vector3 pos)
@@ -227,9 +198,11 @@ public class CharacterCommon : MonoBehaviour
 
     public void SetNetDirection(ActorRotateDirection dir)
     {
-        if (myIndex == DataController.instance.MyLocateIndex)//自身在收到服务器消息之前已旋转
-            return;
-        SetRotate(new Vector3(0, dir.rotateY, 0));//单纯的设置旋转方向就行了
+        //if (myIndex == DataController.instance.MyLocateIndex)//自身在收到服务器消息之前已旋转
+        //    return;
+        //SetRotate(new Vector3(0, dir.rotateY, 0));//单纯的设置旋转方向就行了
+        //SetRotate(SerializeHelper.BackVector(dir.direction));
+        netRotate = dir;
     }
 
     /// <summary>
@@ -243,28 +216,68 @@ public class CharacterCommon : MonoBehaviour
             return;
         }
         DoMove();
+        DoRotate();
     }
 
     private void DoMove()
     {
         CharacterMove();
     }
-
-    private float moveSpeed = 80;
+    public float ySpeed = 0;
     private void CharacterMove()
     {
         Vector3 main = transform.forward * netMove.direction.z + transform.right * netMove.direction.x;
-        myControl.SimpleMove(main * moveSpeed * netMove.speed * DataController.FrameFixedTime);
+        //main.y = -DataController.Gravity;
+        myControl.Move(main * netMove.speed * DataController.FrameFixedTime);
+        //
+        if (myControl.isGrounded)//判断人物是否在地面上 
+        {
+            ySpeed = 0;
+        }
+        else
+        {
+            float s = ySpeed * DataController.FrameFixedTime + 0.5f * DataController.Gravity * Mathf.Pow(DataController.FrameFixedTime, 2);
+            myControl.Move(new Vector3(0, -s, 0));
+            ySpeed = ySpeed + DataController.Gravity * DataController.FrameFixedTime;
+        }
     }
 
-    private float rotateSpeed = 100;
+    private void DoRotate()
+    {
+        CharacterRotate();
+    }
+
+
+
+    private float rotateSpeed = 1;
     private void CharacterRotate()
     {
-        float length = Mathf.Abs(netMove.direction.x);
-        float side = netMove.direction.x < 0 ? -1 : 1;
-        Vector3 main = Vector3.up;
-        myControl.transform.Rotate(main * side * length * rotateSpeed * DataController.FrameFixedTime);
+        Vector3 memberEnd = new Vector3(0, netRotate.direction.x * netRotate.speed, 0);
+        myControl.transform.Rotate(memberEnd * rotateSpeed * DataController.FrameFixedTime);
+        Vector3 updown = new Vector3(-netRotate.direction.z * netRotate.speed, 0, 0);
+        updown *= DataController.FrameFixedTime;
+        float curX = cameraParent.localEulerAngles.x;
+        if (curX > 90)
+        {
+            curX -= 360;
+        }
+        float value = Mathf.Abs(curX + updown.x);
+        if (value <= 60)
+        {
+            cameraParent.Rotate(updown);
+        }
+        else
+        {
+            cameraParent.localEulerAngles = new Vector3((curX / Mathf.Abs(curX)) * 60, 0, 0);
+        }
     }
+
+
+    public void SetJump()
+    {
+        ySpeed = DataController.JumpSpeed;
+    }
+
 
     #region MyControl
 
@@ -301,28 +314,40 @@ public class CharacterCommon : MonoBehaviour
             byte[] sendData = SerializeHelper.Serialize<ActorMoveDirection>(tempMove);
             //SocketManager.instance.SendSave((byte)MessageConvention.moveDirection, sendData, false);
             UDPManager.instance.SendSave((byte)MessageConvention.moveDirection, sendData);
+            if (move.y > 0)
+            {
+                Debug.LogError("已发送跳跃");
+            }
         }
     }
 
 
+    private ActorRotateDirection netRotate;
     private ActorRotateDirection lastRotate;
-    private static int eulerLimet = 5;
-    public void UIRotation()
+    public void UIRotation(Vector3 direction, float speed)
     {
         if (DataController.instance.ActorList[myIndex].CurState == RoomActorState.Dead)
         {
             return;
         }
-        int lookAt = (int)myModel.eulerAngles.y;
-        int rotateIndex = eulerLimet;
+        //int lookAt = (int)myModel.eulerAngles.y;
+        NetVector3 dir = DataController.BackNetLimetByType(direction, NetLimetType.保留1位);
+        float _speed = DataController.BackNetLimetByType(speed, NetLimetType.保留1位);
+        //int rotateIndex = eulerLimet;
 
         ActorRotateDirection tempRotate = new ActorRotateDirection()
         {
             userIndex = DataController.instance.MyLocateIndex,
-            rotateY = lookAt
+            direction = dir,
+            speed = _speed,
         };
 
-        if (lastRotate == null || Mathf.Abs(lookAt - lastRotate.rotateY) >= rotateIndex)
+        if (lastRotate == null
+            || dir.x != lastRotate.direction.x
+            || dir.y != lastRotate.direction.y
+            || dir.z != lastRotate.direction.z
+            || _speed != lastRotate.speed
+            )
         {
             lastRotate = tempRotate;
             byte[] sendData = SerializeHelper.Serialize<ActorRotateDirection>(tempRotate);
@@ -331,8 +356,16 @@ public class CharacterCommon : MonoBehaviour
         }
     }
 
-  
 
+    public void UIJump()
+    {
+        if (!myControl.isGrounded)
+        {
+            return;
+        }
+        ActorJump jump = new ActorJump() { userIndex = DataController.instance.MyLocateIndex };
+        GameManager.instance.SendNetInfo(jump);
+    }
 
     #endregion
 }

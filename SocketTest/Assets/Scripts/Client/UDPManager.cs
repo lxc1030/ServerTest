@@ -55,8 +55,8 @@ public class UDPManager : MonoBehaviour
     IPEndPoint ipEnd; //服务端端口
     string recvStr; //接收的字符串
     string sendStr; //发送的字符串
-    byte[] recvData = new byte[1024]; //接收的数据，必须为字节
-    byte[] sendData = new byte[1024]; //发送的数据，必须为字节
+    byte[] recvData; //接收的数据，必须为字节
+    //byte[] sendData = new byte[1024]; //发送的数据，必须为字节
     int recvLen; //接收的数据长度
     Thread connectThread; //连接线程
 
@@ -102,6 +102,8 @@ public class UDPManager : MonoBehaviour
         //开启一个线程连接，必须的，否则主线程卡死
         connectThread = new Thread(new ThreadStart(SocketReceive));
         connectThread.Start();
+        connectThread.IsBackground = true;
+
     }
 
 
@@ -115,9 +117,10 @@ public class UDPManager : MonoBehaviour
             while (true)
             {
                 //对data清零
-                recvData = new byte[1024];
+                recvData = new byte[4096];
                 //获取客户端，获取服务端端数据，用引用给服务端赋值，实际上服务端已经定义好并不需要赋值
                 recvLen = socket.ReceiveFrom(recvData, ref serverEnd);
+                guiInfo = recvLen + "";
 
                 byte[] effectiveData = new byte[recvLen];
                 Array.Copy(recvData, effectiveData, recvLen);
@@ -133,15 +136,15 @@ public class UDPManager : MonoBehaviour
                 ////输出接收到的数据
                 //recvStr = Encoding.ASCII.GetString(recvData, 0, recvLen);
                 //Debug.LogError("我是客户端，接收到服务器的数据" + recvStr);
-
-
-
             }
         }
         catch (Exception e)
         {
+            Debug.LogError(recvLen + "/" + e.Message);
+        }
+        finally
+        {
             SocketQuit();
-            Debug.LogError(e.Message);
             IsConnect = false;
         }
     }
@@ -235,6 +238,7 @@ public class UDPManager : MonoBehaviour
                     frameError += tempMessageContent[i] + ",";
                 }
                 Debug.LogError(frameError);
+                UIManager.instance.ShowAlertTip(frameError);
                 return;
             }
 
@@ -242,22 +246,23 @@ public class UDPManager : MonoBehaviour
             {
                 Debug.LogError("请检查，该逻辑不能为空。");
             }
-            for (int i = 0; i < fInfos.Count; i++)
+
+            lock (GameManager.instance.FrameInfos)
             {
-                FrameInfo fInfo = fInfos[i];
-                if (fInfos == null)
+                for (int i = 0; i < fInfos.Count; i++)
                 {
-                    Debug.LogError("解析后的数据有空值：" + fInfo.frameIndex);
-                }
-                lock (GameManager.instance.FrameInfos)
-                {
+                    FrameInfo fInfo = fInfos[i];
+                    if (fInfo == null)
+                    {
+                        Debug.LogError("帧数据解析后有空值");
+                    }
                     if (!GameManager.instance.FrameInfos.ContainsKey(fInfo.frameIndex))
                     {
                         GameManager.instance.FrameInfos.Add(fInfo.frameIndex, fInfo);
                         //Debug.Log("成功保存帧：" + fInfo.frameIndex);
-                        if (DataController.instance.FrameMaxIndex < fInfo.frameIndex)
+                        if (GameManager.instance.frameMaxIndex < fInfo.frameIndex)
                         {
-                            DataController.instance.FrameMaxIndex = fInfo.frameIndex;
+                            GameManager.instance.frameMaxIndex = fInfo.frameIndex;
                         }
                     }
                     else
@@ -272,5 +277,21 @@ public class UDPManager : MonoBehaviour
 
         }
     }
+
+
+    string guiInfo = "000";
+    public void OnGUI()
+    {
+        if (DataController.instance.MyRoomInfo != null && DataController.instance.ActorList != null)
+        {
+            string guiInfo2 = "udp： " + ((connectThread == null) ? "" : connectThread.IsAlive + "");
+            GUIStyle bb = new GUIStyle();
+            bb.normal.background = null;    //这是设置背景填充的
+            bb.normal.textColor = Color.blue;   //设置字体颜色的
+            bb.fontSize = 40;       //当然，这是字体大小
+            GUI.Label(new Rect(0, 50, 200, 200), guiInfo2, bb);
+        }
+    }
+
 }
 

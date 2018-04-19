@@ -25,6 +25,15 @@ public class SingleRoom
     /// </summary>
     public Dictionary<int, BoxInfo> BoxList { get; set; }
     /// <summary>
+    /// 所有生成的buff信息
+    /// </summary>
+    public Dictionary<int, BuffInfo> BuffList { get; set; }
+    /// <summary>
+    /// 记录一共生成了多少个Buff
+    /// </summary>
+    public int BuffIndex { get; set; }
+
+    /// <summary>
     /// 队伍信息
     /// </summary>
     public Dictionary<TeamType, List<int>> AllTeamInfo { get; set; }
@@ -85,6 +94,7 @@ public class SingleRoom
                     { TeamType.Red, new List<int>() { } }
                 };
                 BoxList = new Dictionary<int, BoxInfo>();
+                BuffList = new Dictionary<int, BuffInfo>();
                 break;
         }
     }
@@ -410,6 +420,9 @@ public class SingleRoom
     //}
     public void UpdateBulletInfo(BulletInfo bulletInfo)
     {
+        byte[] message = null;
+        MessageXieYi xieyi = null;
+        int boxIndex = -1;
         //
         switch (bulletInfo.shootTag)
         {
@@ -417,30 +430,53 @@ public class SingleRoom
                 //设置色块拥有者
                 lock (BoxList)
                 {
-                    int boxIndex = int.Parse(bulletInfo.shootInfo);
+                    boxIndex = int.Parse(bulletInfo.shootInfo);
                     if (!BoxList.ContainsKey(boxIndex))
                     {
-                        BoxList.Add(boxIndex, new BoxInfo() { myIndex = boxIndex});
+                        BoxList.Add(boxIndex, new BoxInfo() { ownerIndex = -1, myIndex = boxIndex });
                     }
-                    BoxList[boxIndex].ownerIndex = bulletInfo.userIndex;
+                    if (BoxList[boxIndex].ownerIndex < 0)
+                    {
+                        BoxList[boxIndex].ownerIndex = bulletInfo.userIndex;
+                        //生成buff
+                        BuffInfo buffInfo = new BuffInfo() { ownerIndex = -1, myIndex = BuffIndex };
+                        lock (BuffList)
+                        {
+                            buffInfo.boxIndex = boxIndex;
+                            buffInfo.type = RandomBuffType();//随机一个buff类型
+                            BuffList.Add(BuffIndex, buffInfo);
+                            BuffIndex++;
+                        }
+                        Log4Debug("在盒子编号->" + boxIndex + " 掉落Buff,编号->" + buffInfo.myIndex + ",类型->" + buffInfo.type);
+                        //保存子弹消息
+                        message = SerializeHelper.Serialize<BulletInfo>(bulletInfo);
+                        xieyi = new MessageXieYi((byte)MessageConvention.bulletInfo, 0, message);
+                        SetRecondFrame(xieyi.ToBytes());
+                        //保存Buff消息
+                        message = SerializeHelper.Serialize<BuffInfo>(buffInfo);
+                        xieyi = new MessageXieYi((byte)MessageConvention.createBuff, 0, message);
+                        SetRecondFrame(xieyi.ToBytes());
+                    }
+                    else//该色块已被其他人击碎
+                    {
+                        return;
+                    }
                 }
                 break;
             case ShootTag.Character:
                 //
-                int bulletMaster = bulletInfo.userIndex;
                 int shootedIndex = int.Parse(bulletInfo.shootInfo);
-
-                if (ActorList[shootedIndex].MyTeam == ActorList[bulletMaster].MyTeam)
+                if (ActorList[shootedIndex].MyTeam == ActorList[bulletInfo.userIndex].MyTeam)
                 {
                     return;
                 }
                 if (ActorList[shootedIndex].CurState == RoomActorState.Gaming)
                 {
                     //增加击杀数
-                    ActorList[bulletMaster].KillCount++;
+                    ActorList[bulletInfo.userIndex].KillCount++;
                     if (RoomInfo.CurState == RoomActorState.Gaming)
                     {
-                        byte[] message = SerializeHelper.Serialize<List<RoomActor>>(new List<RoomActor>(ActorList.Values));
+                        message = SerializeHelper.Serialize<List<RoomActor>>(new List<RoomActor>(ActorList.Values));
                         BoardcastMessage(MessageConvention.getRoommateInfo, message);
                     }
                     //改变被射击者状态
@@ -458,12 +494,37 @@ public class SingleRoom
                 else
                 {
                     Log4Debug("射击者站位：" + bulletInfo.userIndex + " 正在鞭尸位置->" + shootedIndex);
-                    return;
                 }
+                //保存子弹消息
+                message = SerializeHelper.Serialize<BulletInfo>(bulletInfo);
+                xieyi = new MessageXieYi((byte)MessageConvention.bulletInfo, 0, message);
+                SetRecondFrame(xieyi.ToBytes());
                 break;
             case ShootTag.Wall:
+                //打中墙的消息就不存了
+                break;
+            case ShootTag.Buff:
+                int buffIndex = int.Parse(bulletInfo.shootInfo);
+                Log4Debug("站位：" + bulletInfo.userIndex + " 请求拾取Buff->" + buffIndex);
+                lock (BuffList)
+                {
+                    if (BuffList[buffIndex].ownerIndex < 0)
+                    {
+                        BuffList[buffIndex].ownerIndex = bulletInfo.userIndex;
+                        Log4Debug("站位：" + bulletInfo.userIndex + " 拾取了Buff->" + buffIndex);
+                    }
+                    else//该buff已被其他人加成
+                    {
+                        return;
+                    }
+                }
+                //保存Buff消息
+                message = SerializeHelper.Serialize<BuffInfo>(BuffList[buffIndex]);
+                xieyi = new MessageXieYi((byte)MessageConvention.getBuff, 0, message);
+                SetRecondFrame(xieyi.ToBytes());
                 break;
         }
+
 
         //广播发送消息
         //byte[] message = SerializeHelper.ConvertToByte(bulletInfo));
@@ -527,7 +588,7 @@ public class SingleRoom
     /// </summary>
     /// <param name="message"></param>
     /// <param name="index">保存在指定帧内</param>
-    public void SetRecondFrame(byte[] message)
+    public void SetRecondFrame(byte[] message, int setIndex = -1)
     {
         if (message == null)
         {
@@ -535,6 +596,10 @@ public class SingleRoom
             return;
         }
         int curIndex = RoomInfo.FrameIndex;
+        if (setIndex != -1)
+        {
+            curIndex = setIndex;
+        }
         if (curIndex >= FrameCount)
         {
             Log4Debug("存储帧：" + curIndex + "大于等于总长：" + FrameCount);
@@ -554,7 +619,7 @@ public class SingleRoom
 
     public byte[] GetBoardFrame(int start)
     {
-        return GetBoardFrame(start, start + RoomInfo.FrameDelay);
+        return GetBoardFrame(start, start);
     }
 
     public byte[] GetBoardFrame(int start, int end)
@@ -564,7 +629,7 @@ public class SingleRoom
         {
             Log4Debug("请求帧start：" + start + " 小于0");
         }
-        else if (start > FrameCount || end > FrameCount)
+        else if (start >= FrameCount || end >= FrameCount)
         {
             Log4Debug("请求帧start：" + start + " end:" + end + " 超过帧总数：" + FrameCount + "，请检查代码逻辑");
         }
@@ -574,7 +639,7 @@ public class SingleRoom
         }
         else
         {
-            for (int i = start; i < end; i++)
+            for (int i = start; i <= end; i++)
             {
                 lock (FrameGroup)
                 {
@@ -587,7 +652,6 @@ public class SingleRoom
     }
 
     private DateTime lastRecondTime { get; set; }
-    private int lockTime = 0;
     /// <summary>
     /// 服务器帧根据时间递增
     /// </summary>
@@ -616,15 +680,14 @@ public class SingleRoom
                 }
             }
         }
-
     }
 
     private void FrameLogic(object obj)
     {
+        int end = RoomInfo.FrameIndex;
         int tempIndex = RoomInfo.FrameIndex + 1;
         RoomInfo.FrameIndex = tempIndex;
         int start = tempIndex - RoomInfo.frameInterval;
-        int end = tempIndex;
 
         byte[] message = GetBoardFrame(start, end);//当前帧的前2帧一起发送，是用来防止udp丢包的
         if (message != null)
@@ -703,11 +766,13 @@ public class SingleRoom
             {
                 continue;
             }
-            if (ActorList[item.Value.ownerIndex].MyTeam == TeamType.Blue)//该盒子的拥有者是哪个队的
+            int teamIndex = BuffList[item.Value.ownerIndex].ownerIndex % 2;
+
+            if (teamIndex == 0)
             {
                 TwoTeam[0] += 1;
             }
-            else if (ActorList[item.Value.ownerIndex].MyTeam == TeamType.Red)
+            else if (teamIndex == 1)
             {
                 TwoTeam[1] += 1;
             }
@@ -738,6 +803,23 @@ public class SingleRoom
             }
             ActorList[unique] = new RoomActor(RoomInfo.RoomID, unique, null, TeamType.Both);
         }
+    }
+
+
+    private BuffType RandomBuffType()
+    {
+        BuffType type = BuffType.Score;
+        Random rad = new Random();//实例化随机数产生器rad
+        int value = rad.Next(0, 100);//用rad生成大于等于0，小于100的随机数；
+        if (value > 0 && value < 80)
+        {
+            type = BuffType.Score;
+        }
+        else
+        {
+            type = BuffType.CanKill;
+        }
+        return type;
     }
 
 

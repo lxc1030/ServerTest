@@ -7,22 +7,22 @@ public class BoxManager : MonoBehaviour
     public static BoxManager instance;
 
     private Dictionary<int, Box> allBox = new Dictionary<int, Box>();
-    /// <summary>
-    /// 位置排布方向
-    /// </summary>
-    public Vector3 Fix = new Vector3(1, 0, 0);
+    public int teamBlue;
+    public int teamRed;
+
     /// <summary>
     /// 盒子大小
     /// </summary>
     public Vector3 BoxScale = new Vector3(1, 1, 1);
     /// <summary>
+    /// 位置排布方向
+    /// </summary>
+    public Vector3 Fix = new Vector3(1, 0, 0);
+    /// <summary>
     /// 每行个数
     /// </summary>
-    public int X = 10;
-
-
-    public int teamBlue;
-    public int teamRed;
+    public int FixLength = 10;
+    
 
 
 
@@ -60,36 +60,36 @@ public class BoxManager : MonoBehaviour
 
     #region 处理Socket信息
 
-    public void UpdateBulletInfo(MessageXieYi xieyi)
+    public void SetBulletInfo(BulletInfo info)
     {
-        BulletInfo bulletInfo = SerializeHelper.Deserialize<BulletInfo>(xieyi.MessageContent);
         //
-        int boxIndex = int.Parse(bulletInfo.shootInfo);
-        Box hitBox = allBox[boxIndex];
-        if (hitBox.myInfo.ownerIndex >= 0)
-        {
-            TeamType lastTeam = DataController.instance.ActorList[hitBox.myInfo.ownerIndex].MyTeam;
-            if (lastTeam == TeamType.Blue)
-            {
-                teamBlue -= 1;
-            }
-            else if (lastTeam == TeamType.Red)
-            {
-                teamRed -= 1;
-            }
-        }
+        int boxIndex = int.Parse(info.shootInfo);
+        Box box = allBox[boxIndex];
         //
-        hitBox.ChangeOwner(bulletInfo.userIndex);
-        TeamType changeTeam = DataController.instance.ActorList[bulletInfo.userIndex].MyTeam;
-        if (changeTeam == TeamType.Blue)
+        box.BeShot();
+    }
+
+    public void SetBuffData(BuffInfo info)
+    {
+        TeamType changeTeam = DataController.instance.ActorList[info.ownerIndex].MyTeam;
+        switch (info.type)
         {
-            teamBlue += 1;
-        }
-        else if (changeTeam == TeamType.Red)
-        {
-            teamRed += 1;
+            case BuffType.Score:
+                if (changeTeam == TeamType.Blue)
+                {
+                    teamBlue += 1;
+                }
+                else if (changeTeam == TeamType.Red)
+                {
+                    teamRed += 1;
+                }
+                break;
+            case BuffType.CanKill://设置人物可以杀人
+
+                break;
         }
     }
+
     #endregion
 
 
@@ -106,6 +106,7 @@ public class BoxManager : MonoBehaviour
         {
             case GameModel.组队模式:
                 map = Common.Generate(DataController.prefabPath_Ground + (int)model, transform);//根据游戏模式生成地图
+                map.transform.localPosition = new Vector3(-25, 28, -25);
                 Box[] getBoxes = map.GetComponentsInChildren<Box>();
                 for (int i = 0; i < getBoxes.Length; i++)
                 {
@@ -141,17 +142,56 @@ public class BoxManager : MonoBehaviour
 
 
 
-    [ContextMenu("设置盒子位置和大小")]
-    public void FixBoxesPosition()
+    public Vector3 GenerateLength;
+
+
+
+    [ContextMenu("GenerateLength")]
+    public void GenerateLength1()
     {
-        for (int i = 0; i < transform.childCount; i++)
+        Transform parent = transform.GetChild(0);
+
+        GameObject prefab = parent.gameObject;
+        prefab.transform.localPosition = new Vector3(GenerateLength.x * BoxScale.x, GenerateLength.y * BoxScale.y, GenerateLength.z * BoxScale.z) + new Vector3(2, 2, 2);
+        
+        for (int i = parent.childCount - 1; i > 0; i--)
         {
-            int yu = i % X;
-            int chu = i / X;
-            Transform trans = transform.GetChild(i);
+            DestroyImmediate(parent.GetChild(i).gameObject);
+        }
+
+        for (int i = 0; i < GenerateLength.x; i++)
+        {
+            for (int j = 0; j < GenerateLength.y; j++)
+            {
+                for (int k = 0; k < GenerateLength.z; k++)
+                {
+                    GameObject gen = Common.Generate(prefab, parent);
+                    gen.transform.localPosition = new Vector3(i * BoxScale.x, j * BoxScale.y, k * BoxScale.z);
+                    gen.transform.localScale = BoxScale;
+                }
+            }
+        }
+    }
+
+    [ContextMenu("FixLength按子节点个数")]
+    private void FixLength1()
+    {
+        Transform parent = transform.GetChild(0);
+        for (int i = 0; i < parent.childCount; i++)
+        {
+            int yu = i % FixLength;
+            int chu = i / FixLength;
+            Transform trans = parent.GetChild(i);
             trans.position = new Vector3(yu * Fix.x * BoxScale.x, chu * Fix.y * BoxScale.y, chu * Fix.z * BoxScale.z);
             trans.localScale = BoxScale;
         }
+    }
+
+
+
+    public Box GetBoxInfoByIndex(int index)
+    {
+        return allBox[index];
     }
 
     #endregion

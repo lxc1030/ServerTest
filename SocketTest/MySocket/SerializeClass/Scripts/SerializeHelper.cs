@@ -213,6 +213,10 @@ public static class SerializeHelper
             //涉及格式转换，需要用到流，将二进制序列化到流中  
             using (MemoryStream ms = new MemoryStream())
             {
+                if (ms == null)
+                {
+                    throw new Exception("内存爆了？");
+                }
                 //使用ProtoBuf工具的序列化方法  
                 ProtoBuf.Serializer.Serialize<T>(ms, model);
                 //定义二级制数组，保存序列化后的结果  

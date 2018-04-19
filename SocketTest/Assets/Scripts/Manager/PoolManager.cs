@@ -13,6 +13,8 @@ public class PoolManager : MonoBehaviour
         { PreLoadType.Member, new PoolInitInfo() { num = 4, path = DataController.prefPath_Member }},
         { PreLoadType.Bullet, new PoolInitInfo() { num = 10, path = DataController.prefabPath_Bullet }},
         { PreLoadType.PeopleInfo, new PoolInitInfo() { num = 10, path = DataController.prefabPath_PeopleInfo }},
+        { PreLoadType.Buff, new PoolInitInfo() { num = 15, path = DataController.prefabPath_Buff }},
+
         //add
     };
 
@@ -86,14 +88,14 @@ public class PoolManager : MonoBehaviour
                 obj = poolObjs[type][0];
                 poolObjs[type].RemoveAt(0);
             }
+            //
+            obj.transform.SetParent(parent);
         }
         else
         {
             path = poolInfo[type].path;
-            obj = Common.Generate(path, transform);
+            obj = Common.Generate(path, parent);
         }
-        //
-        obj.transform.SetParent(parent);
         if (scale != null)
         {
             obj.transform.localScale = (Vector3)scale;
@@ -134,4 +136,5 @@ public enum PreLoadType
     Member,
     Bullet,
     PeopleInfo,
+    Buff,
 }

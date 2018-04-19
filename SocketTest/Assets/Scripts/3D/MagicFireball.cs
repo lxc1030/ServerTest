@@ -34,7 +34,7 @@ public class MagicFireball : MonoBehaviour
         CharacterCommon checkSelf = other.GetComponent<CharacterCommon>();
         if (checkSelf != null)
         {
-            if (checkSelf.myIndex == DataController.instance.MyLocateIndex)//子弹碰撞的是自己，不处理，不停止
+            if (checkSelf.myIndex == info.userIndex)//子弹碰撞的是子弹的主人，不处理，不停止
             {
                 return;
             }
@@ -83,9 +83,9 @@ public class MagicFireball : MonoBehaviour
                     isSend = false;
                     break;
             }
+            Debug.Log("射中：" + bulletInfo.shootTag);
             if (isSend)
             {
-                Debug.Log("射中：" + bulletInfo.shootTag);
                 GameManager.instance.SendNetInfo(bulletInfo);
             }
             //

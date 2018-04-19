@@ -52,7 +52,7 @@ public class RoomInfo
     /// </summary>
     public static int frameTime = 15;//是毫秒，检测间隔0.015s
 
-    public static int frameInterval = 2;//udp每帧发送的总共帧
+    public static int frameInterval = 3;//udp每帧发送的总共帧
 
 
 

@@ -13,43 +13,21 @@ public class GameManager : MonoBehaviour
     private static string XMLName = "EndlessHardConfig";
     //public Dictionary<int, EndlessHardConfig> config = new Dictionary<int, EndlessHardConfig>();
 
-    public const float myActorMoveSpeed = 5;//人物移动速度
-    public const float myCameraMoveSpeed = 100;
-    public const float gravity = 9.8f;
-
     private Dictionary<int, CharacterCommon> memberGroup = new Dictionary<int, CharacterCommon>();
     public Transform transActor;
-    public Transform transMyNet;
     public Transform transBullet;
+    public Transform transBuff;
 
     #region 帧同步相关变量
-
     public FramePlayType CurrentPlayType;
-
-    public int frameIndex = 0;//当前复现到哪一帧了
-    private int frameWaitCount = 0;//数据缓存等待了帧数
-
-
-
-
     public int reConnectIndex = 0;//重连时需要复现到的帧编号----//重连不需要则为-1
-
+    public int frameIndex = 0;//当前复现到哪一帧了
+    public int frameMaxIndex = 0;
+    private int frameWaitCount = 0;//数据缓存等待了帧数
 
 
     public Dictionary<int, FrameInfo> FrameInfos = new Dictionary<int, FrameInfo>();
 
-    /// <summary>
-    /// 重连时客户端一帧复现X帧的数据
-    /// </summary>
-    private int reConnectSpan = 50;
-    /// <summary>
-    /// 等待数据时长
-    /// </summary>
-    private float requestMaxTime = 5f;
-    /// <summary>
-    /// 判断重连时，服务器广播了哪一帧的数据，用来请求前面的数据
-    /// </summary>
-    public int frameEmpty = 0;
 
     #endregion
 
@@ -142,11 +120,6 @@ public class GameManager : MonoBehaviour
     {
 
     }
-
-    public void InitRoom()
-    {
-        BoxManager.instance.Init();
-    }
     public int AnimationIndex(string name)
     {
         for (int i = 0; i < animationGroup.Count; i++)
@@ -193,6 +166,11 @@ public class GameManager : MonoBehaviour
         return memberGroup[index];
     }
 
+
+
+
+
+
     public void UIShot()
     {
         int index = DataController.instance.MyLocateIndex;
@@ -207,9 +185,9 @@ public class GameManager : MonoBehaviour
         info.position = DataController.BackNetLimetByType(GameManager.instance.GetControl(index).cameraParent.position);
         info.direction = DataController.BackNetLimetByType(GameManager.instance.GetControl(index).cameraParent.eulerAngles);
         //
-        GameManager.instance.GetControl(index).ShowBullet(info);
+        GetControl(index).ShowBullet(info);
         //发送
-        GameManager.instance.SendNetInfo(info);
+        SendNetInfo(info);
     }
 
     /// <summary>
@@ -230,7 +208,11 @@ public class GameManager : MonoBehaviour
         //SocketManager.instance.SendSave((byte)MessageConvention.shootBullet, message, false);
         UDPManager.instance.SendSave((byte)MessageConvention.shootBullet, sendData);
     }
-
+    public void SendNetInfo(ActorJump jumpInfo)
+    {
+        byte[] sendData = SerializeHelper.Serialize<ActorJump>(jumpInfo);
+        UDPManager.instance.SendSave((byte)MessageConvention.jump, sendData);
+    }
 
     #endregion
 
@@ -349,6 +331,7 @@ public class GameManager : MonoBehaviour
         //    return;
         //isPreparing = true;
         RoomUI.Close();
+        ClearModels();
         //GameRunUI.Show();
         //GameLoadingUI.Show();
         SendLoadProgress(20);
@@ -420,7 +403,7 @@ public class GameManager : MonoBehaviour
     public void SetDataInit()
     {
         frameIndex = 0;
-        DataController.instance.FrameMaxIndex = 0;
+        frameMaxIndex = 0;
         FrameInfos.Clear();
     }
 
@@ -435,7 +418,7 @@ public class GameManager : MonoBehaviour
         }
         else
         {
-            //这个应该是udp断线重连
+            //这个应该是udp断线时TCP消息到了
         }
     }
 
@@ -485,15 +468,7 @@ public class GameManager : MonoBehaviour
 
     public void DoFrameRequest(int startCheckIndex)
     {
-        for (int i = startCheckIndex; i >= 0; i++)
-        {
-            if (!FrameInfos.ContainsKey(i))
-            {
-                frameEmpty = i;
-                break;
-            }
-        }
-        FrameInfo info = new FrameInfo() { frameIndex = frameEmpty, frameData = new List<byte[]>() };
+        FrameInfo info = new FrameInfo() { frameIndex = startCheckIndex, frameData = new List<byte[]>() };
         string debug = "请求帧：" + info.frameIndex;
         UIManager.instance.ShowAlertTip(debug);
         //Debug.LogError(debug);
@@ -543,10 +518,10 @@ public class GameManager : MonoBehaviour
                 TrueGaming();
                 break;
             case FramePlayType.游戏中:
-                if (reConnectIndex == -1)
+                //if (reConnectIndex == -1)
                 {
-                    guiInfo = frameIndex + " / " + DataController.instance.FrameMaxIndex;
-                    DealFrameByMax(DataController.instance.FrameMaxIndex, false);
+                    guiInfo = "当前帧->" + frameIndex + ",最大帧->" + frameMaxIndex + ",总数据->" + FrameInfos.Values.Count;
+                    DealFrameByMax();
                 }
 
                 //if (FrameInfos.ContainsKey(frameIndex))
@@ -588,13 +563,14 @@ public class GameManager : MonoBehaviour
                     frameWaitCount++;
                     if (frameWaitCount >= DataController.instance.MyRoomInfo.FrameDelay)
                     {
+                        CurrentPlayType = FramePlayType.主动请求数据;
                         frameWaitCount = 0;
                         DoFrameRequest(frameIndex);
                     }
                     else
                     {
-                        string info = "正在缓存帧：" + frameIndex + "/" + DataController.instance.FrameMaxIndex;
-                        UIManager.instance.ShowAlertTip(info);
+                        //string info = "正在缓存帧：" + frameIndex + "/" + DataController.instance.FrameMaxIndex;
+                        //UIManager.instance.ShowAlertTip(info);
                         //Debug.LogError(info);
                     }
                 }
@@ -602,13 +578,26 @@ public class GameManager : MonoBehaviour
             case FramePlayType.断线重连:
                 //正在断线重连
                 break;
+            case FramePlayType.主动请求数据:
+
+                break;
         }
 
 
     }
 
-    private void DealFrameByMax(int max, bool isReShow)
+    private void DealFrameByMax()
     {
+        int max = 0;
+        if (reConnectIndex > 0)
+        {
+            max = reConnectIndex;
+        }
+        else
+        {
+            max = frameMaxIndex;
+        }
+
         int forwardNum = 1;
         int length = max - frameIndex;
         if (length > DataController.instance.MyRoomInfo.FrameDelay)//本地运行帧和接收帧
@@ -616,7 +605,6 @@ public class GameManager : MonoBehaviour
             forwardNum = length - DataController.instance.MyRoomInfo.FrameDelay / 2;
             string info = "从：" + frameIndex + "->" + max + ",总长：" + length + " 快进-> " + forwardNum;
             UIManager.instance.ShowAlertTip(info);
-            Debug.LogError(info + "->" + isReShow);
         }
         for (int i = 0; i < forwardNum; i++)//快进延迟帧的一般数值
         {
@@ -626,20 +614,25 @@ public class GameManager : MonoBehaviour
             }
             else
             {
-                if (!isReShow)//非断线重连才能进入缓存状态
+                if (reConnectIndex > 0)//断线重连
                 {
-                    Debug.LogError("处理帧为空：" + frameIndex);
+                    UIManager.instance.ShowAlertTip("断线重连没数据：" + frameIndex);
+                    CurrentPlayType = FramePlayType.主动请求数据;
+                    DoFrameRequest(frameIndex);
+                }
+                else
+                {
+                    UIManager.instance.ShowAlertTip("快进" + forwardNum + "没数据：" + frameIndex);
                     CurrentPlayType = FramePlayType.空帧缓冲;
                 }
-                //else应该在断线重连的时候会走到
                 return;
             }
         }
-        if (isReShow)
+        if (reConnectIndex > 0 && frameIndex >= reConnectIndex)//断线重连并且已复现到该帧
         {
-            //Debug.LogError("重设重连帧为0");
+            CurrentPlayType = FramePlayType.准备UI;
             reConnectIndex = 0;
-            TrueGaming();
+            return;
         }
     }
 
@@ -656,7 +649,11 @@ public class GameManager : MonoBehaviour
         //    return;
         //}
         //Debug.LogError("执行：" + frameIndex);
-        FrameInfo info = FrameInfos[frameIndex];
+        FrameInfo info = null;
+        lock (FrameInfos)
+        {
+            info = FrameInfos[frameIndex];
+        }
         if (info.frameData != null)//有更新操作，更新数据
         {
             if (info.frameData.Count == 0)
@@ -684,10 +681,6 @@ public class GameManager : MonoBehaviour
         //子件需要每帧判断的逻辑
         AllFrameObj();
         //
-        lock (FrameInfos)
-        {
-            //FrameInfos.Remove(frameIndex);
-        }
         frameIndex++;
     }
 
@@ -700,6 +693,7 @@ public class GameManager : MonoBehaviour
         byte[] tempMessageContent = xieyi.MessageContent;
         string messageInfo = "";
         CharacterCommon member = null;
+        BuffInfo buffInfo = null;
 
         switch ((MessageConvention)xieyi.XieYiFirstFlag)
         {
@@ -718,8 +712,12 @@ public class GameManager : MonoBehaviour
                 member = GameManager.instance.memberGroup[rotateDir.userIndex];
                 member.SetNetDirection(rotateDir);
                 break;
+            case MessageConvention.jump:
+                ActorJump netJump = SerializeHelper.Deserialize<ActorJump>(tempMessageContent);
+                member = GameManager.instance.memberGroup[netJump.userIndex];
+                member.SetJump();
+                break;
             case MessageConvention.shootBullet:
-               
                 ShootInfo shootInfo = SerializeHelper.Deserialize<ShootInfo>(tempMessageContent);
                 member = GameManager.instance.memberGroup[shootInfo.userIndex];
                 if (shootInfo.userIndex != DataController.instance.MyLocateIndex)//自身在收到服务器消息之前已旋转
@@ -732,7 +730,7 @@ public class GameManager : MonoBehaviour
                 switch (bulletInfo.shootTag)
                 {
                     case ShootTag.Box:
-                        BoxManager.instance.UpdateBulletInfo(xieyi);
+                        BoxManager.instance.SetBulletInfo(bulletInfo);
                         break;
                     case ShootTag.Character:
                         UpdateMemberShoot(xieyi);
@@ -740,8 +738,22 @@ public class GameManager : MonoBehaviour
                     case ShootTag.Wall:
                         Debug.Log("射中Wall：" + bulletInfo.shootInfo);
                         break;
+                    case ShootTag.Buff:
+                        Debug.LogError("Buff不算是子弹");
+                        break;
                 }
 
+                break;
+            case MessageConvention.createBuff:
+                buffInfo = SerializeHelper.Deserialize<BuffInfo>(tempMessageContent);
+                GameObject obj = PoolManager.instance.GetPoolObjByType(PreLoadType.Buff, GameManager.instance.transBuff);
+                obj.transform.position = BoxManager.instance.GetBoxInfoByIndex(buffInfo.boxIndex).transform.position;
+                MagicBuff buff = obj.GetComponent<MagicBuff>();
+                buff.Init(buffInfo);
+                break;
+            case MessageConvention.getBuff:
+                buffInfo = SerializeHelper.Deserialize<BuffInfo>(tempMessageContent);
+                BoxManager.instance.SetBuffData(buffInfo);
                 break;
         }
     }
@@ -751,14 +763,13 @@ public class GameManager : MonoBehaviour
     /// </summary>
     private void AllFrameObj()
     {
-        ///按数值操作
         foreach (var item in memberGroup)
         {
             if (item.Value == null)
             {
                 continue;
             }
-            if (!item.Value.IsShowHierarchy())
+            if (item.Key >= DataController.instance.MyRoomInfo.Limit)
             {
                 continue;
             }
@@ -795,6 +806,8 @@ public class GameManager : MonoBehaviour
 
     private void ClearModels()
     {
+        Common.Clear(transBuff);
+
         ////清除人物
         //for (int i = transActor.childCount - 1; i >= 0; i--)
         //{
@@ -809,7 +822,7 @@ public class GameManager : MonoBehaviour
 
 
 
-    public float AccumilatedTime = 0f;
+    private float AccumilatedTime = 0f;
     public void FixedUpdate()
     {
         //Basically same logic as FixedUpdate, but we can scale it by adjusting FrameLength   
@@ -960,11 +973,15 @@ public class GameManager : MonoBehaviour
             }
             if ((MessageConvention)xieyi.XieYiFirstFlag == MessageConvention.frameData)
             {
-                Debug.LogError("断线重连收到整串操作数据");
+                Debug.LogError("TCP收到整串操作数据");
                 UDPManager.instance.DealFrameData(xieyi);
                 if (CurrentPlayType == FramePlayType.断线重连)
                 {
-                    DealFrameByMax(reConnectIndex, true);
+                    CurrentPlayType = FramePlayType.游戏中;
+                }
+                if (CurrentPlayType == FramePlayType.主动请求数据)
+                {
+                    CurrentPlayType = FramePlayType.游戏中;
                 }
             }
         }
@@ -998,4 +1015,5 @@ public enum FramePlayType
     游戏中,
     空帧缓冲,
     断线重连,
+    主动请求数据,
 }

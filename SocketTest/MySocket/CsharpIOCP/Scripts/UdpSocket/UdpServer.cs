@@ -32,6 +32,11 @@ public class UdpServer
         //服务端需要绑定ip
         socket.Bind(ipEnd);
 
+        uint IOC_IN = 0x80000000;
+        uint IOC_VENDOR = 0x18000000;
+        uint SIO_UDP_CONNRESET = IOC_IN | IOC_VENDOR | 12;
+        socket.IOControl((int)SIO_UDP_CONNRESET, new byte[] { Convert.ToByte(false) }, null);
+
         allUDPs = new Dictionary<string, UDPRoomData>();
         Log4Debug("初始化UDP服务器");
 
@@ -145,6 +150,7 @@ public class UdpServer
         SingleRoom room = null;
         UDPLogin login = null;
 
+        //该处RoomList没有加锁
         if (ServerDataManager.instance.allRoom.RoomList.ContainsKey(allUDPs[strPoint].roomID))
         {
             room = ServerDataManager.instance.allRoom.RoomList[allUDPs[strPoint].roomID];
@@ -189,6 +195,17 @@ public class UdpServer
                     Log4Debug("死亡用户不更新旋转。");
                 }
                 break;
+            case MessageConvention.jump:
+                ActorJump netJump = SerializeHelper.Deserialize<ActorJump>(tempMessageContent);
+                if (room.ActorList[netJump.userIndex].CurState != RoomActorState.Dead)
+                {
+                    room.SetRecondFrame(xieyi.ToBytes());
+                }
+                else
+                {
+                    Log4Debug("死亡用户不更新跳跃。");
+                }
+                break;
             case MessageConvention.shootBullet:
                 ShootInfo shootInfo = SerializeHelper.Deserialize<ShootInfo>(tempMessageContent);
                 if (room.ActorList[shootInfo.userIndex].CurState != RoomActorState.Dead)
@@ -202,10 +219,10 @@ public class UdpServer
                 }
                 break;
             case MessageConvention.bulletInfo:
-                BulletInfo bulletInfo = SerializeHelper.Deserialize<BulletInfo>(tempMessageContent);
                 //
+                BulletInfo bulletInfo = SerializeHelper.Deserialize<BulletInfo>(xieyi.MessageContent);
                 room.UpdateBulletInfo(bulletInfo);//更新
-                room.SetRecondFrame(xieyi.ToBytes());
+                //room.SetRecondFrame(xieyi.ToBytes());
                 break;
             default:
                 Log4Debug("检查协议->" + (MessageConvention)xieyi.XieYiFirstFlag);

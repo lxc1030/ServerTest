@@ -68,7 +68,6 @@ public class DataController : MonoBehaviour
             myRoomInfo = value;
         }
     }
-    public int FrameMaxIndex = 0;
     public int MyLocateIndex = -1;
 
     /// <summary>
@@ -92,6 +91,7 @@ public class DataController : MonoBehaviour
     public const string prefabPath_Bullet = "prefab/PrefabBullet";
     public const string prefabPath_Ground = "prefab/Grounds/";
     public const string prefabPath_PeopleInfo = "prefab/PeopleInfo";
+    public const string prefabPath_Buff = "prefab/PrefabBuff";
 
     //matrial
     public const string materialPathBox = "prefab/Material/Box/";
@@ -253,7 +253,10 @@ public class DataController : MonoBehaviour
     }
 
     #endregion
-    
+
+    public const float Gravity = 10f;
+    public const float JumpSpeed = -6f;
+    public const float MyActorMoveSpeed = 5;//人物移动速度
     public static float BackBulletSpeed(int index)
     {
         float speed = 0;
@@ -328,10 +331,14 @@ public enum ItemId
 {
     体力 = 4,
 }
-
+/// <summary>
+/// 需要在Inspector上设置
+/// </summary>
 public enum Tag
 {
     Box,
     Bullet,
     Member,
+    Buff,
+    Ground,
 }

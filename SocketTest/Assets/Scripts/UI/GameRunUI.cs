@@ -137,7 +137,7 @@ public class GameRunUI : MonoBehaviour
     {
         //
         Vector3 direction = new Vector3(x, y, z);
-        speed = GameManager.myActorMoveSpeed * speed;
+        speed = DataController.MyActorMoveSpeed * speed;
         GameManager.instance.GetMyControl().UIMove(direction, speed);
     }
 
@@ -146,59 +146,59 @@ public class GameRunUI : MonoBehaviour
 
 
     #region Touch
-
-    private float xSpeed = 0.5f;
-    private float ySpeed = 0.2f;
-    public void OnTouchRotate(Vector2 move)
+    public void OnRotate(Vector2 move)
     {
-        NetVector3 memberRotate = DataController.BackNetLimetByType(new Vector3(0, move.x * xSpeed, 0), NetLimetType.保留0位);
-        Vector3 memberEnd = SerializeHelper.BackVector(memberRotate) + GameManager.instance.GetMyControl().transform.eulerAngles;
-        GameManager.instance.GetMyControl().SetRotate(memberEnd);
-        //
-        UIRotate();
-        //
-        NetVector3 cameraRotate = DataController.BackNetLimetByType(new Vector3(-move.y * ySpeed, 0, 0), NetLimetType.保留1位);
-        Vector3 angle = new Vector3(GameManager.instance.GetMyControl().cameraParent.localEulerAngles.x, 0, 0);
-        if (angle.x > 90)//转换成-30
-        {
-            angle.x -= 360;
-        }
-        Vector3 cameraEnd = SerializeHelper.BackVector(cameraRotate) + angle;
-        if (Mathf.Abs(cameraEnd.x) <= 20)
-        {
-            GameManager.instance.GetMyControl().cameraParent.localEulerAngles = cameraEnd;
-        }
+        float speed = 10;
+        float ex = -move.x;
+        float ey = move.y;
+
+        //移动数值太大，导致幅度太大，缩小N倍
+        Vector3 rotateDirection = new Vector3(ex, 0, ey);
+        UIRotate(rotateDirection.x, rotateDirection.y, rotateDirection.z, speed);
     }
-
-    private void UIRotate()
+    private void UIRotate(float x, float y, float z, float speed)
     {
+        Vector3 direction = new Vector3(x, y, z);
+        speed = DataController.MyActorMoveSpeed * speed;
         //发送人物旋转
-        GameManager.instance.GetMyControl().UIRotation();
+        GameManager.instance.GetMyControl().UIRotation(direction, speed);
     }
 
-
-
-    public void OnFightDown()
+    public void OnRotateStart()
     {
         InvokeRepeating("ShootSpan", 0, DataController.BackShootSpan(0));
     }
-    public void OnFightUp()
+    public void OnRotateEnd()
     {
+        UIRotate(0, 0, 0, 0);
+        //
         CancelInvoke("ShootSpan");
-        //GameManager.instance.UIShot();
     }
-
-
     private void ShootSpan()
     {
-        GameManager.instance.UIShot();
+        if (GameManager.instance.CurrentPlayType == FramePlayType.游戏中)
+        {
+            GameManager.instance.UIShot();
+        }
+        else
+        {
+            CancelInvoke("ShootSpan");
+        }
     }
 
 
     #endregion
 
 
+    #region Jump
 
+    public void OnClickJump()
+    {
+        GameManager.instance.GetMyControl().UIJump();
+    }
+
+
+    #endregion
 
 
 
@@ -216,13 +216,11 @@ public class GameRunUI : MonoBehaviour
 public class ControlPartUI
 {
     public ETCJoystick etcMove;
-    public ETCTouchPad etcRotate;
-    public ETCTouchPad etcShoot;
+    public ETCDPad etcRotate;
 
     public void Show(bool isEnable)
     {
         etcMove.gameObject.SetActive(isEnable);
         etcRotate.gameObject.SetActive(isEnable);
-        etcShoot.gameObject.SetActive(isEnable);
     }
 }

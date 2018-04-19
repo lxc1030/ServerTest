@@ -54,16 +54,34 @@ public class GameTypeManager
                         value = new Vector3(-20, PosHeight, -24);
                         break;
                     case 1:
-                        value = new Vector3(5, PosHeight, -24);
+                        value = new Vector3(-20, PosHeight, 24);
                         break;
                     case 2:
-                        value = new Vector3(20, PosHeight, 20);
+                        value = new Vector3(-10, PosHeight, -24);
                         break;
                     case 3:
-                        value = new Vector3(-10, PosHeight, 20);
+                        value = new Vector3(-15, PosHeight, 24);
+                        break;
+                    case 4:
+                        value = new Vector3(0, PosHeight, -24);
+                        break;
+                    case 5:
+                        value = new Vector3(0, PosHeight, 24);
+                        break;
+                    case 6:
+                        value = new Vector3(10, PosHeight, -24);
+                        break;
+                    case 7:
+                        value = new Vector3(10, PosHeight, 24);
+                        break;
+                    case 8:
+                        value = new Vector3(20, PosHeight, -24);
+                        break;
+                    case 9:
+                        value = new Vector3(20, PosHeight, 24);
                         break;
                     default:
-                        value = new Vector3(5, PosHeight, 5);
+                        value = new Vector3(index, PosHeight, index);
                         break;
                 }
                 break;
@@ -76,24 +94,7 @@ public class GameTypeManager
         switch (type)
         {
             case GameModel.组队模式:
-                switch (index)
-                {
-                    case 0:
-                        value = 45;
-                        break;
-                    case 1:
-                        value = -45;
-                        break;
-                    case 2:
-                        value = 135;
-                        break;
-                    case 3:
-                        value = 225;
-                        break;
-                    default:
-                        value = 45;
-                        break;
-                }
+                value = (index % 2) * 180;
                 break;
         }
         return value;

@@ -142,8 +142,8 @@ public class ActorMoveDirection
 
     public ActorMoveDirection()
     {
-        position = new NetVector3(0, 0, 0);
-        direction = new NetVector3(0, 0, 0);
+        position = new NetVector3();
+        direction = new NetVector3();
     }
 }
 
@@ -153,10 +153,24 @@ public class ActorRotateDirection
     [ProtoBuf.ProtoMember(1)]
     public int userIndex;
     [ProtoBuf.ProtoMember(2)]
-    public int rotateY;
+    public NetVector3 direction;//移动方向
+    [ProtoBuf.ProtoMember(3)]
+    public float speed;//移动速度
+    public ActorRotateDirection()
+    {
+        direction = new NetVector3();
+    }
 }
 
 [ProtoBuf.ProtoContract]
+public class ActorJump
+{
+    [ProtoBuf.ProtoMember(1)]
+    public int userIndex;
+}
+
+
+    [ProtoBuf.ProtoContract]
 public class GameModelData
 {
     [ProtoBuf.ProtoMember(1)]
@@ -190,18 +204,39 @@ public class ShootInfo
 
 }
 
-
 [ProtoBuf.ProtoContract]
 public class BulletInfo
 {
     [ProtoBuf.ProtoMember(1)]
     public int userIndex;
     [ProtoBuf.ProtoMember(2)]
-    public ShootTag shootTag;
+    public ShootTag shootTag;//射中东西的类型
     [ProtoBuf.ProtoMember(3)]
-    public string shootInfo;
-
+    public string shootInfo;//射中东西的标记
 }
+
+[ProtoBuf.ProtoContract]
+public class BoxInfo
+{
+    [ProtoBuf.ProtoMember(1)]
+    public int myIndex;//盒子自身的编号
+    [ProtoBuf.ProtoMember(2)]
+    public int ownerIndex;//击碎盒子的用户站位
+}
+
+[ProtoBuf.ProtoContract]
+public class BuffInfo
+{
+    [ProtoBuf.ProtoMember(1)]
+    public int myIndex;//自身的编号
+    [ProtoBuf.ProtoMember(2)]
+    public BuffType type;//Buff类型
+    [ProtoBuf.ProtoMember(3)]
+    public int boxIndex;//需要在该盒子的位置生成
+    [ProtoBuf.ProtoMember(4)]
+    public int ownerIndex;//该Buff拥有者的站位
+}
+
 
 [ProtoBuf.ProtoContract]
 public class UDPLogin
@@ -222,15 +257,6 @@ public class ReconnctInfo
 
 }
 
-[ProtoBuf.ProtoContract]
-public class BoxInfo
-{
-    [ProtoBuf.ProtoMember(1)]
-    public int myIndex;
-    [ProtoBuf.ProtoMember(2)]
-    public int ownerIndex;
-
-}
 
 
 
@@ -440,6 +466,13 @@ public enum ShootTag
     Wall,
     Box,
     Character,
+    Buff,
+}
+public enum BuffType
+{
+    None,
+    Score,//分数
+    CanKill,//可以杀人
 }
 
 //错误类型

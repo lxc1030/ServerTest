@@ -80,8 +80,11 @@ public enum MessageConvention
     endGaming,
     moveDirection,
     rotateDirection,
-    shootBullet,
-    bulletInfo,
+    jump,//人物跳跃
+    shootBullet,//射击展示相关
+    bulletInfo,//子弹射中相关
+    createBuff,//生成Buff
+    getBuff,//用户接收到Buff
     frameData,
     setUDP,
 }
