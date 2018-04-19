@@ -59,10 +59,8 @@
     <Compile Include="Scripts\IOCPSoket\AsyncUserTokenPool.cs" />
     <Compile Include="Scripts\IOCPSoket\BufferManager.cs" />
     <Compile Include="Scripts\Room\SingleRoom.cs" />
-    <Compile Include="Scripts\Test\IoContextPool.cs" />
     <Compile Include="Scripts\IOCPSoket\Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Scripts\Test\IoServer.cs" />
     <Compile Include="Scripts\Room\RoomCollection.cs" />
     <Compile Include="Scripts\IOCPSoket\ServerDataManager.cs" />
     <Compile Include="Scripts\Tools\ClassGroup.cs" />
@@ -86,9 +84,7 @@
       <Name>Serialize</Name>
     </ProjectReference>
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Scripts\Actor\" />
-  </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
