@@ -10,6 +10,9 @@ public class BoxManager : MonoBehaviour
     public int teamBlue;
     public int teamRed;
 
+    public Vector3 localPosition;
+
+
     /// <summary>
     /// 盒子大小
     /// </summary>
@@ -106,8 +109,8 @@ public class BoxManager : MonoBehaviour
         {
             case GameModel.组队模式:
                 map = Common.Generate(DataController.prefabPath_Ground + (int)model, transform);//根据游戏模式生成地图
-                map.transform.localPosition = new Vector3(-25, 28, -25);
-                Box[] getBoxes = map.GetComponentsInChildren<Box>();
+                map.transform.localPosition = localPosition;
+                 Box[] getBoxes = map.GetComponentsInChildren<Box>();
                 for (int i = 0; i < getBoxes.Length; i++)
                 {
                     if (!allBox.ContainsKey(i))

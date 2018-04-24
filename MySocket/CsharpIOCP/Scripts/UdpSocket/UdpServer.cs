@@ -13,7 +13,7 @@ public class UdpServer
     Socket socket; //目标socket 
     IPEndPoint ipEnd; //侦听端口 
     Thread connectThread; //连接线程
-    int receiveLength = 1024;
+    int receiveLength = 4096;//接收数据的缓存区限定大小
 
 
 
@@ -66,27 +66,50 @@ public class UdpServer
         //数据类型转换
         //sendData = Encoding.ASCII.GetBytes(sendStr);
         //发送给指定客户端
-        socket.SendTo(sendData, sendData.Length, SocketFlags.None, clientEnd);
+        //socket.SendTo(sendData, sendData.Length, SocketFlags.None, clientEnd);
+        socket.BeginSendTo(sendData, 0, sendData.Length, SocketFlags.None, clientEnd, new AsyncCallback(SendCallback), socket);
     }
 
+    private void SendCallback(IAsyncResult ar)
+    {
+        ((Socket)ar.AsyncState).EndSendTo(ar);
+        //RaiseCompletedSend(null);
+    }
+
+    /// <summary>
+    /// 数据发送完毕事件
+    /// </summary>
+    public event EventHandler<AsyncSocketUDPEventArgs> CompletedSend;
+    /// <summary>
+    /// 触发数据发送完毕的事件
+    /// </summary>
+    /// <param name="state"></param>
+    private void RaiseCompletedSend(AsyncSocketUDPState state)
+    {
+        if (CompletedSend != null)
+        {
+            CompletedSend(this, new AsyncSocketUDPEventArgs(state));
+        }
+    }
 
 
 
     //服务器接收
     void SocketReceive()
     {
-        //进入接收循环
-        while (true)
+        try
         {
-            //对data清零
-            byte[] recvData = new byte[receiveLength];
-            //定义客户端
-            IPEndPoint sender = new IPEndPoint(IPAddress.Any, 0);
-            EndPoint clientEnd = (EndPoint)sender;
-            try
+            while (true)
             {
+                //对data清零
+                byte[] recvData = new byte[receiveLength];
+                //定义客户端
+                IPEndPoint sender = new IPEndPoint(IPAddress.Any, 0);
+                EndPoint clientEnd = (EndPoint)sender;
+
                 //获取客户端，获取客户端数据，用引用给客户端赋值
                 int recvLen = socket.ReceiveFrom(recvData, ref clientEnd);//接收的数据长度 
+                //
                 string key = clientEnd.ToString();
                 lock (allUDPs)
                 {
@@ -98,22 +121,35 @@ public class UdpServer
                     }
                 }
                 //输出接收到的数据
-                //string recvStr = Encoding.ASCII.GetString(recvData, 0, recvLen);
-                //Log4Debug("我是服务器，接收到客户端的数据" + recvStr);
                 byte[] effectiveData = new byte[recvLen];
                 Array.Copy(recvData, effectiveData, recvLen);
-                byte[] backData = SelectMessage(effectiveData, clientEnd);
-                //将接收到的数据经过处理再发送出去
-                //string sendStr = "I~m Here. ";
-                if (backData != null)
-                {
-                    SocketSend(backData, clientEnd);
-                }
+
+                object[] all = new object[] { clientEnd, effectiveData };
+                ThreadPool.QueueUserWorkItem(new WaitCallback(XieYiThrd), all);
             }
-            catch (Exception e)
-            {
-                Log4Debug("接收->" + e.Message + clientEnd);
-            }
+        }
+        catch (Exception e)
+        {
+            Log4Debug("接收->" + e.Message);
+        }
+        finally
+        {
+            SocketQuit();
+        }
+    }
+
+    private void XieYiThrd(object state)
+    {
+        object[] all = (object[])state;
+        EndPoint clientEnd = (EndPoint)all[0];
+        byte[] data = (byte[])all[1];
+        //将数据包交给前台去处理
+        byte[] backData = SelectMessage(data, clientEnd);
+        //将接收到的数据经过处理再发送出去
+        //string sendStr = "I~m Here. ";
+        if (backData != null)
+        {
+            SocketSend(backData, clientEnd);
         }
     }
 

@@ -37,11 +37,11 @@ public class MagicBuff : MonoBehaviour
     {
         rb.useGravity = false;
         GameObject obj = hit.gameObject;
-        Debug.LogError("Buff:" + myInfo.myIndex + "->" + obj.name);
 
         switch (obj.tag)
         {
             case nameof(Tag.Member):
+                Debug.LogError("Buff:" + myInfo.myIndex + "->" + obj.name);
                 CharacterCommon cha = obj.GetComponent<CharacterCommon>();
                 BePickUp(cha.myIndex);
                 break;

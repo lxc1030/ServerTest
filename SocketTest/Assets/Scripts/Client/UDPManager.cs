@@ -53,12 +53,8 @@ public class UDPManager : MonoBehaviour
     Socket socket; //目标socket
     EndPoint serverEnd; //服务端
     IPEndPoint ipEnd; //服务端端口
-    string recvStr; //接收的字符串
-    string sendStr; //发送的字符串
-    byte[] recvData; //接收的数据，必须为字节
-    //byte[] sendData = new byte[1024]; //发送的数据，必须为字节
-    int recvLen; //接收的数据长度
     Thread connectThread; //连接线程
+    int receiveLength = 4096;
 
     public bool IsConnect;
 
@@ -113,39 +109,85 @@ public class UDPManager : MonoBehaviour
     {
         try
         {
-            //进入接收循环
             while (true)
             {
                 //对data清零
-                recvData = new byte[4096];
-                //获取客户端，获取服务端端数据，用引用给服务端赋值，实际上服务端已经定义好并不需要赋值
-                recvLen = socket.ReceiveFrom(recvData, ref serverEnd);
-                guiInfo = recvLen + "";
+                byte[] recvData = new byte[receiveLength];
+                //定义客户端
+                IPEndPoint sender = new IPEndPoint(IPAddress.Any, 0);
+                EndPoint clientEnd = (EndPoint)sender;
 
+                //获取客户端，获取客户端数据，用引用给客户端赋值
+                int recvLen = socket.ReceiveFrom(recvData, ref clientEnd);//接收的数据长度 
+                                                
+                //输出接收到的数据
                 byte[] effectiveData = new byte[recvLen];
                 Array.Copy(recvData, effectiveData, recvLen);
-                byte[] backData = SelectMessage(effectiveData, myEndPoint);
 
-                if (backData != null)
-                {
-                    Send(backData);
-                }
+                object[] all = new object[] { clientEnd, effectiveData };
+                ThreadPool.QueueUserWorkItem(new WaitCallback(XieYiThrd), all);
 
-                ////打印服务端信息
-                //Debug.LogError("message from: " + serverEnd.ToString());
-                ////输出接收到的数据
-                //recvStr = Encoding.ASCII.GetString(recvData, 0, recvLen);
-                //Debug.LogError("我是客户端，接收到服务器的数据" + recvStr);
             }
         }
         catch (Exception e)
         {
-            Debug.LogError(recvLen + "/" + e.Message);
+            Debug.LogError("接收->" + e.Message);
         }
         finally
         {
             SocketQuit();
             IsConnect = false;
+        }
+
+        //try
+        //{
+        //    //进入接收循环
+        //    while (true)
+        //    {
+        //        //对data清零
+        //        recvData = new byte[receiveLength];
+        //        //获取客户端，获取服务端端数据，用引用给服务端赋值，实际上服务端已经定义好并不需要赋值
+        //        recvLen = socket.ReceiveFrom(recvData, ref serverEnd);
+        //        guiInfo = recvLen + "";
+
+        //        byte[] effectiveData = new byte[recvLen];
+        //        Array.Copy(recvData, effectiveData, recvLen);
+        //        byte[] backData = SelectMessage(effectiveData, myEndPoint);
+
+        //        if (backData != null)
+        //        {
+        //            Send(backData);
+        //        }
+
+        //        ////打印服务端信息
+        //        //Debug.LogError("message from: " + serverEnd.ToString());
+        //        ////输出接收到的数据
+        //        //recvStr = Encoding.ASCII.GetString(recvData, 0, recvLen);
+        //        //Debug.LogError("我是客户端，接收到服务器的数据" + recvStr);
+        //    }
+        //}
+        //catch (Exception e)
+        //{
+        //    Debug.LogError(recvLen + "/" + e.Message);
+        //}
+        //finally
+        //{
+        //    SocketQuit();
+        //    IsConnect = false;
+        //}
+    }
+    private void XieYiThrd(object state)
+    {
+        object[] all = (object[])state;
+        EndPoint clientEnd = (EndPoint)all[0];
+        byte[] data = (byte[])all[1];
+        //将数据包交给前台去处理
+        byte[] backData = SelectMessage(data, clientEnd);
+        //将接收到的数据经过处理再发送出去
+        //string sendStr = "I~m Here. ";
+        if (backData != null)
+        {
+            Send(backData);
         }
     }
 
@@ -173,6 +215,7 @@ public class UDPManager : MonoBehaviour
         if (sendData == null)
             return;
         socket.SendTo(sendData, sendData.Length, SocketFlags.None, ipEnd);
+        socket.BeginSendTo(sendData, 0, sendData.Length, SocketFlags.None, ipEnd, new AsyncCallback(SendCallback), socket);
     }
 
     public void SendSave(byte xieYiFirstFlage, byte[] message)
@@ -185,6 +228,14 @@ public class UDPManager : MonoBehaviour
         byte[] sendBuffer = msgxy.ToBytes();
         Send(sendBuffer);
     }
+
+    private void SendCallback(IAsyncResult ar)
+    {
+        ((Socket)ar.AsyncState).EndSendTo(ar);
+        //RaiseCompletedSend(null);
+    }
+
+
 
     public byte[] SelectMessage(byte[] data, EndPoint endPoint)
     {

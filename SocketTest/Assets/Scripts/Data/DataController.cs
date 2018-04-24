@@ -254,6 +254,8 @@ public class DataController : MonoBehaviour
 
     #endregion
 
+
+    public const float LookLimet = 60;
     public const float Gravity = 10f;
     public const float JumpSpeed = -6f;
     public const float MyActorMoveSpeed = 5;//人物移动速度

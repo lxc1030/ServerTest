@@ -56,6 +56,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Scripts\IOCPSoket\AsyncIOCPServer.cs" />
+    <Compile Include="Scripts\IOCPSoket\AsyncSocketUDPServer.cs" />
     <Compile Include="Scripts\IOCPSoket\AsyncUserTokenPool.cs" />
     <Compile Include="Scripts\IOCPSoket\BufferManager.cs" />
     <Compile Include="Scripts\Room\SingleRoom.cs" />
@@ -66,7 +67,6 @@
     <Compile Include="Scripts\Tools\ClassGroup.cs" />
     <Compile Include="Scripts\Tools\LogManager.cs" />
     <Compile Include="Scripts\SqlGroup\SqlManager.cs" />
-    <Compile Include="Scripts\Tools\TcpServerBase.cs" />
     <Compile Include="Scripts\UdpSocket\UdpServer.cs" />
   </ItemGroup>
   <ItemGroup>

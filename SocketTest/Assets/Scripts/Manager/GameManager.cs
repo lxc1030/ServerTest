@@ -25,6 +25,9 @@ public class GameManager : MonoBehaviour
     public int frameMaxIndex = 0;
     private int frameWaitCount = 0;//数据缓存等待了帧数
 
+    public int requestFrameIndex;//上次帧不存在请求的是哪个帧
+
+
 
     public Dictionary<int, FrameInfo> FrameInfos = new Dictionary<int, FrameInfo>();
 
@@ -468,6 +471,8 @@ public class GameManager : MonoBehaviour
 
     public void DoFrameRequest(int startCheckIndex)
     {
+        CurrentPlayType = FramePlayType.主动请求数据;
+        requestFrameIndex = startCheckIndex;
         FrameInfo info = new FrameInfo() { frameIndex = startCheckIndex, frameData = new List<byte[]>() };
         string debug = "请求帧：" + info.frameIndex;
         UIManager.instance.ShowAlertTip(debug);
@@ -558,12 +563,15 @@ public class GameManager : MonoBehaviour
                 {
                     CurrentPlayType = FramePlayType.游戏中;
                 }
-                else//没有该帧，用TCP主动请求
+                else//没有该帧
                 {
-                    frameWaitCount++;
-                    if (frameWaitCount >= DataController.instance.MyRoomInfo.FrameDelay)
+                    if (frameIndex == requestFrameIndex)//该帧已经TCP请求过了，不再二次请求
                     {
-                        CurrentPlayType = FramePlayType.主动请求数据;
+                        return;
+                    }
+                    frameWaitCount++;
+                    if (frameWaitCount >= DataController.instance.MyRoomInfo.FrameDelay)//大于等待时长，用TCP主动请求
+                    {
                         frameWaitCount = 0;
                         DoFrameRequest(frameIndex);
                     }
@@ -603,9 +611,10 @@ public class GameManager : MonoBehaviour
         if (length > DataController.instance.MyRoomInfo.FrameDelay)//本地运行帧和接收帧
         {
             forwardNum = length - DataController.instance.MyRoomInfo.FrameDelay / 2;
-            string info = "从：" + frameIndex + "->" + max + ",总长：" + length + " 快进-> " + forwardNum;
+            string info = "Quick:" + frameIndex + "->" + max + "=" + forwardNum;
             UIManager.instance.ShowAlertTip(info);
         }
+
         for (int i = 0; i < forwardNum; i++)//快进延迟帧的一般数值
         {
             if (FrameInfos.ContainsKey(frameIndex))
@@ -617,7 +626,6 @@ public class GameManager : MonoBehaviour
                 if (reConnectIndex > 0)//断线重连
                 {
                     UIManager.instance.ShowAlertTip("断线重连没数据：" + frameIndex);
-                    CurrentPlayType = FramePlayType.主动请求数据;
                     DoFrameRequest(frameIndex);
                 }
                 else

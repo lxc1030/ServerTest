@@ -190,13 +190,20 @@ public class GameRunUI : MonoBehaviour
     #endregion
 
 
-    #region Jump
+    #region 
 
     public void OnClickJump()
     {
         GameManager.instance.GetMyControl().UIJump();
     }
-
+    public void OnClickLookUp()
+    {
+        GameManager.instance.GetMyControl().cameraParent.localEulerAngles = new Vector3(-DataController.LookLimet,0,0);
+    }
+    public void OnClickLookDown()
+    {
+        GameManager.instance.GetMyControl().cameraParent.localEulerAngles = Vector3.zero;
+    }
 
     #endregion
 

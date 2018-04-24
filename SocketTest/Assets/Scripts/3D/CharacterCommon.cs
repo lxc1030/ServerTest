@@ -248,12 +248,11 @@ public class CharacterCommon : MonoBehaviour
     }
 
 
-
-    private float rotateSpeed = 1;
+    
     private void CharacterRotate()
     {
         Vector3 memberEnd = new Vector3(0, netRotate.direction.x * netRotate.speed, 0);
-        myControl.transform.Rotate(memberEnd * rotateSpeed * DataController.FrameFixedTime);
+        myControl.transform.Rotate(memberEnd * DataController.FrameFixedTime);
         Vector3 updown = new Vector3(-netRotate.direction.z * netRotate.speed, 0, 0);
         updown *= DataController.FrameFixedTime;
         float curX = cameraParent.localEulerAngles.x;
@@ -262,13 +261,13 @@ public class CharacterCommon : MonoBehaviour
             curX -= 360;
         }
         float value = Mathf.Abs(curX + updown.x);
-        if (value <= 60)
+        if (value <= DataController.LookLimet)
         {
             cameraParent.Rotate(updown);
         }
         else
         {
-            cameraParent.localEulerAngles = new Vector3((curX / Mathf.Abs(curX)) * 60, 0, 0);
+            cameraParent.localEulerAngles = new Vector3((curX / Mathf.Abs(curX)) * DataController.LookLimet, 0, 0);
         }
     }
 

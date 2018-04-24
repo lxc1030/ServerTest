@@ -505,7 +505,7 @@ public class SingleRoom
                 break;
             case ShootTag.Buff:
                 int buffIndex = int.Parse(bulletInfo.shootInfo);
-                Log4Debug("站位：" + bulletInfo.userIndex + " 请求拾取Buff->" + buffIndex);
+                //Log4Debug("站位：" + bulletInfo.userIndex + " 请求拾取Buff->" + buffIndex);
                 lock (BuffList)
                 {
                     if (BuffList[buffIndex].ownerIndex < 0)
