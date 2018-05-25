@@ -57,6 +57,7 @@ public class Register
 
 }
 
+
 [ProtoBuf.ProtoContract]
 public class HeartbeatTime
 {
