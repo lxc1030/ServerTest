@@ -1,5 +1,7 @@
 ﻿using Newtonsoft.Json.Linq;
+using System;
 using System.Collections.Generic;
+using System.Data.SqlClient;
 using System.Threading;
 
 public class ServerDataManager
@@ -192,24 +194,20 @@ public class ServerDataManager
     {
         byte[] backData = null;
         string sql = "";
-        SqlDataGroup sqlGroup = null;
 
         sql = SqlManager.instance.SelectWhere(TableName.register,
             new string[] { nameof(Register.userID) },
             new string[] { "=" },
             new string[] { login.userID });
-
-        sqlGroup = SqlManager.instance.ReaderFindBySql(sql);
-        if (sqlGroup.GetReader() == null)//验证账号存不存在 --不存在
+        
+        List<Register> regs = SqlManager.instance.DataRead(sql, new Func<SqlDataReader, List<Register>>(Register.BackDatas));
+        if (regs.Count <= 0)//验证账号存不存在 --不存在
         {
             backData = ClassGroup.ErrorBackByType(ErrorType.userIDNotExist);
         }
         else
         {
-            Register register = new Register();
-            register.Init(sqlGroup.GetReader());
-            //关闭连接
-            SqlManager.instance.Close(sqlGroup);
+            Register register = regs[0];
             //主逻辑
             string name = register.name;
             if (login.password != register.password)//密码错误
@@ -285,7 +283,7 @@ public class ServerDataManager
             nameof(Register.name), name,
             nameof(Register.userID), userToken.userInfo.Register.userID
             );
-        int count = SqlManager.instance.ReaderUpdateBySql(sql);
+        int count = SqlManager.instance.DataWrite(sql);
         if (count > 0)
         {
             userToken.userInfo.Register.name = name;

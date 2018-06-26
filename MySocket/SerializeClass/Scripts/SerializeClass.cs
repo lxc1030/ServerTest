@@ -54,7 +54,31 @@ public class Register
             winCount = (int)reader[nameof(winCount)];
         }
     }
+  
 
+
+    public static List<Register> BackDatas(SqlDataReader reader)
+    {
+        List<Register> all = new List<Register>();
+        if (reader.HasRows)
+        {
+            while (reader.Read())
+            {
+                Register re = new Register();
+                re.userID = (string)reader[nameof(userID)];
+                re.password = (string)reader[nameof(password)];
+                re.iconID = (int)reader[nameof(iconID)];
+                re.coin = (int)reader[nameof(coin)];
+                re.name = (string)reader[nameof(name)];
+                re.winLast = (int)reader[nameof(winLast)];
+                re.fightCount = (int)reader[nameof(fightCount)];
+                re.winCount = (int)reader[nameof(winCount)];
+
+                all.Add(re);
+            }
+        }
+        return all;
+    }
 }
 
 
@@ -171,7 +195,7 @@ public class ActorJump
 }
 
 
-    [ProtoBuf.ProtoContract]
+[ProtoBuf.ProtoContract]
 public class GameModelData
 {
     [ProtoBuf.ProtoMember(1)]

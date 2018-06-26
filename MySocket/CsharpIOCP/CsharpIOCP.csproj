@@ -68,6 +68,7 @@
     <Compile Include="Scripts\Tools\LogManager.cs" />
     <Compile Include="Scripts\SqlGroup\SqlManager.cs" />
     <Compile Include="Scripts\UdpSocket\UdpServer.cs" />
+    <Compile Include="Scripts\UdpSocket\UdpServer2.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="Scripts\DLL\SerializeClass.dll" />
@@ -84,7 +85,9 @@
       <Name>Serialize</Name>
     </ProjectReference>
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <Folder Include="Scripts\UdpClient\" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

@@ -66,7 +66,7 @@ public class SingleRoom
             }
         }
     }
-    public string[] udpPoint { get; set; }
+    public udpUser[] udpUserInfo { get; set; }
 
 
     public SingleRoom(int roomID, string roomName, GameModel roomType)
@@ -83,7 +83,7 @@ public class SingleRoom
         {
             InitRoomActorByIndex(i);
         }
-        udpPoint = new string[RoomInfo.Limit];
+        udpUserInfo = new udpUser[RoomInfo.Limit];
         //
         switch (roomType)
         {
@@ -245,14 +245,14 @@ public class SingleRoom
     public void UpdateUDP(int unique, UDPLogin login)
     {
         Log4Debug("站位：" + unique + " udp地址：" + login.login);
-        lock (udpPoint)
+        lock (udpUserInfo)
         {
-            udpPoint[unique] = login.login;
+            //udpUserInfo[unique].endPoint =IPEndPoint.;
         }
     }
     public void ClearUDP(int unique)
     {
-        udpPoint[unique] = null;
+        udpUserInfo[unique] = null;
     }
 
     public void UpdateAnimation(ActorNetAnimation netAniamtion)
@@ -917,7 +917,8 @@ public class SingleRoom
                 }
                 else if (netType == ProtocolType.Udp)
                 {
-                    UdpServer.instance.SocketSend(msgXY.ToBytes(), udpPoint[i]);
+                    object[] infos = new object[] { msgXY.ToBytes(), udpUserInfo[i].endPoint };
+                    UdpServer.instance.SendMessage(infos);
                 }
             }
         }

@@ -49,70 +49,66 @@ class SqlManager
         }
     }
 
-    public static int freeConnectCount = 1;
-    public Queue<SqlDataGroup> gFree;
-    SqlConnection connect = new SqlConnection(strConnection);
-
     public void Connect()
     {
-        gFree = new Queue<SqlDataGroup>();
-        for (int i = 0; i < freeConnectCount; i++)
-        {
-            gFree.Enqueue(
-                new SqlDataGroup()
-                {
-                    connect = connect,
-                    command = new SqlCommand("", connect)
-                }
-                );
-        }
-        Log4Debug("数据接口连接数：" + freeConnectCount);
+        Log4Debug("数据库管理类实例化。");
     }
-
-
 
 
     #region 读取数据库，保存数值
 
-    public SqlDataGroup GetOneGroup()
-    {
-        SqlDataGroup group = null;
-        if (gFree.Count > 0)
-        {
-            group = gFree.Dequeue();
-        }
-        else
-        {
-            Log4Debug("接口数量不够，动态生成新的接口");
-            SqlConnection con = new SqlConnection(strConnection);
-            group = new SqlDataGroup()
-            {
-                connect = con,
-                command = new SqlCommand("", con)
-            };
-        }
-        return group;
-    }
 
-    public SqlDataGroup ReaderFindBySql(string sql)
+    /// <summary>
+    /// 读取sql
+    /// </summary>
+    /// <param name="sql"></param>
+    /// <returns></returns>
+    public T DataRead<T>(string sql, Func<SqlDataReader, T> func)
     {
-        SqlDataGroup group = GetOneGroup();
-        group.connect.Open();
-        group.command.CommandText = sql;
-        group.InquireReader();
-        return group;
+        SqlDataReader reader = null;
+        T t = default(T);
+        try
+        {
+            SqlConnection con = new SqlConnection(strConnection);
+            if (con != null)
+            {
+                con.Open();
+                SqlCommand command = new SqlCommand(sql, con);
+                reader = command.ExecuteReader();
+                //解析SqlDataReader
+                t = func(reader);
+                //回收
+                reader.Close();
+                command.Dispose();
+                con.Close();
+            }
+        }
+        catch (Exception e)
+        {
+            Log4Debug(e.ToString());
+        }
+        return t;
     }
-    public int ReaderUpdateBySql(string sql)
+    /// <summary>
+    /// 写入sql
+    /// </summary>
+    /// <param name="sql"></param>
+    /// <returns></returns>
+    public int DataWrite(string sql)
     {
-        SqlDataGroup group = GetOneGroup();
-        group.connect.Open();
-        group.command.CommandText = sql;
-        int count = group.UpdateReader();
-        Log4Debug("更新数据的行数量：" + count);
-        Close(group);
+        int count = 0;
+        SqlConnection con = new SqlConnection(strConnection);
+        con.Open();
+        SqlCommand command = new SqlCommand(sql, con);
+        count = command.ExecuteNonQuery();
+        command.Dispose();
+        con.Close();
         return count;
     }
-    
+
+
+
+
     #endregion
 
 
@@ -321,10 +317,10 @@ class SqlManager
         return sql;
     }
 
-    public string SelectWhere(string tableName)
+    public static string SelectWhere(string tableName)
     {
         string sql = "";
-        sql = "SELECT * FROM" + tableName;
+        sql = "SELECT * FROM " + tableName;
         return sql;
     }
 
@@ -400,49 +396,9 @@ class SqlManager
 
 
 
-    public void Close(SqlDataGroup group)
-    {
-        group.Close();
-        gFree.Enqueue(group);
-    }
 
 
 
 
 
-
-
-}
-
-public class SqlDataGroup
-{
-    public SqlConnection connect;
-    public SqlCommand command;
-    private SqlDataReader reader;
-    public SqlDataReader GetReader()
-    {
-        return reader;
-    }
-    /// <summary>
-    /// 更新数据库，返回受影响的行数
-    /// </summary>
-    /// <returns></returns>
-    public int UpdateReader()
-    {
-        return command.ExecuteNonQuery();
-    }
-    /// <summary>
-    /// 查询数据库，设置reader的值
-    /// </summary>
-    public void InquireReader()
-    {
-        reader = command.ExecuteReader();
-    }
-
-    public void Close()
-    {
-        connect.Close();
-        command.Dispose();
-        reader.Close();
-    }
 }
