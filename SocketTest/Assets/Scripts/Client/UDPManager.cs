@@ -1,10 +1,7 @@
-﻿using System;
+﻿using Network_Kcp;
+using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net;
-using System.Net.Sockets;
-using System.Text;
-using System.Threading;
 using UnityEngine;
 
 public class UDPManager : MonoBehaviour
@@ -38,50 +35,70 @@ public class UDPManager : MonoBehaviour
         }
     }
 
-    public EndPoint myEndPoint;
+    public bool IsConnect;
 
+    public KCPPlayer kcpClient;
+    IPEndPoint remoteIpep;
     public const string ip = "192.168.1.110";
     public const int portUDP = 12000;
+    public const int udpResend = 10;
 
     public void Awake()
     {
         instance = this;
         instance.Init();
     }
+    void Update()
+    {
+        if (kcpClient != null)
+        {
+            kcpClient.OnUpdate();
+        }
+    }
+    private void FixedUpdate()
+    {
+        //if (kcpClient != null)
+        //{
+        //    kcpClient.OnFixedUpdate();
+        //}
+    }
 
-    //以下默认都是私有的成员
-    Socket socket; //目标socket
-    EndPoint serverEnd; //服务端
-    IPEndPoint ipEnd; //服务端端口
-    Thread connectThread; //连接线程
-    int receiveLength = 4096;
-
-    public bool IsConnect;
+    private void OnApplicationQuit()
+    {
+        Dispose();
+    }
+    private void Dispose()
+    {
+        try
+        {
+            kcpClient.Dispose();
+            NetworkDebuger.EnableSave = false;
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError(ex.Message);
+        }
+    }
 
     void Init()
     {
-        IsConnect = false;
-        //InitSocket(); //在这里初始化
+        NetworkDebuger.IsUnity = true;
+        NetworkDebuger.EnableLog = true;
+        NetworkDebuger.EnableSave = true;
+        NetworkDebuger.Log("Awake()");
+
     }
 
-    //初始化
-    public void InitSocket()
+    public void ConnectedToServer()
     {
-        if (connectThread != null)
-        {
-            connectThread.Abort();
-        }
-        //定义连接的服务器ip和端口，可以是本机ip，局域网，互联网
-        ipEnd = new IPEndPoint(IPAddress.Parse(ip), portUDP);
-        //定义套接字类型,在主线程中定义
-        socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-        //定义服务端
-        IPEndPoint sender = new IPEndPoint(IPAddress.Any, 0);
-        serverEnd = (EndPoint)sender;
-        Debug.LogError("sending UDP dgram");
-
-        //建立初始连接，这句非常重要，第一次连接初始化了serverEnd后面才能收到消息
-        //Send(new byte[] { 1, 2, 3 });
+        //获取UdpClient的发送端口
+        //k_Socket = new KCPSocket(12345, 1, AddressFamily.InterNetwork);
+        //IPEndPoint localIpep = new IPEndPoint(IPAddress.Parse(Network.player.ipAddress), 12000);
+        IPEndPoint localIpep = new IPEndPoint(IPAddress.Any, 0);
+        remoteIpep = new IPEndPoint(IPAddress.Parse("192.168.1.110"), 12000);
+        kcpClient = new KCPPlayer();
+        //p2.Init("Player", IPAddress.Parse(Network.player.ipAddress), 12345, 12000);
+        kcpClient.Init(localIpep, remoteIpep, OnReceive);
 
         UDPLogin login = new UDPLogin()
         {
@@ -93,151 +110,41 @@ public class UDPManager : MonoBehaviour
         //因为SendSave限制在断线重连时的重连，所以得绕过判断
         MessageXieYi msgxy = new MessageXieYi((byte)MessageConvention.setUDP, 0, message);
         byte[] sendBuffer = msgxy.ToBytes();
-        Send(sendBuffer);
-
-        //开启一个线程连接，必须的，否则主线程卡死
-        connectThread = new Thread(new ThreadStart(SocketReceive));
-        connectThread.Start();
-        connectThread.IsBackground = true;
+        SendMessage(sendBuffer);
 
     }
 
-
-
-    //服务器接收
-    void SocketReceive()
-    {
-        try
-        {
-            while (true)
-            {
-                //对data清零
-                byte[] recvData = new byte[receiveLength];
-                //定义客户端
-                IPEndPoint sender = new IPEndPoint(IPAddress.Any, 0);
-                EndPoint clientEnd = (EndPoint)sender;
-
-                //获取客户端，获取客户端数据，用引用给客户端赋值
-                int recvLen = socket.ReceiveFrom(recvData, ref clientEnd);//接收的数据长度 
-                                                
-                //输出接收到的数据
-                byte[] effectiveData = new byte[recvLen];
-                Array.Copy(recvData, effectiveData, recvLen);
-
-                object[] all = new object[] { clientEnd, effectiveData };
-                ThreadPool.QueueUserWorkItem(new WaitCallback(XieYiThrd), all);
-
-            }
-        }
-        catch (Exception e)
-        {
-            Debug.LogError("接收->" + e.Message);
-        }
-        finally
-        {
-            SocketQuit();
-            IsConnect = false;
-        }
-
-        //try
-        //{
-        //    //进入接收循环
-        //    while (true)
-        //    {
-        //        //对data清零
-        //        recvData = new byte[receiveLength];
-        //        //获取客户端，获取服务端端数据，用引用给服务端赋值，实际上服务端已经定义好并不需要赋值
-        //        recvLen = socket.ReceiveFrom(recvData, ref serverEnd);
-        //        guiInfo = recvLen + "";
-
-        //        byte[] effectiveData = new byte[recvLen];
-        //        Array.Copy(recvData, effectiveData, recvLen);
-        //        byte[] backData = SelectMessage(effectiveData, myEndPoint);
-
-        //        if (backData != null)
-        //        {
-        //            Send(backData);
-        //        }
-
-        //        ////打印服务端信息
-        //        //Debug.LogError("message from: " + serverEnd.ToString());
-        //        ////输出接收到的数据
-        //        //recvStr = Encoding.ASCII.GetString(recvData, 0, recvLen);
-        //        //Debug.LogError("我是客户端，接收到服务器的数据" + recvStr);
-        //    }
-        //}
-        //catch (Exception e)
-        //{
-        //    Debug.LogError(recvLen + "/" + e.Message);
-        //}
-        //finally
-        //{
-        //    SocketQuit();
-        //    IsConnect = false;
-        //}
-    }
-    private void XieYiThrd(object state)
-    {
-        object[] all = (object[])state;
-        EndPoint clientEnd = (EndPoint)all[0];
-        byte[] data = (byte[])all[1];
-        //将数据包交给前台去处理
-        byte[] backData = SelectMessage(data, clientEnd);
-        //将接收到的数据经过处理再发送出去
-        //string sendStr = "I~m Here. ";
-        if (backData != null)
-        {
-            Send(backData);
-        }
-    }
-
-    //连接关闭
-    void SocketQuit()
-    {
-        //关闭线程
-        if (connectThread != null)
-        {
-            connectThread.Interrupt();
-            connectThread.Abort();
-        }
-        //最后关闭socket
-        if (socket != null)
-            socket.Close();
-    }
-
-
-    public void OnApplicationQuit()
-    {
-        SocketQuit();
-    }
-    private void Send(byte[] sendData)
-    {
-        if (sendData == null)
-            return;
-        socket.SendTo(sendData, sendData.Length, SocketFlags.None, ipEnd);
-        socket.BeginSendTo(sendData, 0, sendData.Length, SocketFlags.None, ipEnd, new AsyncCallback(SendCallback), socket);
-    }
 
     public void SendSave(byte xieYiFirstFlage, byte[] message)
     {
+        Debug.LogError("发送协议：" + (MessageConvention)xieYiFirstFlage);
         if (GameManager.instance.CurrentPlayType == FramePlayType.断线重连)
         {
             return;
         }
         MessageXieYi msgxy = new MessageXieYi(xieYiFirstFlage, 0, message);
         byte[] sendBuffer = msgxy.ToBytes();
-        Send(sendBuffer);
+        SendMessage(sendBuffer);
     }
-
-    private void SendCallback(IAsyncResult ar)
+    public void SendMessage(byte[] message)
     {
-        ((Socket)ar.AsyncState).EndSendTo(ar);
-        //RaiseCompletedSend(null);
+        kcpClient.SendMessage(remoteIpep, message);
     }
 
 
 
-    public byte[] SelectMessage(byte[] data, EndPoint endPoint)
+
+    private void OnReceive(byte[] buffer, int size, IPEndPoint remotePoint)
+    {
+
+
+        byte[] sendBytes = SelectMessage(buffer, remotePoint);
+        if (sendBytes != null)
+        {
+            kcpClient.SendMessage(remotePoint, sendBytes);
+        }
+    }
+    private byte[] SelectMessage(byte[] data, EndPoint endPoint)
     {
         byte[] backData = null;
         try
@@ -269,7 +176,6 @@ public class UDPManager : MonoBehaviour
         }
         return backData;
     }
-
     public void DealFrameData(MessageXieYi xieyi)
     {
         try
@@ -335,7 +241,7 @@ public class UDPManager : MonoBehaviour
     {
         if (DataController.instance.MyRoomInfo != null && DataController.instance.ActorList != null)
         {
-            string guiInfo2 = "udp： " + ((connectThread == null) ? "" : connectThread.IsAlive + "");
+            string guiInfo2 = "udp： ";
             GUIStyle bb = new GUIStyle();
             bb.normal.background = null;    //这是设置背景填充的
             bb.normal.textColor = Color.blue;   //设置字体颜色的

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Network_Kcp;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
@@ -160,7 +161,7 @@ class SqlManager
     /// <param name="msg"></param>
     void Log4Debug(string msg)
     {
-        LogManager.instance.WriteLog(this.GetType().Name + ":" + msg);
+        NetworkDebuger.Log(this.GetType().Name + ":" + msg);
     }
 
     //public SqlDataReader UserAccept(string clientID, string sql, ConnLevel level = ConnLevel.None)

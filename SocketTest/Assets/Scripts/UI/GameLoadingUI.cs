@@ -107,7 +107,8 @@ public class GameLoadingUI : MonoBehaviour
             case CheckLoading.注册UDP:
                 if (!UDPManager.instance.IsConnect)
                 {
-                    InvokeRepeating("MakeUDPEnable", 0, 0.1f);
+                    udpConnectNum = 0;
+                    MakeUDPEnable();
                 }
                 else
                 {
@@ -138,6 +139,9 @@ public class GameLoadingUI : MonoBehaviour
         GameManager.instance.PrepareLocalModel();
         ChangeState(CheckLoading.取重连帧);
     }
+
+
+    private int udpConnectNum;
     /// <summary>
     /// Invoke
     /// </summary>
@@ -146,7 +150,18 @@ public class GameLoadingUI : MonoBehaviour
         Debug.LogError("udp 连接状态:" + UDPManager.instance.IsConnect);
         if (!UDPManager.instance.IsConnect)
         {
-            UDPManager.instance.InitSocket();
+            if (udpConnectNum < UDPManager.udpResend)
+            {
+                udpConnectNum++;
+                UDPManager.instance.ConnectedToServer();
+                Invoke("MakeUDPEnable", 0.5f);
+            }
+            else
+            {
+                //提示udp服务器连接失败
+                Debug.LogError("udp服务器连接失败次数超过：" + UDPManager.udpResend);
+
+            }
         }
         else
         {

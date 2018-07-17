@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Network_Kcp;
+using System;
 using System.Collections.Generic;
 
 public class AsyncUserTokenPool
@@ -108,7 +109,7 @@ public class AsyncUserTokenPool
     }
     public void Log4Debug(string msg)
     {
-        LogManager.instance.WriteLog(this.GetType().Name + ":" + msg);
+        NetworkDebuger.Log(this.GetType().Name + ":" + msg);
     }
 
 

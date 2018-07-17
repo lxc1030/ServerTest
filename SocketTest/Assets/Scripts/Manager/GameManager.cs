@@ -476,7 +476,7 @@ public class GameManager : MonoBehaviour
         FrameInfo info = new FrameInfo() { frameIndex = startCheckIndex, frameData = new List<byte[]>() };
         string debug = "请求帧：" + info.frameIndex;
         UIManager.instance.ShowAlertTip(debug);
-        //Debug.LogError(debug);
+        Debug.LogError(debug);
         byte[] message = SerializeHelper.Serialize<FrameInfo>(info);
         SocketManager.instance.SendSave((byte)MessageConvention.frameData, message, false);
     }
@@ -1007,7 +1007,7 @@ public class GameManager : MonoBehaviour
             {
                 UDPManager.instance.IsConnect = true;
                 Debug.LogError("用tcp 设置房间 udp");
-                SocketManager.instance.SendSave((byte)MessageConvention.setUDP, xieyi.MessageContent, false);
+                //SocketManager.instance.SendSave((byte)MessageConvention.setUDP, xieyi.MessageContent, false);
             }
         }
     }

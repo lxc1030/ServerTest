@@ -1,7 +1,4 @@
 ﻿using System;
-using System.Data.SqlClient;
-using System.Text;
-using Newtonsoft.Json.Linq;
 
 public class ClassGroup
 {

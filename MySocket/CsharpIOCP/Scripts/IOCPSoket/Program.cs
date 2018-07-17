@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Network_Kcp;
+using System;
 using System.Collections.Generic;
 using System.Data.SqlClient;
 using System.Threading;
@@ -14,12 +15,22 @@ class Program
     public const int portUDP = 12000;
     static void Main(string[] args)
     {
-        LogManager.Init();//清除Log文件夹
+        NetworkDebuger.IsUnity = false;
+        NetworkDebuger.EnableLog = true;
+        NetworkDebuger.EnableSave = true;
+        NetworkDebuger.DeleteFiles();
+        NetworkDebuger.Log(nameof(NetworkDebuger) + " Init");
+
+
+
+
+
+
         //
         SqlManager.Init();
         ServerDataManager.Init();
         new AsyncIOCPServer(IP, portTCP, 30000);
-        new UdpServer(IP, portUDP);
+        UdpServer.Instance.Init(IP, portUDP);
 
 
         while (true)
@@ -51,7 +62,7 @@ class Program
 
     public static void Log4Debug(string msg)
     {
-        LogManager.instance.WriteLog(":" + msg);
+        NetworkDebuger.Log(":" + msg);
     }
 
 }

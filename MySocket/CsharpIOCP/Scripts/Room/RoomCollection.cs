@@ -1,10 +1,6 @@
-﻿using Newtonsoft.Json.Linq;
-using System;
+﻿using Network_Kcp;
+using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
-using System.Data;
-using System.Data.SqlClient;
-using System.Linq;
-using System.Text;
 
 public class RoomCollection
 {
@@ -175,6 +171,6 @@ public class RoomCollection
 
     public void Log4Debug(string msg)
     {
-        LogManager.instance.WriteLog(this.GetType().Name + ":" + msg);
+        NetworkDebuger.Log(this.GetType().Name + ":" + msg);
     }
 }

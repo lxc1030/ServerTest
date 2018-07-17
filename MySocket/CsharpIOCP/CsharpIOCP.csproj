@@ -65,13 +65,9 @@
     <Compile Include="Scripts\Room\RoomCollection.cs" />
     <Compile Include="Scripts\IOCPSoket\ServerDataManager.cs" />
     <Compile Include="Scripts\Tools\ClassGroup.cs" />
-    <Compile Include="Scripts\Tools\LogManager.cs" />
     <Compile Include="Scripts\SqlGroup\SqlManager.cs" />
+    <Compile Include="Scripts\UdpSocket\KCPPlayer.cs" />
     <Compile Include="Scripts\UdpSocket\UdpServer.cs" />
-    <Compile Include="Scripts\UdpSocket\UdpServer2.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <Content Include="Scripts\DLL\SerializeClass.dll" />
   </ItemGroup>
   <ItemGroup>
     <WCFMetadata Include="Service References\" />
@@ -86,7 +82,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="Scripts\UdpClient\" />
+    <Folder Include="Log\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

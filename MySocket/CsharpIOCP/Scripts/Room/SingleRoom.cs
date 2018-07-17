@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Network_Kcp;
+using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
@@ -19,15 +21,15 @@ public class SingleRoom
     /// <summary>
     /// 房間中的會員列表
     /// </summary>
-    public Dictionary<int, RoomActor> ActorList { get; set; }
+    public ConcurrentDictionary<int, RoomActor> ActorList { get; set; }
     /// <summary>
     /// 游戏棋子对应的拥有玩家ID--盒子序号，用户站位
     /// </summary>
-    public Dictionary<int, BoxInfo> BoxList { get; set; }
+    public ConcurrentDictionary<int, BoxInfo> BoxList { get; set; }
     /// <summary>
     /// 所有生成的buff信息
     /// </summary>
-    public Dictionary<int, BuffInfo> BuffList { get; set; }
+    public ConcurrentDictionary<int, BuffInfo> BuffList { get; set; }
     /// <summary>
     /// 记录一共生成了多少个Buff
     /// </summary>
@@ -36,7 +38,7 @@ public class SingleRoom
     /// <summary>
     /// 队伍信息
     /// </summary>
-    public Dictionary<TeamType, List<int>> AllTeamInfo { get; set; }
+    public ConcurrentDictionary<TeamType, List<int>> AllTeamInfo { get; set; }
 
     public Timer CountDownTimer { get; set; }
 
@@ -45,28 +47,18 @@ public class SingleRoom
     /// </summary>
     public int FrameCastIndex { get; set; }
 
-    private Dictionary<int, FrameInfo> frameGroup;
     /// <summary>
     /// 保存每帧玩家发送来的数据
     /// </summary>
-    public Dictionary<int, FrameInfo> FrameGroup
-    {
-        get
-        {
-            lock (frameGroup)
-            {
-                return frameGroup;
-            }
-        }
-        set
-        {
-            lock (frameGroup)
-            {
-                frameGroup = value;
-            }
-        }
-    }
+    private ConcurrentDictionary<int, FrameInfo> FrameGroup;
+
+
     public udpUser[] udpUserInfo { get; set; }
+
+    /// <summary>
+    /// 每帧广播用到的线程
+    /// </summary>
+    public Thread ThFrameCount;
 
 
     public SingleRoom(int roomID, string roomName, GameModel roomType)
@@ -78,7 +70,7 @@ public class SingleRoom
         {
             UserTokenInfo.Add(i, null);
         }
-        ActorList = new Dictionary<int, RoomActor>() { };
+        ActorList = new ConcurrentDictionary<int, RoomActor>() { };
         for (int i = 0; i < RoomInfo.Limit; i++)
         {
             InitRoomActorByIndex(i);
@@ -88,13 +80,11 @@ public class SingleRoom
         switch (roomType)
         {
             case GameModel.组队模式:
-                AllTeamInfo = new Dictionary<TeamType, List<int>>()
-                {
-                    { TeamType.Blue, new List<int>() { } },
-                    { TeamType.Red, new List<int>() { } }
-                };
-                BoxList = new Dictionary<int, BoxInfo>();
-                BuffList = new Dictionary<int, BuffInfo>();
+                AllTeamInfo = new ConcurrentDictionary<TeamType, List<int>>();
+                AllTeamInfo.AddOrUpdate(TeamType.Blue, new List<int>() { }, (key, oldValue) => new List<int>() { });
+                AllTeamInfo.AddOrUpdate(TeamType.Red, new List<int>() { }, (key, oldValue) => new List<int>() { });
+                BoxList = new ConcurrentDictionary<int, BoxInfo>();
+                BuffList = new ConcurrentDictionary<int, BuffInfo>();
                 break;
         }
     }
@@ -242,12 +232,12 @@ public class SingleRoom
         RoomInfo.RoomName = roomName;
     }
 
-    public void UpdateUDP(int unique, UDPLogin login)
+    public void UpdateUDP(int unique, udpUser user)
     {
-        Log4Debug("站位：" + unique + " udp地址：" + login.login);
+        Log4Debug("站位：" + unique + " udp地址：" + user.lastPoint);
         lock (udpUserInfo)
         {
-            //udpUserInfo[unique].endPoint =IPEndPoint.;
+            udpUserInfo[unique] = user;
         }
     }
     public void ClearUDP(int unique)
@@ -431,10 +421,10 @@ public class SingleRoom
                 lock (BoxList)
                 {
                     boxIndex = int.Parse(bulletInfo.shootInfo);
-                    if (!BoxList.ContainsKey(boxIndex))
-                    {
-                        BoxList.Add(boxIndex, new BoxInfo() { ownerIndex = -1, myIndex = boxIndex });
-                    }
+
+                    BoxInfo boxInfo = new BoxInfo() { ownerIndex = -1, myIndex = boxIndex };
+                    BoxList.AddOrUpdate(boxIndex, boxInfo, (key, oldValue) => boxInfo);
+
                     if (BoxList[boxIndex].ownerIndex < 0)
                     {
                         BoxList[boxIndex].ownerIndex = bulletInfo.userIndex;
@@ -444,7 +434,7 @@ public class SingleRoom
                         {
                             buffInfo.boxIndex = boxIndex;
                             buffInfo.type = RandomBuffType();//随机一个buff类型
-                            BuffList.Add(BuffIndex, buffInfo);
+                            BuffList.AddOrUpdate(BuffIndex, buffInfo, (key, oldValue) => buffInfo);
                             BuffIndex++;
                         }
                         Log4Debug("在盒子编号->" + boxIndex + " 掉落Buff,编号->" + buffInfo.myIndex + ",类型->" + buffInfo.type);
@@ -608,7 +598,8 @@ public class SingleRoom
         //Log4Debug("存储帧：" + curIndex);
         if (RoomInfo.CurState == RoomActorState.Gaming)
         {
-            lock (FrameGroup[curIndex].frameData)
+            FrameInfo frameInfo = new FrameInfo() { frameIndex = curIndex, frameData = new List<byte[]>() };
+            lock (FrameGroup.GetOrAdd(curIndex, frameInfo).frameData)
             {
                 FrameGroup[curIndex].frameData.Add(message);
             }
@@ -641,10 +632,7 @@ public class SingleRoom
         {
             for (int i = start; i <= end; i++)
             {
-                lock (FrameGroup)
-                {
-                    infos.Add(FrameGroup[i]);
-                }
+                infos.Add(FrameGroup.GetOrAdd(i, new FrameInfo() { frameIndex = i, frameData = new List<byte[]>() }));
             }
             return SerializeHelper.Serialize<List<FrameInfo>>(infos);
         }
@@ -668,8 +656,8 @@ public class SingleRoom
             {
                 lastRecondTime = lastRecondTime.Add(TimeSpan.FromMilliseconds(RoomInfo.frameTime));
                 //Log4Debug("增加15-》" + addTime.ToString("yyyy-MM-dd HH:mm:ss.fff"));
-                ThreadPool.QueueUserWorkItem(new WaitCallback(FrameLogic), null);
-                //FrameLogic(null);
+                //ThreadPool.QueueUserWorkItem(new WaitCallback(FrameLogic), null);
+                FrameLogic(null);
                 if ((int)(sub - RoomInfo.frameTime) == 0)
                 {
                     Thread.Sleep(1);
@@ -693,6 +681,7 @@ public class SingleRoom
         if (message != null)
         {
             //BoardcastMessage(MessageConvention.frameData, message);
+            Log4Debug("udp广播:" + start + "/" + end);
             BoardcastMessage(MessageConvention.frameData, message, -1, 0, ProtocolType.Udp);
         }
         else
@@ -795,14 +784,8 @@ public class SingleRoom
 
     public void InitRoomActorByIndex(int unique)
     {
-        lock (ActorList)
-        {
-            if (!ActorList.ContainsKey(unique))
-            {
-                ActorList.Add(unique, null);
-            }
-            ActorList[unique] = new RoomActor(RoomInfo.RoomID, unique, null, TeamType.Both);
-        }
+        RoomActor roomActor = new RoomActor(RoomInfo.RoomID, unique, null, TeamType.Both);
+        ActorList.AddOrUpdate(unique, roomActor, (key, oldValue) => roomActor);
     }
 
 
@@ -917,8 +900,12 @@ public class SingleRoom
                 }
                 else if (netType == ProtocolType.Udp)
                 {
-                    object[] infos = new object[] { msgXY.ToBytes(), udpUserInfo[i].endPoint };
-                    UdpServer.instance.SendMessage(infos);
+                    if (udpUserInfo[i] == null)
+                    {
+                        Log4Debug("广播时，站位{0}用户udp未连接。" + i);
+                        continue;
+                    }
+                    UdpServer.Instance.SendMessage(udpUserInfo[i].lastPoint, msgXY.ToBytes());
                 }
             }
         }
@@ -973,7 +960,7 @@ public class SingleRoom
                     UpdateState(roomActorUpdate);//广播,修改玩家状态用来准备本机数据
                 }
                 //方块初始化
-                BoxList = new Dictionary<int, BoxInfo>();
+                BoxList = new ConcurrentDictionary<int, BoxInfo>();
 
                 //倒计时进入游戏
                 ChangeRoomState(RoomActorState.WaitForStart);
@@ -1013,14 +1000,17 @@ public class SingleRoom
                 //保存帧同步
                 RoomInfo.FrameIndex = 0;
                 FrameCount = (int)(RoomInfo.GameTime / RoomInfo.frameTime);
-                frameGroup = new Dictionary<int, FrameInfo>();
+                FrameGroup = new ConcurrentDictionary<int, FrameInfo>();
                 //FrameGroup = new Dictionary<int, FrameInfo>();
-                for (int i = 0; i < FrameCount; i++)
-                {
-                    FrameGroup.Add(i, new FrameInfo() { frameIndex = i, frameData = new List<byte[]>() });
-                }
+                //for (int i = 0; i < FrameCount; i++)
+                //{
+                //    FrameGroup.Add(i, new FrameInfo() { frameIndex = i, frameData = new List<byte[]>() });
+                //}
                 //线程池调用时间间隔逻辑
-                ThreadPool.QueueUserWorkItem(new WaitCallback(GameFrameReconding), null);
+                ThFrameCount = new Thread(GameFrameReconding);
+                ThFrameCount.IsBackground = true;
+                ThFrameCount.Start();
+                //ThreadPool.QueueUserWorkItem(new WaitCallback(GameFrameReconding), null);
                 //
                 string starttime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
                 byte[] start = SerializeHelper.ConvertToByte(starttime);
@@ -1106,6 +1096,6 @@ public class SingleRoom
 
     public void Log4Debug(string msg)
     {
-        LogManager.instance.WriteLog(this.GetType().Name + ":" + msg);
+        NetworkDebuger.Log(this.GetType().Name + ":" + msg);
     }
 }

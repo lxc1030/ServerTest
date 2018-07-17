@@ -1,125 +1,108 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using Network_Kcp;
+using System;
+using System.Collections.Concurrent;
 using System.Net;
-using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 
-class UdpServer
+public class UdpServer
 {
-    public static UdpServer instance;
-    IPAddress ip;
-    int port;
-    UdpClient myClient;
-    Thread thrRecv;//连接线程
-    Thread thrHeart;//心跳线程
-
-    /// <summary>
-    /// 心跳检测间隔秒数
-    /// </summary>
-    public const int HeartbeatSecondTime = 60;
-
-
-
-
-    private List<udpUser> allUDPs = new List<udpUser>();
-
-
-
-    public UdpServer(string _ip, int _port)
+    private static UdpServer instance;
+    public static UdpServer Instance
     {
-        ip = IPAddress.Parse(_ip);
-        port = _port;
-        instance = this;
-
-        IPEndPoint localIpep = new IPEndPoint(ip, 12000); // 本机IP和监听端口号
-        myClient = new UdpClient(localIpep);
-        thrRecv = new Thread(ReceiveMessage);
-        thrRecv.Start();
-
-        thrHeart = new Thread(CheckHeartBeat);
-        thrHeart.Start();
-        Log4Debug("UDP监听器已成功启动");
-
+        get
+        {
+            if (instance == null)
+            {
+                instance = new UdpServer();
+            }
+            return instance;
+        }
+        set
+        {
+            value = instance;
+        }
     }
 
 
-    private void CheckHeartBeat(object obj)
-    {
-        Thread.Sleep(HeartbeatSecondTime * 1000);
-        List<udpUser> all = null;
-        lock (allUDPs)
-        {
-            all = new List<udpUser>(allUDPs);
-        }
-        for (int i = 0; i < all.Count; i++)
-        {
-            object[] infos = new object[] { Encoding.Unicode.GetBytes("HeartBeat"), all[i].endPoint };
-            SendMessage(infos);
+    public static string ConnectInfo = "ConnectRequest";
 
-        }
-        Log4Debug("心跳检测结束时间:" + DateTime.Now);
-        CheckHeartBeat(obj);
+    public ConcurrentDictionary<IPEndPoint, udpUser> ListUserKCP;
+
+    private KCPPlayer kcpServer;
+
+    public UdpServer()
+    {
+        ListUserKCP = new ConcurrentDictionary<IPEndPoint, udpUser>();
     }
 
-    /// <summary>
-    /// 接收数据
-    /// </summary>
-    /// <param name="obj"></param>
-    private void ReceiveMessage(object obj)
+
+    public void Init(string IP, int port)
     {
-        IPEndPoint remoteIpep = new IPEndPoint(IPAddress.Any, 0);
+        //开启非可靠传输udp监听客户端连接
+        IPEndPoint localIpep = new IPEndPoint(IPAddress.Parse(IP), port);
+
+        kcpServer = new KCPPlayer();
+        //p1.Init(localIpep, new IPEndPoint(IPAddress.Parse("192.168.1.111"), 12345));
+        kcpServer.Init(localIpep, new IPEndPoint(IPAddress.Any, 0), OnReceive);
+
+        Thread th = new Thread(SetUpdate);
+        th.IsBackground = true;
+        th.Start();
+
+        Log4Debug("初始化UDP Socket成功。");
+    }
+
+    private void SetUpdate(object obj)
+    {
         while (true)
         {
-            try
-            {
-                byte[] bytRecv = myClient.Receive(ref remoteIpep);
-                udpDatas data = new udpDatas() { byteRecv = bytRecv, endPoint = remoteIpep };
-                ThreadPool.QueueUserWorkItem(new WaitCallback(XieYiThrd), data);
-            }
-            catch (Exception ex)
-            {
-                Log4Debug(ex.Message);
-                break;
-            }
+            kcpServer.OnFixedUpdate();
+            kcpServer.OnUpdate();
+            System.Threading.Thread.Sleep(10);
         }
     }
 
-    private void XieYiThrd(object all)
+    private void OnReceive(byte[] buffer, int size, IPEndPoint remotePoint)
     {
-        udpDatas data = all as udpDatas;
-        IPEndPoint remoteIpep = data.endPoint;
-        udpUser user = null;
-
-        lock (allUDPs)
+        if (remotePoint.Address.Equals(IPAddress.Parse("192.168.1.129")))
         {
-            if (!allUDPs.Exists(t => t.endPoint.ToString() == remoteIpep.ToString()))//该IP不存在
-            {
-                //打印客户端信息
-                Log4Debug("新udp连接: " + remoteIpep.ToString());
-                allUDPs.Add(new udpUser() { endPoint = remoteIpep, heartTime = DateTime.Now });
-            }
-            user = allUDPs.Find(t => t.endPoint.ToString() == remoteIpep.ToString());
+            return;
         }
 
+        Log4Debug("OnReceive() " + remotePoint + "/长度->" + size);
 
-        //将数据包交给前台去处理
-        byte[] backData = SelectMessage(data, user);
-        //将接收到的数据经过处理再发送出去
-        //string sendStr = "I~m Here. ";
-        if (backData != null)
+        udpUser info = null;
+        if (ListUserKCP.ContainsKey(remotePoint))
         {
-            object[] infos = new object[] { backData, user.endPoint };
-            SendMessage(infos);
+            info = ListUserKCP[remotePoint];
         }
+        else//配表没有该用户信息
+        {
+            info = ListUserKCP.GetOrAdd(remotePoint, new udpUser() { lastPoint = remotePoint, roomId = -1 });
+        }
+
+        byte[] sendBytes = SelectMessage(info, buffer);
+        if (sendBytes != null)
+        {
+            SendMessage(info.lastPoint, sendBytes);
+        }
+    }
+    public void SendMessage(IPEndPoint remotePoint, byte[] message)
+    {
+        if (remotePoint == null)
+        {
+            Log4Debug("向NULL地址发送长度{0}的数据" + message.Length);
+            return;
+        }
+        kcpServer.SendMessage(remotePoint, message);
     }
 
 
-    public byte[] SelectMessage(udpDatas data, udpUser user)
+    public byte[] SelectMessage(udpUser user, byte[] data)
     {
         byte[] newBuffer = null;
-        MessageXieYi xieyi = MessageXieYi.FromBytes(data.byteRecv);
+        MessageXieYi xieyi = MessageXieYi.FromBytes(data);
         if (xieyi == null)
             return newBuffer;
 
@@ -129,18 +112,19 @@ class UdpServer
         UDPLogin login = null;
 
         //该处RoomList没有加锁
-        if (ServerDataManager.instance.allRoom.RoomList.ContainsKey(user.roomID))
+        if (ServerDataManager.instance.allRoom.RoomList.ContainsKey(user.roomId))
         {
-            room = ServerDataManager.instance.allRoom.RoomList[user.roomID];
+            room = ServerDataManager.instance.allRoom.RoomList[user.roomId];
         }
 
         switch ((MessageConvention)xieyi.XieYiFirstFlag)
         {
             case MessageConvention.setUDP:
                 login = SerializeHelper.Deserialize<UDPLogin>(tempMessageContent);
-                login.login = user.endPoint.ToString();
-                user.roomID = login.roomID;
+                user.roomId = login.roomID;
                 user.unique = login.unique;
+                ListUserKCP.AddOrUpdate(user.lastPoint, user, (key, oldValue) => user);
+                ServerDataManager.instance.allRoom.RoomList[user.roomId].UpdateUDP(user.unique, user);
                 Log4Debug("UDP login 房间号：" + login.roomID);
                 newBuffer = SerializeHelper.Serialize<UDPLogin>(login);
                 break;
@@ -216,71 +200,39 @@ class UdpServer
         return sendBuffer;
     }
 
-
-
-    /// <summary>
-    /// 发送信息
-    /// </summary>
-    /// <param name="obj"></param>
-    public void SendMessage(object obj)
-    {
-        try
-        {
-            object[] all = obj as object[];
-            UdpClient send = myClient;
-            byte[] sendbytes = (byte[])all[0];
-            IPEndPoint remoteIpep = (IPEndPoint)all[1];
-            send.Send(sendbytes, sendbytes.Length, remoteIpep);
-        }
-        catch (Exception ex)
-        {
-            Log4Debug("发送错误：" + ex.Message);
-        }
-    }
-
-
-
-
-
-
-
-
-
-
-    //连接关闭
-    void SocketQuit()
-    {
-        //关闭线程
-        if (thrRecv != null)
-        {
-            thrRecv.Interrupt();
-            thrRecv.Abort();
-        }
-        ////最后关闭socket
-        //if (socket != null)
-        //    socket.Close();
-        Log4Debug("udpSocket Disconnect");
-    }
-
     private void Log4Debug(string msg)
     {
-        LogManager.instance.WriteLog(this.GetType().Name + ":" + msg);
+        NetworkDebuger.Log(this.GetType().Name + ":" + msg);
     }
 
-
 }
 
+/// <summary>
+/// 保存连入用户数据
+/// </summary>
 public class udpUser
 {
-    public IPEndPoint endPoint;//通过地址互相获取相关数据
+    public IPEndPoint lastPoint;//通过地址互相获取相关数据
     public string userId;
-    public int roomID;
+    public int roomId;
     public int unique;
     public DateTime heartTime;
-
 }
+
+/// <summary>
+/// 接收到数据结构
+/// </summary>
 public class udpDatas
 {
+    public int index;
     public byte[] byteRecv;
     public IPEndPoint endPoint;//通过地址互相获取相关数据
+    public udpDatas(byte[] recv)
+    {
+        byte[] id = new byte[sizeof(int)];
+        Array.Copy(recv, 0, id, 0, sizeof(int));
+        byteRecv = new byte[recv.Length - sizeof(int)];
+        Array.Copy(recv, 0, byteRecv, 0, byteRecv.Length);
+    }
 }
+

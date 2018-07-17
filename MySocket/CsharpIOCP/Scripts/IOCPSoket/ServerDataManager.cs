@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json.Linq;
+﻿using Network_Kcp;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Data.SqlClient;
@@ -26,14 +27,35 @@ public class ServerDataManager
         Log4Debug("数据处理准备就绪。");
     }
 
+    public SingleRoom GetSingleRoomByID(int roomID)
+    {
+        SingleRoom room = null;
+        lock (allRoom.RoomList)
+        {
+            if (allRoom.RoomList.ContainsKey(roomID))
+            {
+                room = allRoom.RoomList[roomID];
+            }
+        }
+        return room;
+    }
+
 
     #region 处理接收来的协议拆分和判断
+
+    /// <summary>
+    /// tcp
+    /// </summary>
+    /// <param name="xieyi"></param>
+    /// <param name="userToken"></param>
+    /// <returns></returns>
     public byte[] SelectMessage(MessageXieYi xieyi, AsyncUserToken userToken)
     {
         JObject json = null;
         byte[] newBuffer = null;
         byte[] tempMessageContent = xieyi.MessageContent;
-        SingleRoom room = null;
+        int roomID = userToken.userInfo.RoomID;
+        SingleRoom room = GetSingleRoomByID(roomID);
         Register login = null;
         RoomActorUpdate roomActorUpdate = null;
         ActorMoveDirection moveDirection = null;
@@ -65,9 +87,9 @@ public class ServerDataManager
                     ReconnctInfo rcInfo = new ReconnctInfo();
                     if (OffLineRooms.ContainsKey(userToken.userInfo.Register.userID))
                     {
-                        int roomID = OffLineRooms[userToken.userInfo.Register.userID];
-                        userToken.userInfo.RoomID = roomID;
-                        allRoom.RoomList[roomID].ReConnect(userToken);
+                        int offRoomID = OffLineRooms[userToken.userInfo.Register.userID];
+                        userToken.userInfo.RoomID = offRoomID;
+                        allRoom.RoomList[offRoomID].ReConnect(userToken);
                         lock (OffLineRooms)
                         {
                             OffLineRooms.Remove(userToken.userInfo.Register.userID);
@@ -159,11 +181,11 @@ public class ServerDataManager
                     newBuffer = room.GetBoardFrame(frame.frameIndex);
                     //Log4Debug("用户" + userToken.userInfo.Register.name + "/请求帧数据：" + frame.frameIndex + "/" + room.RoomInfo.FrameIndex + "数据总长：" + newBuffer.Length);
                     break;
-                case MessageConvention.setUDP:
-                    UDPLogin loginUDP = SerializeHelper.Deserialize<UDPLogin>(tempMessageContent);
-                    Log4Debug("收到登录UDP账号：" + loginUDP.login);
-                    room.UpdateUDP(userToken.userInfo.UniqueID, loginUDP);
-                    break;
+                //case MessageConvention.setUDP:
+                //    UDPLogin loginUDP = SerializeHelper.Deserialize<UDPLogin>(tempMessageContent);
+                //    Log4Debug("收到登录UDP账号：" + loginUDP.login);
+                //    room.UpdateUDP(userToken.userInfo.UniqueID, loginUDP);
+                //    break;
                 default:
                     Log4Debug("TCP是否判断该协议：" + (MessageConvention)xieyi.XieYiFirstFlag);
                     break;
@@ -185,6 +207,115 @@ public class ServerDataManager
 
 
 
+
+    /// <summary>
+    /// udp
+    /// </summary>
+    /// <param name="data"></param>
+    /// <param name="user"></param>
+    /// <returns></returns>
+    public byte[] SelectMessage(udpDatas data, udpUser user)
+    {
+        byte[] newBuffer = null;
+        MessageXieYi xieyi = MessageXieYi.FromBytes(data.byteRecv);
+        if (xieyi == null)
+            return newBuffer;
+
+        byte[] tempMessageContent = xieyi.MessageContent;
+        ActorMoveDirection moveDirection = null;
+        int roomID = user.roomId;
+        SingleRoom room = GetSingleRoomByID(roomID);
+        UDPLogin login = null;
+
+        switch ((MessageConvention)xieyi.XieYiFirstFlag)
+        {
+            case MessageConvention.setUDP:
+                login = SerializeHelper.Deserialize<UDPLogin>(tempMessageContent);
+                login.login = user.lastPoint.ToString();
+                user.roomId = login.roomID;
+                user.unique = login.unique;
+                Log4Debug("UDP login 房间号：" + login.roomID);
+                newBuffer = SerializeHelper.Serialize<UDPLogin>(login);
+                break;
+            case MessageConvention.moveDirection:
+                moveDirection = SerializeHelper.Deserialize<ActorMoveDirection>(tempMessageContent);
+                if (room.ActorList[moveDirection.userIndex].CurState != RoomActorState.Dead)
+                {
+                    //Log4Debug("将历史帧：" + moveDirection.frameIndex + "保存到" + (moveDirection.frameIndex + room.RoomInfo.frameInterval) + "/" + room.RoomInfo.FrameIndex);
+                    room.SetRecondFrame(xieyi.ToBytes());
+                    //Log4Debug("站位：" + moveDirection.userIndex + " 更新了方向：" + "["
+                    //    + moveDirection.direction.x + ","
+                    //    + moveDirection.direction.y + ","
+                    //    + moveDirection.direction.z + "]"
+                    //    + "/速度:" + moveDirection.speed);
+                }
+                else
+                {
+                    Log4Debug("死亡用户不更新移动。");
+                }
+                break;
+            case MessageConvention.rotateDirection:
+                ActorRotateDirection netRotation = SerializeHelper.Deserialize<ActorRotateDirection>(tempMessageContent);
+                if (room.ActorList[netRotation.userIndex].CurState != RoomActorState.Dead)
+                {
+                    room.SetRecondFrame(xieyi.ToBytes());
+                    //Log4Debug("站位：" + netRotation.userIndex + " 更新了旋转：" + netRotation.rotateY);
+                }
+                else
+                {
+                    Log4Debug("死亡用户不更新旋转。");
+                }
+                break;
+            case MessageConvention.jump:
+                ActorJump netJump = SerializeHelper.Deserialize<ActorJump>(tempMessageContent);
+                if (room.ActorList[netJump.userIndex].CurState != RoomActorState.Dead)
+                {
+                    room.SetRecondFrame(xieyi.ToBytes());
+                }
+                else
+                {
+                    Log4Debug("死亡用户不更新跳跃。");
+                }
+                break;
+            case MessageConvention.shootBullet:
+                ShootInfo shootInfo = SerializeHelper.Deserialize<ShootInfo>(tempMessageContent);
+                if (room.ActorList[shootInfo.userIndex].CurState != RoomActorState.Dead)
+                {
+                    room.SetRecondFrame(xieyi.ToBytes());
+                    //Log4Debug("站位：" + netRotation.userIndex + " 更新了旋转：" + netRotation.rotateY);
+                }
+                else
+                {
+                    Log4Debug("死亡用户不更新射击。");
+                }
+                break;
+            case MessageConvention.bulletInfo:
+                //
+                BulletInfo bulletInfo = SerializeHelper.Deserialize<BulletInfo>(xieyi.MessageContent);
+                room.UpdateBulletInfo(bulletInfo);//更新
+                //room.SetRecondFrame(xieyi.ToBytes());
+                break;
+            default:
+                Log4Debug("检查协议->" + (MessageConvention)xieyi.XieYiFirstFlag);
+                break;
+        }
+
+        byte[] sendBuffer = null;
+        if (newBuffer != null)//用户需要服务器返回值给自己的话
+        {
+            xieyi = new MessageXieYi(xieyi.XieYiFirstFlag, xieyi.XieYiSecondFlag, newBuffer);
+            sendBuffer = xieyi.ToBytes();
+        }
+        return sendBuffer;
+    }
+
+
+
+
+
+
+
+
     #endregion
 
     #region 逻辑部分
@@ -199,7 +330,7 @@ public class ServerDataManager
             new string[] { nameof(Register.userID) },
             new string[] { "=" },
             new string[] { login.userID });
-        
+
         List<Register> regs = SqlManager.instance.DataRead(sql, new Func<SqlDataReader, List<Register>>(Register.BackDatas));
         if (regs.Count <= 0)//验证账号存不存在 --不存在
         {
@@ -295,7 +426,7 @@ public class ServerDataManager
 
     public void Log4Debug(string msg)
     {
-        LogManager.instance.WriteLog(this.GetType().Name + ":" + msg);
+        NetworkDebuger.Log(this.GetType().Name + ":" + msg);
     }
 }
 

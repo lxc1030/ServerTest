@@ -6,6 +6,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Collections;
+using Network_Kcp;
 
 public class AsyncIOCPServer
 {
@@ -70,7 +71,7 @@ public class AsyncIOCPServer
             tCheckClientHeartbeat.Start();
             
             StartAccept(null);
-            Log4Debug("初始化服务器。");
+            Log4Debug("初始化TCP Socket成功。");
         }
         catch (Exception error)
         {
@@ -278,8 +279,15 @@ public class AsyncIOCPServer
         object[] all = (object[])state;
         AsyncUserToken userToken = (AsyncUserToken)all[0];
         MessageXieYi xieyi = (MessageXieYi)all[1];
-        //将数据包交给前台去处理
-        DealXieYi(xieyi, userToken);
+
+
+
+        //将接收到的数据经过处理再发送出去
+        byte[] backInfo = ServerDataManager.instance.SelectMessage(xieyi, userToken); //判断逻辑
+        if (backInfo != null)
+        {
+            SendSave(userToken, backInfo);
+        }
     }
 
     #endregion
@@ -348,19 +356,6 @@ public class AsyncIOCPServer
     #endregion
 
     #region 服务器发送接收逻辑
-
-    private void DealXieYi(MessageXieYi xieyi, AsyncUserToken userToken)
-    {
-        byte[] backInfo = ServerDataManager.instance.SelectMessage(xieyi, userToken); //判断逻辑
-
-        //用户需要服务器返回值的话
-        if (backInfo != null)
-        {
-            SendSave(userToken, backInfo);
-        }
-    }
-
-
 
     public void SendSave(AsyncUserToken userToken, byte[] data)
     {
@@ -479,6 +474,6 @@ public class AsyncIOCPServer
     }
     public void Log4Debug(string msg)
     {
-        LogManager.instance.WriteLog(this.GetType().Name + ":" + msg);
+        NetworkDebuger.Log(this.GetType().Name + ":" + msg);
     }
 }

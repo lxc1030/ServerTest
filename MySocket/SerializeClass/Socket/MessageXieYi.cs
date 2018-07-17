@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Network_Kcp;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
@@ -151,13 +152,17 @@ public class MessageXieYi
         using (MemoryStream memoryStream = new MemoryStream(buffer)) //将字节数组填充至内存流
         {
             BinaryReader binaryReader = new BinaryReader(memoryStream); //以二进制读取器读取该流内容
-            
+
             byte start = binaryReader.ReadByte();//把开头的标识符去掉
             if (start != markStart)
             {
-                string info = "开头：" + start;
-                Console.WriteLine(info);
-                Debug.LogError(info);
+                string strError = "";
+                for (int i = 0; i < buffer.Length; i++)
+                {
+                    strError += "_" + buffer[i];
+                }
+                string info = "开头不是标识符:" + strError;
+                NetworkDebuger.LogException(info);
                 return null;
             }
 
@@ -181,8 +186,7 @@ public class MessageXieYi
             if ((bufferLength - 6) < messageXieYi.messageContentLength)
             {
                 string info = "数据接收不齐：" + (bufferLength - 6) + "/" + messageXieYi.messageContentLength;
-                Console.WriteLine(info);
-                Debug.LogError(info);
+                NetworkDebuger.LogException(info);
                 return null;
             }
 
@@ -190,8 +194,7 @@ public class MessageXieYi
             if (end != markEnd)
             {
                 string info = "结尾：" + end + "消息长度：" + messageXieYi.messageContentLength;
-                Console.WriteLine(info);
-                Debug.LogError(info);
+                NetworkDebuger.LogException(info);
                 return null;
             }
 
@@ -201,7 +204,7 @@ public class MessageXieYi
     }
     #endregion
 
-  
+
 
 
 
