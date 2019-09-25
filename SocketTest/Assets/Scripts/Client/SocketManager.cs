@@ -539,7 +539,9 @@ public class SocketManager : MonoBehaviour
                     break;
                 case MessageConvention.createRoom:
                 case MessageConvention.joinRoom:
-                    DataController.instance.MyLocateIndex = int.Parse(SerializeHelper.ConvertToString(tempMessageContent));
+                    JoinRoom joinInfo = new JoinRoom();
+                    joinInfo = SerializeHelper.Deserialize<JoinRoom>(tempMessageContent);
+                    DataController.instance.MyLocateIndex = joinInfo.unique;
                     break;
                 case MessageConvention.updateRoom:
                     //Debug.Log((MessageConvention)xieyi.XieYiFirstFlag + "数据长度：" + xieyi.MessageContent.Length);
@@ -623,7 +625,6 @@ public class SocketManager : MonoBehaviour
                     string time = SerializeHelper.ConvertToString(tempMessageContent);
                     Debug.Log("开始游戏时间：" + time);
                     startGamTime = DateTime.Parse(time);
-                    DataController.instance.MyRoomInfo.CurState = RoomActorState.Gaming;
                     break;
                 case MessageConvention.shootBullet:
                     break;

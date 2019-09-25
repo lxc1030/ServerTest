@@ -21,9 +21,7 @@ class Program
         NetworkDebuger.DeleteFiles();
         NetworkDebuger.Log(nameof(NetworkDebuger) + " Init");
 
-
-
-
+        
 
 
         //

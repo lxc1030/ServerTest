@@ -16,7 +16,16 @@ using UnityEngine;
 //    return info;
 //}
 
-
+[ProtoBuf.ProtoContract]
+public class JoinRoom
+{
+    [ProtoBuf.ProtoMember(1)]
+    public ErrorType error;
+    [ProtoBuf.ProtoMember(2)]
+    public int roomID;
+    [ProtoBuf.ProtoMember(3)]
+    public int unique;
+}
 
 [ProtoBuf.ProtoContract]
 [Serializable]
@@ -514,5 +523,6 @@ public enum ErrorType
     passwordShort,//密码长度太短
     roomMateFull,//该房间满员了
     roomNotExist,//该房间不存在
+    roomIsGaming,//该房间正在游戏中
     curStateNotSync,//当前游戏状态和服务器不同步
 }

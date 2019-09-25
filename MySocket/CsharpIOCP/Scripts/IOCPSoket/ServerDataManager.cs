@@ -1,6 +1,7 @@
 ﻿using Network_Kcp;
 using Newtonsoft.Json.Linq;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data.SqlClient;
 using System.Threading;
@@ -9,7 +10,7 @@ public class ServerDataManager
 {
     public static ServerDataManager instance;
     public RoomCollection allRoom;
-    public Dictionary<string, int> OffLineRooms;
+    public ConcurrentDictionary<string, int> OffLineRooms;
 
     public static void Init()
     {
@@ -22,7 +23,7 @@ public class ServerDataManager
     {
         //房间初始化
         allRoom = new RoomCollection();
-        OffLineRooms = new Dictionary<string, int>();
+        OffLineRooms = new ConcurrentDictionary<string, int>();
         //
         Log4Debug("数据处理准备就绪。");
     }
@@ -90,10 +91,9 @@ public class ServerDataManager
                         int offRoomID = OffLineRooms[userToken.userInfo.Register.userID];
                         userToken.userInfo.RoomID = offRoomID;
                         allRoom.RoomList[offRoomID].ReConnect(userToken);
-                        lock (OffLineRooms)
-                        {
-                            OffLineRooms.Remove(userToken.userInfo.Register.userID);
-                        }
+
+                        int removeCount = 0;
+                        OffLineRooms.TryRemove(userToken.userInfo.Register.userID, out removeCount);
                         rcInfo.isReconnect = true;
                     }
                     else
@@ -368,17 +368,10 @@ public class ServerDataManager
         if (userToken.userInfo.RoomID != -1)
         {
             SingleRoom room = allRoom.RoomList[userToken.userInfo.RoomID];
-            if (room.RoomInfo.CurState != RoomActorState.NoReady)
+            if (room.CurState != RoomActorState.NoReady)
             {
                 Log4Debug("用户账号：" + userToken.userInfo.Register.userID + " 掉线前保存房间号：" + userToken.userInfo.RoomID);
-                lock (OffLineRooms)
-                {
-                    if (!OffLineRooms.ContainsKey(userToken.userInfo.Register.userID))
-                    {
-                        OffLineRooms.Add(userToken.userInfo.Register.userID, -1);
-                    }
-                    OffLineRooms[userToken.userInfo.Register.userID] = userToken.userInfo.RoomID;
-                }
+                OffLineRooms.AddOrUpdate(userToken.userInfo.Register.userID, -1, (key, oldValue) => userToken.userInfo.RoomID);
                 //更新掉线用户的状态
                 RoomActorUpdate roomActorUpdate = new RoomActorUpdate()
                 {
@@ -391,7 +384,7 @@ public class ServerDataManager
             else
             {
                 room.Quit(userToken.userInfo.UniqueID);
-                Log4Debug("用户:" + userToken.userInfo.Register.userID + " 掉线，房间不保存。房间状态：" + room.RoomInfo.CurState);
+                Log4Debug("用户:" + userToken.userInfo.Register.userID + " 掉线，房间不保存。房间状态：" + room.CurState);
             }
         }
     }
@@ -399,10 +392,8 @@ public class ServerDataManager
     {
         lock (OffLineRooms)
         {
-            if (OffLineRooms.ContainsKey(actor.Register.userID))
-            {
-                OffLineRooms.Remove(actor.Register.userID);
-            }
+            int removeCount = 0;
+            OffLineRooms.TryRemove(actor.Register.userID, out removeCount);
         }
     }
 

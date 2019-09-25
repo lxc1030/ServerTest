@@ -291,7 +291,9 @@ public class CreateRoomUI : MonoBehaviour
             if ((MessageConvention)xieyi.XieYiFirstFlag == MessageConvention.createRoom
               || (MessageConvention)xieyi.XieYiFirstFlag == MessageConvention.joinRoom)
             {
-                ErrorType error = ClassGroup.CheckIsError(xieyi);
+                JoinRoom joinInfo = new JoinRoom();
+                joinInfo = SerializeHelper.Deserialize<JoinRoom>(xieyi.MessageContent);
+                ErrorType error = joinInfo.error;
                 if (error != ErrorType.none)
                 {
                     UIManager.instance.ShowAlertTip("加入房间失败" + error);

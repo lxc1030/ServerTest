@@ -169,7 +169,44 @@ public class HttpClient : MonoBehaviour
     }
 
 
-
+    private IEnumerator Download(string _url)
+    {
+        //设置保存路径
+        string path = "自定义目录";
+        //这个方法可以新建一个线程运行，来提高效率和降低卡顿，这里就不写了
+        Uri url = new Uri(_url);
+        //创建接受
+        WebRequest request = WebRequest.Create(url);
+        //以下为接收响应的方法
+        WebResponse response = request.GetResponse();
+        //创建接收流
+        Stream stream = response.GetResponseStream();
+        //检查目录是否存在，不存在则创建
+        string dir = path.Substring(0, path.LastIndexOf("/"));
+        if (!Directory.Exists(dir))
+            Directory.CreateDirectory(dir);
+        //文件写入路径
+        FileStream file = new FileStream(path, FileMode.OpenOrCreate, FileAccess.Write);
+        //返回内容总长度
+        int max = (int)response.ContentLength;
+        int len = 0;
+        while (len < max)
+        {
+            //byte容器
+            byte[] data = new byte[10240000];
+            //循环读取
+            int _len = stream.Read(data, 0, data.Length);
+            //写入文件
+            file.Write(data, 0, _len);
+            len += _len;
+            //如果需要传递进度，可以这样算
+            //float progress = len / (float)max;
+            yield return new WaitForEndOfFrame();
+        }
+        //写入完后关闭文件流和接收流
+        file.Close();
+        stream.Close();
+    }
 
 
 

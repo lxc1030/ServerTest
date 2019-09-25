@@ -16,8 +16,6 @@ public class RoomInfo
     [ProtoBuf.ProtoMember(5)]
     public float GameTime { get; set; }// 游戏分钟,值是毫秒
     [ProtoBuf.ProtoMember(6)]
-    public RoomActorState CurState { get; set; }// 房间当前状态
-    [ProtoBuf.ProtoMember(7)]
     public int FrameDelay { get; set; }
 
 
@@ -40,13 +38,8 @@ public class RoomInfo
                 //GameTime = 1 * 30 * 1000;
                 break;
         }
-        //
-        CurState = RoomActorState.NoReady;
     }
 
-
-
-    public int FrameIndex { get; set; }
     /// <summary>
     /// 一帧对应的时间
     /// </summary>

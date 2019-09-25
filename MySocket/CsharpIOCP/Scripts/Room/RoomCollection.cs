@@ -1,15 +1,16 @@
 ﻿using Network_Kcp;
 using Newtonsoft.Json.Linq;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 
 public class RoomCollection
 {
-    protected Dictionary<int, SingleRoom> roomList;
-    public Dictionary<int, SingleRoom> RoomList { get { return roomList; } }
+    public ConcurrentDictionary<int, SingleRoom> RoomList { get; set; }
     public RoomCollection()
     {
-        roomList = new Dictionary<int, SingleRoom>() { { 0, null } };
-
+        RoomList = new ConcurrentDictionary<int, SingleRoom>();
+        SingleRoom singleRoom = new SingleRoom(0, "", GameModel.组队模式);
+        RoomList.AddOrUpdate(0, singleRoom, (key, oldValue) => singleRoom);
         //// 建立聊天室的名字以及容許人數
         //roomList.Add(new SingleRoom("公開聊天室1", 20));
         //roomList.Add(new SingleRoom("公開聊天室2", 20));
@@ -19,22 +20,10 @@ public class RoomCollection
     }
 
 
-
-
-    // 取得房間名稱及會員人數資訊
-    public RoomInfo GetRoomInfo(int roomIndex)
-    {
-        if (!roomList.ContainsKey(roomIndex))
-        {
-            return null;
-        }
-        RoomInfo roomInfo = roomList[roomIndex].RoomInfo;
-        return roomInfo;
-    }
-
     public byte[] CreateNewRoom(JObject json, AsyncUserToken userToken)
     {
         byte[] backData = null;
+        JoinRoom joinInfo = new JoinRoom() { error = ErrorType.none, roomID = -1, unique = -1 };
         GameModel roomType = (GameModel)(int)json[nameof(RoomInfo.RoomType)];
         string roomName = (string)json[nameof(RoomInfo.RoomName)];
 
@@ -44,77 +33,88 @@ public class RoomCollection
         {
             roomName = userName + "的房间";
         }
+        Log4Debug("当前房间数:" + RoomList.Values.Count);
 
-        int roomID = roomList.Count;
-        Log4Debug("当前房间数:" + roomList.Values.Count);
-        foreach (KeyValuePair<int, SingleRoom> item in roomList)
+        foreach (var item in RoomList)
         {
-            if (item.Key == 0)//0号房间不开放使用，因为玩家的默认房间为0(Protobuf的构造函数必须有才这样);
+            if (item.Key == 0)//0号房间为默认房间，防止出错，不作为用户房间使用
             {
                 continue;
             }
-            if (item.Value.IsEmptyRoom())
+            SingleRoom singleRoom = new SingleRoom(item.Key, (string)roomName, roomType);
+            if (RoomList.GetOrAdd(item.Key, (value) => singleRoom).IsEmptyRoom())//创建房间成功
             {
-                roomID = item.Key;
+                RoomList.TryGetValue(item.Key, out singleRoom);
+                if (singleRoom.Join(userToken, out joinInfo.unique))
+                {
+                    joinInfo.roomID = item.Key;
+                    Log4Debug("空房间{0}作为新建房间成功。" + item.Key);
+                    break;
+                }
+                else
+                {
+                    Log4Debug("该空房间{0}不可加入，请检查。" + item.Key);
+                }
+            }
+        }
+        while (joinInfo.roomID < 0)//遍历存在键值后依旧没有房间可用
+        {
+            int roomID = -1;
+            SingleRoom singleRoom = null;
+            lock (RoomList)
+            {
+                roomID = RoomList.Count;
+                singleRoom = new SingleRoom(roomID, (string)roomName, roomType);
+                RoomList.GetOrAdd(roomID, (value) => singleRoom);
+                //
+                joinInfo.roomID = roomID;
+            }
+
+            if (singleRoom.Join(userToken, out joinInfo.unique))
+            {
+                joinInfo.roomID = roomID;
+                Log4Debug("创建并加入新房间{0}成功" + roomID);
                 break;
             }
         }
-        lock (roomList)
-        {
-            if (!roomList.ContainsKey(roomID))
-            {
-                roomList.Add(roomID, null);
-            }
-            roomList[roomID] = new SingleRoom(roomID, (string)roomName, roomType);
-        }
-        int localIndex = -1;
-        if (roomList[roomID].Join(userToken, out localIndex))
-        {
-            Log4Debug("创建房间成功,站位：" + localIndex);
-            //RoomInfo info = GetRoomInfo(roomID);
-            //backData = SerializeHelper.Serialize<RoomInfo>(info);
-            backData = SerializeHelper.ConvertToByte(localIndex + "");
-        }
-        else
-        {
-            Log4Debug("创建房间失败，检查！！！");
-        }
+        backData = SerializeHelper.Serialize<JoinRoom>(joinInfo);
         return backData;
     }
     public byte[] JoinRoom(JObject json, AsyncUserToken userToken)
     {
         byte[] backData = null;
+        JoinRoom joinInfo = new JoinRoom() { error = ErrorType.none, roomID = -1, unique = -1 };
         string roomID = (string)json[nameof(RoomInfo.RoomID)];
         GameModel roomType = (GameModel)(int)json[nameof(RoomInfo.RoomType)];
-
 
         //主逻辑
         if (!string.IsNullOrEmpty(roomID))//加入指定房间
         {
-            int rID = int.Parse(roomID);
-            int localIndex = -1;
-            if (roomList.ContainsKey(rID))
+            joinInfo.roomID = int.Parse(roomID);
+            SingleRoom singleRoom = null;
+            if (RoomList.TryGetValue(joinInfo.roomID, out singleRoom))
             {
-                if (roomList[rID].Join(userToken, out localIndex))//可以加入
+                if (singleRoom.CurState == RoomActorState.Gaming)
                 {
-                    Log4Debug("加入房间成功。");
-                    //RoomInfo info = GetRoomInfo(rID);
-                    //userToken.userInfo = info.ActorList[localIndex];
-                    backData = SerializeHelper.ConvertToByte(localIndex + "");
+                    joinInfo.error = ErrorType.roomIsGaming;
+                }
+                else if (singleRoom.Join(userToken, out joinInfo.unique))//可以加入
+                {
+                    Log4Debug("加入指定ID房间成功。");
                 }
                 else
                 {
-                    backData = ClassGroup.ErrorBackByType(ErrorType.roomMateFull);
+                    joinInfo.error = ErrorType.roomMateFull;
                 }
             }
             else
             {
-                backData = ClassGroup.ErrorBackByType(ErrorType.roomNotExist);
+                joinInfo.error = ErrorType.roomNotExist;
             }
         }
         else//根据游戏类型遍历所有房间
         {
-            foreach (KeyValuePair<int, SingleRoom> item in roomList)
+            foreach (var item in RoomList)
             {
                 if (item.Key == 0)
                 {
@@ -122,19 +122,20 @@ public class RoomCollection
                 }
                 if (item.Value.RoomInfo.RoomType != roomType)
                     continue;
-                int localIndex = -1;
-                if (item.Value.Join(userToken, out localIndex))//可以加入
+                if (item.Value.Join(userToken, out joinInfo.unique))//可以加入
                 {
-                    //RoomInfo info = GetRoomInfo(item.Key);
-                    //userToken.userInfo = info.ActorList[localIndex];
-                    backData = SerializeHelper.ConvertToByte(localIndex + "");
-                    return backData;
+                    joinInfo.roomID = item.Key;
+                    Log4Debug("加入游戏类型房间成功。");
+                    continue;
                 }
             }
-            //请求加入的游戏模式暂没有房间，生成新房间
-            backData = CreateNewRoom(json, userToken);
-
+            if (joinInfo.roomID < 0)
+            {
+                //请求加入的游戏模式暂没有房间，生成新房间
+                backData = CreateNewRoom(json, userToken);
+            }
         }
+        backData = SerializeHelper.Serialize<JoinRoom>(joinInfo);
         return backData;
     }
 
@@ -148,12 +149,13 @@ public class RoomCollection
         string roomName = (string)json[nameof(RoomInfo.RoomName)];
 
         //房间存在
-        if (roomList.ContainsKey(roomID))
+        if (RoomList.ContainsKey(roomID))
         {
-            if (roomList[roomID].IsMaster(userID))//发起者是房主
+            SingleRoom singleRoom = null;
+            if (RoomList.TryGetValue(roomID, out singleRoom) && singleRoom.IsMaster(userID))//发起者是房主
             {
-                roomList[roomID].UpdateRoom(roomType, roomName);
-                RoomInfo info = roomList[roomID].RoomInfo;
+                singleRoom.UpdateRoom(roomType, roomName);
+                RoomInfo info = singleRoom.RoomInfo;
                 backData = SerializeHelper.Serialize<RoomInfo>(info);
             }
         }

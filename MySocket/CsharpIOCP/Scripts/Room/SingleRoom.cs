@@ -17,6 +17,8 @@ public class SingleRoom
     public int PassedGameTime = 0;// 游戏已经过了多久
     private int FrameCount;
     public RoomInfo RoomInfo { get; set; }//客户端和服务器通用保存房间属性的变量类
+    public RoomActorState CurState { get; set; }//房间当前状态
+    public int FrameIndex { get; set; }//房间当前运行帧
 
     /// <summary>
     /// 房間中的會員列表
@@ -59,11 +61,12 @@ public class SingleRoom
     /// 每帧广播用到的线程
     /// </summary>
     public Thread ThFrameCount;
-
+    
 
     public SingleRoom(int roomID, string roomName, GameModel roomType)
     {
         RoomInfo = new RoomInfo(roomID, roomName, roomType);
+        CurState = RoomActorState.NoReady;
         //
         UserTokenInfo = new Dictionary<int, AsyncUserToken>();
         for (int i = 0; i < RoomInfo.Limit; i++)
@@ -271,7 +274,7 @@ public class SingleRoom
             {
                 ChangeRoomState(RoomActorState.Ready);
             }
-            if (RoomInfo.CurState == RoomActorState.Gaming)
+            if (CurState == RoomActorState.Gaming)
             {
                 switch (ActorList[index].CurState)
                 {
@@ -464,7 +467,7 @@ public class SingleRoom
                 {
                     //增加击杀数
                     ActorList[bulletInfo.userIndex].KillCount++;
-                    if (RoomInfo.CurState == RoomActorState.Gaming)
+                    if (CurState == RoomActorState.Gaming)
                     {
                         message = SerializeHelper.Serialize<List<RoomActor>>(new List<RoomActor>(ActorList.Values));
                         BoardcastMessage(MessageConvention.getRoommateInfo, message);
@@ -525,7 +528,7 @@ public class SingleRoom
     {
         int index = (int)unique;
         ActorList[index].timerDead.Dispose();
-        if (RoomInfo.CurState == RoomActorState.Gaming)//游戏中计时器才可以切换状态
+        if (CurState == RoomActorState.Gaming)//游戏中计时器才可以切换状态
         {
             //Log4Debug("执行回调设置复活，状态无敌。");
             RoomActorUpdate roomActorUpdate = new RoomActorUpdate() { userIndex = index, update = (int)RoomActorState.Invincible + "" };
@@ -537,7 +540,7 @@ public class SingleRoom
     {
         int index = (int)unique;
         ActorList[index].timerInvincible.Dispose();
-        if (RoomInfo.CurState == RoomActorState.Gaming)//游戏中计时器才可以切换状态
+        if (CurState == RoomActorState.Gaming)//游戏中计时器才可以切换状态
         {
             //Log4Debug("执行回调取消无敌。");
             RoomActorUpdate roomActorUpdate = new RoomActorUpdate() { userIndex = index, update = (int)RoomActorState.Gaming + "" };
@@ -585,7 +588,7 @@ public class SingleRoom
             Log4Debug("检查为什么存值为null");
             return;
         }
-        int curIndex = RoomInfo.FrameIndex;
+        int curIndex = FrameIndex;
         if (setIndex != -1)
         {
             curIndex = setIndex;
@@ -596,7 +599,7 @@ public class SingleRoom
             return;
         }
         //Log4Debug("存储帧：" + curIndex);
-        if (RoomInfo.CurState == RoomActorState.Gaming)
+        if (CurState == RoomActorState.Gaming)
         {
             FrameInfo frameInfo = new FrameInfo() { frameIndex = curIndex, frameData = new List<byte[]>() };
             lock (FrameGroup.GetOrAdd(curIndex, frameInfo).frameData)
@@ -624,9 +627,9 @@ public class SingleRoom
         {
             Log4Debug("请求帧start：" + start + " end:" + end + " 超过帧总数：" + FrameCount + "，请检查代码逻辑");
         }
-        else if (end > RoomInfo.FrameIndex)
+        else if (end > FrameIndex)
         {
-            Log4Debug("请求帧start：" + start + " end:" + end + " 超过当前运行帧数：" + RoomInfo.FrameIndex);
+            Log4Debug("请求帧start：" + start + " end:" + end + " 超过当前运行帧数：" + FrameIndex);
         }
         else
         {
@@ -648,7 +651,7 @@ public class SingleRoom
     {
         lastRecondTime = DateTime.Now;
         Thread.Sleep(RoomInfo.frameTime - (RoomInfo.frameTime / 2));
-        while (RoomInfo.CurState == RoomActorState.Gaming)//需要在游戏结束的时候，不再运行广播线程
+        while (CurState == RoomActorState.Gaming)//需要在游戏结束的时候，不再运行广播线程
         {
             DateTime cur = DateTime.Now;
             double sub = cur.Subtract(lastRecondTime).TotalMilliseconds;
@@ -672,9 +675,9 @@ public class SingleRoom
 
     private void FrameLogic(object obj)
     {
-        int end = RoomInfo.FrameIndex;
-        int tempIndex = RoomInfo.FrameIndex + 1;
-        RoomInfo.FrameIndex = tempIndex;
+        int end = FrameIndex;
+        int tempIndex = FrameIndex + 1;
+        FrameIndex = tempIndex;
         int start = tempIndex - RoomInfo.frameInterval;
 
         byte[] message = GetBoardFrame(start, end);//当前帧的前2帧一起发送，是用来防止udp丢包的
@@ -919,9 +922,9 @@ public class SingleRoom
     {
         byte[] message = new byte[] { };
         RoomActorUpdate roomActorUpdate = new RoomActorUpdate();
-        Log4Debug("房间更改状态为:" + RoomInfo.CurState + "->" + state);
-        RoomInfo.CurState = state;
-        switch (RoomInfo.CurState)
+        Log4Debug("房间更改状态为:" + CurState + "->" + state);
+        CurState = state;
+        switch (CurState)
         {
             case RoomActorState.NoReady:
                 foreach (var item in ActorList)
@@ -974,7 +977,7 @@ public class SingleRoom
 
                 break;
             case RoomActorState.Gaming:
-                Log4Debug("开始游戏:" + RoomInfo.FrameIndex);
+                Log4Debug("开始游戏:" + FrameIndex);
 
                 foreach (var item in ActorList)
                 {
@@ -998,7 +1001,7 @@ public class SingleRoom
                 }
 
                 //保存帧同步
-                RoomInfo.FrameIndex = 0;
+                FrameIndex = 0;
                 FrameCount = (int)(RoomInfo.GameTime / RoomInfo.frameTime);
                 FrameGroup = new ConcurrentDictionary<int, FrameInfo>();
                 //FrameGroup = new Dictionary<int, FrameInfo>();
@@ -1060,7 +1063,7 @@ public class SingleRoom
     public void GetReConnectFrameData(int unique)
     {
         AsyncUserToken userToken = UserTokenInfo[unique];
-        int curFrame = RoomInfo.FrameIndex;
+        int curFrame = FrameIndex;
         byte[] message = null;
         MessageXieYi xieyi = null;
 
